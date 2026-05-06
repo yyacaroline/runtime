@@ -164,7 +164,7 @@ static rtError_t StreamLaunchCpuKernelForAicpuStream(const rtKernelLaunchNames_t
     aicpuTask->aicpuKernelType = static_cast<uint8_t>(aicpuKernelType);
     error = ProcAicpuTask(kernelTask);
     COND_PROC_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), error, StreamLaunchKernelRecycle(result, kernelTask, nullptr, stm);,
-        "process aicpu task failed, stream_id=%d.", streamId);
+        "Process aicpu task failed, stream_id=%d.", streamId);
 
     return RT_ERROR_NONE;
 }

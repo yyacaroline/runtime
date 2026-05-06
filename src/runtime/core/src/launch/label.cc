@@ -161,7 +161,7 @@ rtError_t Label::Set(Stream * const stm)
         "rtLabelSet", "stream", "The current stream " + std::to_string(stm->Id_()) +
         " is inconsistent with the stream " + std::to_string(stream_->Id_()) + " associated with the label");
     COND_RETURN_AND_MSG_OUTER(setFlag_, RT_ERROR_LABEL_SET, ErrorCode::EE1018,
-        "rtsLabelSet", "The label cannot be set repeatedly");
+        "rtLabelSet", "The label cannot be set repeatedly");
 
     Device * const dev = context_->Device_();
     COND_RETURN_AND_MSG_OUTER(((devDstAddr_ == nullptr) &&

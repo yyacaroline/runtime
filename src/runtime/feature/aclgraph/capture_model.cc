@@ -481,8 +481,8 @@ rtError_t CaptureModel::BuildSqCq(Stream * const exeStream)
         "sqCqNum_=%u", sqCqNum_);
 
     const uint32_t streamNum = static_cast<uint32_t>(StreamList_().size());
-    COND_RETURN_ERROR_MSG_INNER(streamNum == 0U, RT_ERROR_INVALID_VALUE,
-        "Stream number cannot be 0, model_id=%u.", Id_());
+    COND_RETURN_AND_MSG_OUTER(streamNum == 0U, RT_ERROR_INVALID_VALUE, ErrorCode::EE1009, std::to_string(Id_()),
+        "The current aclgraph model running instance neither contains any executable task nor contains any executable stream");
 
     if (!IsModelLoadComplete()) {
         Stream *origCaptureStream = GetOriginalCaptureStream();

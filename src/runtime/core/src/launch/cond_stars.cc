@@ -146,7 +146,7 @@ rtError_t CondStreamActive(const Stream* const activeStream, Stream* const stm, 
 
         error = StreamActiveTaskInit(tsk, activeStream);
         ERROR_GOTO_MSG_INNER(
-            error, ERROR_RECYCLE, "Stream activation task init failed, stream_id=%d, task_id=%hu, retCode=%#x", streamId, tsk->id,
+            error, ERROR_RECYCLE, "Stream activation task init failed, stream_id=%d, task_id=%hu, retCode=%#x.", streamId, tsk->id,
             error);
     }
 

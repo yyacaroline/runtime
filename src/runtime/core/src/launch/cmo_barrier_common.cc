@@ -42,7 +42,7 @@ rtError_t BarrierTaskLaunch(const rtBarrierTaskInfo_t* const taskInfo, Stream* c
 
     error = dev->SubmitTask(rtBarrierTask, (curCtx != nullptr) ? curCtx->TaskGenCallback_() : nullptr);
     ERROR_GOTO_MSG_INNER(
-        error, ERROR_RECYCLE, "Failed to submit barrier task, stream_id=%d, task_id=%hu, retCode=%#x", 
+        error, ERROR_RECYCLE, "Failed to submit barrier task, stream_id=%d, task_id=%hu, retCode=%#x.", 
         streamId, rtBarrierTask->id, error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtBarrierTask, streamId);
