@@ -14,7 +14,6 @@
 
 namespace cce {
 namespace runtime {
-    rtError_t SubmitTaskDavid(TaskInfo *submitTask, Stream * const stm, int32_t timeout = -1);
     // Invoke the flow lock at the layer.
     rtError_t AllocTaskInfoForCapture(TaskInfo **taskInfo, Stream * const stm, uint32_t &pos, Stream *&dstStm, uint32_t sqeNum = 1U, bool isKernelLaunch = false);
     rtError_t AllocTaskInfoOnAutoSplitStream(Stream *curStream, uint32_t sqeNum, TaskInfo **taskInfo, uint32_t &pos);

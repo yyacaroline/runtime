@@ -741,27 +741,7 @@ rtError_t CheckTaskCanSend(Stream * const stm)
 }
 
 
-rtError_t SubmitTaskDavid(TaskInfo *submitTask, Stream * const stm, int32_t timeout)
-{
-    rtError_t error = stm->CheckContextTaskSend(submitTask);
-    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<int32_t>(error));
-    COND_RETURN_ERROR_MSG_INNER((stm->abortStatus_ == RT_ERROR_DEVICE_TASK_ABORT), RT_ERROR_DEVICE_TASK_ABORT,
-        "Device is in abort status.");
-    error = AllocTaskAndSendDavid(submitTask, stm);
-    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "AllocTaskAndSendDavid fail, streamId=%d, task pos=%hu,"
-        "taskType=%u(%s), retCode=%#x", stm->Id_(), submitTask->id, submitTask->type,
-        GetTaskDescByType(submitTask->type), error);
 
-    if (submitTask->isNeedStreamSync != 0U) {
-        stm->StreamSyncLock();
-        // isStreamSync para set true if need wait cq in unsink stream
-        error = SyncTask(stm, static_cast<uint32_t>(submitTask->id), timeout);
-        SyncTaskCheckResult(error, stm, submitTask->id);
-        stm->StreamSyncUnLock();
-        return error;
-    }
-    return RT_ERROR_NONE;
-}
 void SaveTaskCommonInfo(TaskInfo *taskInfo, Stream * const stm, uint32_t pos, uint32_t sqeNum)
 {
     InitByStream(taskInfo, stm);
