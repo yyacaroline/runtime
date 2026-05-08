@@ -431,8 +431,6 @@ public:
     
     Stream* GetCtrlSQStream(Stream * const stream) const override;
 
-    bool IsCtrlSQStream(Stream * const stream) const override;
-
     void CtrlTaskReclaimByPos(CtrlStream* const stm, const uint32_t sqPos) override
     {
         return engine_->RecycleCtrlTask(stm, sqPos);

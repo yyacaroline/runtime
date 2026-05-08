@@ -510,7 +510,7 @@ rtError_t DavidSendTask(TaskInfo *taskInfo, Stream * const stm)
         }
     }
 
-    if ((profilerPtr != nullptr) && (!dev->IsDeviceRelease())) {
+    if ((profilerPtr != nullptr) && (!dev->IsDeviceRelease()) && (!stm->IsCtrlSQStream())) {
         profilerPtr->ReportTaskTrack(taskInfo, devId);
     }
 

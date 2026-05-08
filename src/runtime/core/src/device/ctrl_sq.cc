@@ -38,7 +38,7 @@ rtError_t CtrlSQ::Setup()
     COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, stream_ == nullptr, RT_ERROR_STREAM_NEW,
         "CtrlSQ Setup failed.");
     RT_LOG(RT_LOG_INFO, "CtrlSQ create success, stream_id=%d.", stream_->Id_());
-
+    stream_->SetCtrlSQStream();
     const rtError_t error = stream_->Setup();
     ERROR_PROC_RETURN_MSG_INNER(error, DeleteStream(stream_);,
         "CtrlSQ setup failed, retCode=%#x.", error);

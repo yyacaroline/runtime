@@ -343,7 +343,6 @@ public:
     virtual void WakeUpRecycleThread() = 0;
     virtual Stream* GetCtrlStream(Stream * const stream) const = 0;
     virtual Stream* GetCtrlSQStream(Stream * const stream) const = 0;
-    virtual bool IsCtrlSQStream(Stream * const stream) const = 0;
     virtual void CtrlTaskReclaimByPos(CtrlStream* const stm, const uint32_t sqPos) = 0;
     virtual void CtrlTaskReclaim(CtrlStream* const stm) = 0;
     virtual rtError_t AddAddrKernelNameMapTable(rtAddrKernelName_t &mapInfo) = 0;

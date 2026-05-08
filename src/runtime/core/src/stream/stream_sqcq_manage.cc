@@ -129,7 +129,7 @@ rtError_t StreamSqCqManage::AllocDavidStreamSqCq(const Stream * const newStm, co
     infoPtr->shareSqId = device_->GetShareSqId();
     infoPtr->tsSqType = newStm->GetTsSqAllocType();
     infoPtr->swsqFlag = false;
-
+    infoPtr->ctrlSQFlag = newStm->IsCtrlSQStream();
     const std::lock_guard<std::mutex> stmLock(streamMapLock_);
     sqId = 0U;
     cqId = 0U;

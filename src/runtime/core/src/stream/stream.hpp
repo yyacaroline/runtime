@@ -1463,6 +1463,15 @@ public:
     }
     rtError_t StreamGetTasks(void **tasks, uint32_t* numTasks);
     rtError_t RestoreForSoftwareSq();
+    void SetCtrlSQStream()
+    {
+        isCtrlSQStream_ = true;
+    }
+
+    bool IsCtrlSQStream(void) const
+    {
+        return isCtrlSQStream_;
+    }
 private:
     void ConstructTraceEventFromTask(TaskInfo *const task, const uint32_t flags, TraceEvent &record) const;
 
@@ -1628,6 +1637,7 @@ private:
     uint64_t sqIdMemAddr_{0UL};
     void *argsHandle_{nullptr};
     StreamStatus streamStatus_{StreamStatus::NORMAL};
+    bool isCtrlSQStream_{false};
 public:
     TaskResManage *taskResMang_{nullptr};
     bool isHasPcieBar_{false};

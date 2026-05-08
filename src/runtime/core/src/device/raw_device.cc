@@ -1697,15 +1697,6 @@ Stream* RawDevice::GetCtrlSQStream(Stream * const stream) const
     }
 }
 
-bool RawDevice::IsCtrlSQStream(Stream * const stream) const
-{
-    if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_CTRL_SQ) && (ctrlSQ_.get() != nullptr)) {
-        return (stream == GetCtrlSQ().GetStream());
-    } else {
-        return false;
-    }
-}
-
 bool RawDevice::AllocHcclIndex(uint16_t &hcclIndex, uint16_t stmid)
 {
     if (hcclStreamSize_ >= MAX_HCCL_STREAM_NUM) {
