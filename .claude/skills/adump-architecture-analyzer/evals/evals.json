@@ -1,0 +1,23 @@
+{
+  "skill_name": "adump-architecture-analyzer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "分析这个adump代码库的软件架构，重点关注exception dump的实现机制，特别是aic_err_detail_dump的实现",
+      "expected_output": "Comprehensive architecture analysis covering: overall codebase structure, key components (DumpManager, ExceptionDumper, DumpOperator, DumpArgs), three exception dump levels (L0/L1/L2), detailed analysis of aic_err_detail_dump implementation including data flow, memory management, and platform-specific features",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我需要了解adump代码库中tensor dump的工作原理，包括正常数据dump和异常dump的区别，以及不同级别的exception dump是如何实现的",
+      "expected_output": "Detailed explanation of tensor dump functionality covering: normal data dump vs exception dump, three exception dump levels (aic_err_brief_dump, aic_err_norm_dump, aic_err_detail_dump), their implementations, use cases, and technical differences",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "帮我分析adump代码库中aic_err_detail_dump的详细实现，包括内存管理、数据流、以及与DumpManager和ExceptionDumper的交互",
+      "expected_output": "Deep technical analysis of aic_err_detail_dump implementation focusing on: memory management (ring buffers, chunk allocation), data flow from exception callback to file I/O, integration with DumpManager and ExceptionDumper, thread safety mechanisms, and platform-specific optimizations",
+      "files": []
+    }
+  ]
+}
