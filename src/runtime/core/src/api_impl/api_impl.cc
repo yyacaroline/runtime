@@ -1417,7 +1417,7 @@ rtError_t ApiImpl::KernelTransArgSet(const void * const ptr, const uint64_t size
         return RT_ERROR_NONE;
     }
 
-    return curDrv->DevMemFlushCache(reinterpret_cast<uintptr_t>(ptr), size);
+    return curDrv->DevMemFlushCache(RtPtrToValue(ptr), size);
 }
 
 rtError_t ApiImpl::KernelFusionStart(Stream * const stm)

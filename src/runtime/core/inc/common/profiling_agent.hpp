@@ -14,7 +14,6 @@
 #include "runtime/base.h"
 #include "base.hpp"
 #include "profiler_struct.hpp"
-#include "toolchain/prof_api.h"
 
 namespace cce {
 namespace runtime {

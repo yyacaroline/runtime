@@ -272,8 +272,7 @@ static rtError_t ConstructFuncCallPara(TaskInfo * const taskInfo, rtStarsModelEx
         }
         funcCallPara.sqFsmSelBasAddr = baseAddr + DAVID_SIMPLE_RTSQ_FSM_SEL_REG;
     }
-    funcCallPara.sqVirtualAddr =
-            static_cast<uint64_t>(reinterpret_cast<uintptr_t>(stream->Device_()->GetSqVirtualArrBaseAddr_()));
+    funcCallPara.sqVirtualAddr = RtPtrToValue(stream->Device_()->GetSqVirtualArrBaseAddr_());
     funcCallPara.dfxAddr = reinterpret_cast<uint64_t>(modelExecuteTaskInfo->model->GetDfxPtr());
     return RT_ERROR_NONE;
 }
@@ -453,7 +452,7 @@ void PrintErrorModelExecuteTaskFuncCall(TaskInfo *const task)
     }
     const auto ret = task->stream->Device_()->Driver_()->MemCopySync(starsModelExefuncCall,
         model->GetFunCallMemSize(),
-        reinterpret_cast<void *>(model->GetFuncCallSvmMem()),
+        RtValueToPtr<void *>(model->GetFuncCallSvmMem()),
         model->GetFunCallMemSize(),
         RT_MEMCPY_DEVICE_TO_HOST);
     if (ret == RT_ERROR_NONE) {
