@@ -78,7 +78,7 @@ public:
         return taskPoolNum_;
     }
 
-    void ShowDfxInfo(void) const;
+    virtual void ShowDfxInfo(void) const;
 
     void CreateTaskResBaseAddr(const uint32_t taskPoolSize)
     {

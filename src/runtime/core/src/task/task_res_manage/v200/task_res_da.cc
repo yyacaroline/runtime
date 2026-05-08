@@ -195,6 +195,42 @@ uint16_t TaskResManageDavid::GetPendingNum()
     return (taskResATail_.Value() + taskPoolNum_ - taskResAHead_.Value()) % taskPoolNum_;
 }
 
+void TaskResManageDavid::ShowDfxInfo(void) const
+{
+    if (taskPoolNum_ == 0U) {
+        return;
+    }
+
+    RT_LOG(RT_LOG_EVENT, "stream_id=%d, task res info, taskResHead=%hu, taskResTail=%hu",
+           streamId_, taskResAHead_.Value(), taskResATail_.Value());
+    const uint32_t headStart = (taskResAHead_.Value() + taskPoolNum_ - 5U) % taskPoolNum_;
+    const uint32_t tailStart = (taskResATail_.Value() + taskPoolNum_ - 5U) % taskPoolNum_;
+    uint32_t headIndex[SHOW_DFX_INFO_TASK_NUM] = {0};
+    uint32_t tailIndex[SHOW_DFX_INFO_TASK_NUM] = {0};
+
+    for (uint32_t index = 0; index < SHOW_DFX_INFO_TASK_NUM; index++) {
+        headIndex[index] = (headStart + index) % taskPoolNum_;
+    }
+    RT_LOG(RT_LOG_EVENT, "task head info, headStart=%u, taskId:%hu, %hu, %hu, %hu, %hu, %hu.",
+        headStart, taskRes_[headIndex[0U]].taskInfo.id,
+        taskRes_[headIndex[1U]].taskInfo.id,
+        taskRes_[headIndex[2U]].taskInfo.id,
+        taskRes_[headIndex[3U]].taskInfo.id,
+        taskRes_[headIndex[4U]].taskInfo.id,
+        taskRes_[headIndex[5U]].taskInfo.id);
+
+    for (uint32_t index = 0; index < SHOW_DFX_INFO_TASK_NUM; index++) {
+        tailIndex[index] = (tailStart + index) % taskPoolNum_;
+    }
+    RT_LOG(RT_LOG_EVENT, "task tail info, tailStart=%u, taskId:%hu, %hu, %hu, %hu, %hu, %hu.",
+        tailStart, taskRes_[tailIndex[0U]].taskInfo.id,
+        taskRes_[tailIndex[1U]].taskInfo.id,
+        taskRes_[tailIndex[2U]].taskInfo.id,
+        taskRes_[tailIndex[3U]].taskInfo.id,
+        taskRes_[tailIndex[4U]].taskInfo.id,
+        taskRes_[tailIndex[5U]].taskInfo.id);
+}
+
 void TaskResManageDavid::ResetTaskRes()
 {
     taskResAHead_.Set(0);

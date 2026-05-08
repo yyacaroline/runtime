@@ -49,6 +49,7 @@ public:
     uint16_t GetPendingNum();
     bool IsRecyclePosValid(uint16_t recyclePos) const;
     bool CreateTaskRes(Stream* stm) override;
+    void ShowDfxInfo(void) const override;
 
 private:
     Atomic<uint16_t> taskResAHead_{0U};
