@@ -49,6 +49,17 @@ inline void CheckBlockDim(const Stream *const stm, const uint16_t sqeType, const
         coreNum);
 }
 
+inline Kernel* GetKernelByTaskType(const TaskInfo* const taskInfo)
+{
+    Kernel *kernelPtr = nullptr;
+    if ((taskInfo->type == TS_TASK_TYPE_KERNEL_AICORE) || (taskInfo->type == TS_TASK_TYPE_KERNEL_AIVEC)) {
+        kernelPtr = taskInfo->u.aicTaskInfo.kernel;
+    } else {
+        kernelPtr = taskInfo->u.fusionKernelTask.aicPart.kernel;
+    }
+    return kernelPtr;
+}
+
 inline void ConfigDieFriendly(const TaskInfo *const taskInfo, RtDavidStarsAicAivKernelSqe * const sqe,
     const Stream * const stm)
 {
@@ -139,7 +150,7 @@ template<typename T>
 inline void ConstructCommonAicAivSqePart(const T * const kernelInfo, RtDavidStarsAicAivKernelSqe * const sqe,
     const TaskInfo *taskInfo, const Stream *const stm)
 {
-    const Kernel *kernelPtr = taskInfo->u.aicTaskInfo.kernel;
+    const Kernel *kernelPtr = GetKernelByTaskType(taskInfo);
     uint32_t minStackSize = 0U;
     if (kernelPtr != nullptr) {
         minStackSize = kernelPtr->GetMinStackSize1();
