@@ -58,8 +58,8 @@ rtError_t CmoTaskInit(TaskInfo *taskInfo, const rtCmoTaskInfo_t *const cmoTaskIn
     // sqe info copy
     const errno_t error = memcpy_s(&cmoTsk->cmoSqeInfo, sizeof(rtCmoTaskInfo_t), cmoTaskInfo, sizeof(rtCmoTaskInfo_t));
     COND_RETURN_AND_MSG_OUTER((error != EOK), RT_ERROR_SEC_HANDLE, ErrorCode::EE1020,
-        __func__, "memcpy_s", std::to_string(error), strerror(error), "src=" + std::to_string(reinterpret_cast<uintptr_t>(cmoTaskInfo)) +
-        ", dest=" + std::to_string(reinterpret_cast<uintptr_t>(&cmoTsk->cmoSqeInfo)) + ", dest_max=" + std::to_string(sizeof(rtCmoTaskInfo_t)) +
+        __func__, "memcpy_s", std::to_string(error), strerror(error), "src=" + std::to_string(RtPtrToValue(cmoTaskInfo)) +
+        ", dest=" + std::to_string(RtPtrToValue(&cmoTsk->cmoSqeInfo)) + ", dest_max=" + std::to_string(sizeof(rtCmoTaskInfo_t)) +
         ", count=" + std::to_string(sizeof(rtCmoTaskInfo_t)) + ".");
 
     const rtError_t ret = cmoModel->CmoIdAlloc(cmoTsk->cmoSqeInfo.logicId, cmoTsk->cmoid);

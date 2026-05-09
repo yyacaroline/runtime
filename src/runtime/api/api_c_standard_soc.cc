@@ -1447,7 +1447,7 @@ rtError_t rtGetSocSpec(const char* label, const char* key, char* val, const uint
     const errno_t rtn = memcpy_s(val, maxLen, result.c_str(), result.size() + 1U);
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER((rtn != EOK), RT_ERROR_INVALID_VALUE,
         ErrorCode::EE1020, __func__, "memcpy_s", std::to_string(rtn), strerror(rtn),
-        "src=" + result + ", dest=" + std::to_string(reinterpret_cast<uintptr_t>(val)) + ", dest_max=" +
+        "src=" + result + ", dest=" + std::to_string(RtPtrToValue(val)) + ", dest_max=" +
         std::to_string(maxLen) + ", count=" + std::to_string(result.size() + 1U) + ".");
     return ACL_RT_SUCCESS;
 }

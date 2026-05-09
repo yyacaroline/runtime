@@ -351,7 +351,7 @@ rtError_t rtsKernelArgsParaUpdate(rtArgsHandle argsHandle, rtParaHandle paraHand
     const errno_t ret = memcpy_s(RtValueToPtr<void *>(offset), paraSize, para, paraSize);
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER((ret != EOK), RT_ERROR_INVALID_VALUE,
         ErrorCode::EE1020, __func__, "memcpy_s", std::to_string(ret), strerror(ret),
-        "src=" + std::to_string(reinterpret_cast<uintptr_t>(para)) + ", dest=" + std::to_string((offset)) +
+        "src=" + std::to_string(RtPtrToValue(para)) + ", dest=" + std::to_string((offset)) +
         ", dest_max=" + std::to_string(paraSize) + ", count=" + std::to_string(paraSize) + ".");
     handle->isParamUpdating = 1U;
 

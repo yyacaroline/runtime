@@ -566,8 +566,8 @@ rtError_t rtConfigureCall(uint32_t numBlocks, rtSmDesc_t *smDesc, rtStream_t stm
         ret = memcpy_s(&launchArg.smDesc, sizeof(launchArg.smDesc), smDesc,
                        sizeof(launchArg.smDesc));
         COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER(ret != EOK, RT_ERROR_SEC_HANDLE, ErrorCode::EE1020, __func__,
-            "memcpy_s", std::to_string(ret), strerror(ret), "src=" + std::to_string(reinterpret_cast<uintptr_t>(smDesc)) + ", dest=" +
-            std::to_string(reinterpret_cast<uintptr_t>(&launchArg.smDesc)) + ", dest_max=" + std::to_string(sizeof(launchArg.smDesc)) +
+            "memcpy_s", std::to_string(ret), strerror(ret), "src=" + std::to_string(RtPtrToValue(smDesc)) + ", dest=" +
+            std::to_string(RtPtrToValue(&launchArg.smDesc)) + ", dest_max=" + std::to_string(sizeof(launchArg.smDesc)) +
             ", count=" + std::to_string(sizeof(launchArg.smDesc)) + ".");
     } else {
         launchArg.smUsed = false;
