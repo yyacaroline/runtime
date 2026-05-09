@@ -332,7 +332,7 @@ rtError_t PrepareSqeInfoForModelExecuteTask(TaskInfo * const taskInfo)
             const rtMemcpyKind_t kind = (
                 taskInfo->stream->Device_()->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_MEM_COPY_DOT_D2D_ONLY)) ? 
                 RT_MEMCPY_DEVICE_TO_DEVICE : RT_MEMCPY_HOST_TO_DEVICE;
-            ret = (dev->Driver_())->MemCopySync((void*)(uintptr_t)(model->GetFuncCallSvmMem()),
+            ret = (dev->Driver_())->MemCopySync(RtValueToPtr<void *>(model->GetFuncCallSvmMem()),
                 model->GetFunCallMemSize(), model->GetFuncCallHostMem(), model->GetFunCallMemSize(), kind);
 
             PrintDebugInfoForModelExecute(model);

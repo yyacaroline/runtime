@@ -44,7 +44,7 @@ bool IsEventRasMatch(const rtDmsFaultEvent &event, const EventRasFilter &filter)
 bool IsEventIdAndRasCodeMatch(const uint32_t deviceId, const std::vector<EventRasFilter> &ubNonMemPoisonRasList = g_ubNonMemPoisonRasList);
 bool HasBlacklistEventOnDevice(const uint32_t deviceId, const std::map<uint32_t, std::string>& eventIdBlkList = g_mulBitEccEventId);
 bool IsSmmuFault(const uint32_t deviceId);
-void ProcessSdmaError(TaskInfo *errTaskPtr);
+void ProcessSdmaError(TaskInfo *taskInfo);
 class DeviceErrorProc {
 public:
     explicit DeviceErrorProc(Device *dev);
