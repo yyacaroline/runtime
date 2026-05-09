@@ -99,7 +99,7 @@ public:
     void GetTaskQueueHeadTail(uint16_t& head, uint16_t& tail) const;
     rtError_t Restore() override;
     rtError_t ReAllocStreamId() override;
-    rtError_t UpdateSnapShotSqe();
+    rtError_t UpdateSnapShotSqe() override;
     rtError_t UpdateTaskAndSqe(TaskInfo *task, Stream *stream);
     bool IsNeedUpdateTask(const TaskInfo * const updateTask) const;
 protected:

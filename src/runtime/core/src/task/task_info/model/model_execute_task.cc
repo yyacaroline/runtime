@@ -456,7 +456,7 @@ void PrintErrorModelExecuteTaskFuncCall(TaskInfo *const task)
         model->GetFunCallMemSize(),
         RT_MEMCPY_DEVICE_TO_HOST);
     if (ret == RT_ERROR_NONE) {
-        const uint32_t *cmd = reinterpret_cast<const uint32_t *>(starsModelExefuncCall);
+        const uint32_t *cmd = RtPtrToPtr<const uint32_t *>(starsModelExefuncCall);
         for (size_t i = 0UL; i < (sizeof(RtStarsModelExeFuncCall) / sizeof(uint32_t)); i += 8UL) {
             RT_LOG(RT_LOG_ERROR,
                 "FuncCall data : %08x %08x %08x %08x %08x %08x %08x %08x",

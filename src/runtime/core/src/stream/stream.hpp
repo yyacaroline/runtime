@@ -1423,7 +1423,7 @@ public:
     uint32_t GetResValue(const rtDevResLimitType_t type) const;
     bool GetResLimitFlag(const rtDevResLimitType_t type) const;
     rtError_t PackingTaskGroup(const TaskInfo * const task, const uint16_t streamId);
-    rtError_t UpdateSnapShotSqe();
+    virtual rtError_t UpdateSnapShotSqe();
     bool IsNeedUpdateTask(const TaskInfo * const updateTask) const;
     rtError_t SubmitMemCpyAsyncTask(TaskInfo * const updateTask);
 

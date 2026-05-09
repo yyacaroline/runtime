@@ -59,7 +59,7 @@ void Context::GetStreamlist(rtStreamlistType_t type, StreamList_t *stmList)
     }
     Stream *defaultStream = DefaultStream_();
     if (stmList->stmNum < RT_MAX_STREAM_NUM) {
-        stmList->stms[(stmList->stmNum)++] = reinterpret_cast<rtStream_t>(defaultStream->GetInnerHandle());
+        stmList->stms[(stmList->stmNum)++] = RtPtrToPtr<rtStream_t>(defaultStream->GetInnerHandle());
     }
 }
 
