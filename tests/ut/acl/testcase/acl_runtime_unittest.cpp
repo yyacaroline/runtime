@@ -15,6 +15,7 @@
 #include "acl/error_codes/rt_error_codes.h"
 #include "common/log_inner.h"
 #include "acl/acl_rt.h"
+#include "acl/acl_rt_api.h"
 #include "acl_rt_impl_base.h"
 
 #include "set_device_vxx.h"
@@ -7854,4 +7855,228 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemMapSelectedLinkTest)
         .WillOnce(Return(ACL_RT_SUCCESS));
     ret = aclrtMemMapSelectedLink((void *)mem1, size, (void *)mem2, linkIdx);
     EXPECT_EQ(ret, ACL_RT_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtApiHeaderIncludeTest)
+{
+    // 验证 acl_rt_api.h 头文件包含正确，模板函数可编译
+    
+    // 测试模板函数签名编译通过
+    float *devPtr = nullptr;
+    size_t size = 100;
+    
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMalloc(_, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMalloc(&devPtr, size);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    
+    // 测试同步接口编译通过
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtDeviceSynchronizeWithTimeout(_))
+        .WillOnce(Return(RT_ERROR_NONE));
+    ret = aclrtSynchronizeDevice(5000);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMallocTest)
+{
+    float *devPtr = nullptr;
+    size_t size = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMalloc(_, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMalloc(&devPtr, size);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMalloc(_, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    ret = aclrtMalloc(&devPtr, size, ACL_MEM_MALLOC_HUGE_FIRST);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMallocHostTest)
+{
+    float *hostPtr = nullptr;
+    size_t size = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMallocHost(_, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMallocHost(&hostPtr, size);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMemcpyTest)
+{
+    float src[10] = {1.0f};
+    float dst[10] = {0.0f};
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpy(_, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMemcpy(dst, 10 * sizeof(float), src, 10 * sizeof(float), ACL_MEMCPY_HOST_TO_HOST);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMemcpyAsyncTest)
+{
+    float *src = reinterpret_cast<float *>(0x01);
+    float *dst = reinterpret_cast<float *>(0x02);
+    aclrtStream stream = reinterpret_cast<aclrtStream>(0x03);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpyAsync(_, _, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMemcpyAsync(dst, 10 * sizeof(float), src, 10 * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMemcpy2dTest)
+{
+    float *src = reinterpret_cast<float *>(0x01);
+    float *dst = reinterpret_cast<float *>(0x02);
+    size_t dpitch = 2;
+    size_t spitch = 2;
+    size_t width = 1;
+    size_t height = 2;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpy2d(_, _, _, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMemcpy2d(dst, dpitch, src, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMemcpy2dAsyncTest)
+{
+    float *src = reinterpret_cast<float *>(0x01);
+    float *dst = reinterpret_cast<float *>(0x02);
+    aclrtStream stream = reinterpret_cast<aclrtStream>(0x03);
+    size_t dpitch = 2;
+    size_t spitch = 2;
+    size_t width = 1;
+    size_t height = 2;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpy2dAsync(_, _, _, _, _, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMemcpy2dAsync(dst, dpitch, src, spitch, width, height, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtOverloadSynchronizeDeviceTest)
+{
+    int32_t timeout = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtDeviceSynchronizeWithTimeout(_))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtSynchronizeDevice(timeout);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    timeout = -2;
+    ret = aclrtSynchronizeDevice(timeout);
+    EXPECT_EQ(ret, ACL_ERROR_RT_PARAM_INVALID);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtOverloadSynchronizeStreamTest)
+{
+    aclrtStream stream = reinterpret_cast<aclrtStream>(0x01);
+    int32_t timeout = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtStreamSynchronizeWithTimeout(_, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtSynchronizeStream(stream, timeout);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtOverloadSynchronizeEventTest)
+{
+    aclrtEvent event = reinterpret_cast<aclrtEvent>(0x01);
+    int32_t timeout = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtEventSynchronizeWithTimeout(_, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtSynchronizeEvent(event, timeout);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtOverloadStreamWaitEventTest)
+{
+    aclrtStream stream = reinterpret_cast<aclrtStream>(0x01);
+    aclrtEvent event = reinterpret_cast<aclrtEvent>(0x02);
+    int32_t timeout = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsEventWait(_, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtStreamWaitEvent(stream, event, timeout);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtOverloadCreateEventTest)
+{
+    aclrtEvent event = nullptr;
+    uint32_t flag = 0x00000008u;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtEventCreateExWithFlag(_, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtCreateEvent(&event, flag);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplatePointerGetAttributesTest)
+{
+    float *ptr = reinterpret_cast<float *>(0x01);
+    aclrtPtrAttributes attributes;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsPointerGetAttributes(_, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtPointerGetAttributes(ptr, &attributes);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateHostRegisterTest)
+{
+    float *hostPtr = reinterpret_cast<float *>(0x01);
+    float *devPtr = nullptr;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsHostRegister(_, _, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtHostRegister(hostPtr, 100, ACL_HOST_REGISTER_MAPPED, &devPtr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    uint32_t flag = 0;
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtHostRegisterV2(_, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    ret = aclrtHostRegister(hostPtr, 100, flag);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateHostGetDevicePointerTest)
+{
+    float *hostPtr = reinterpret_cast<float *>(0x01);
+    float *devPtr = nullptr;
+    uint32_t flag = 0;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtHostGetDevicePointer(_, _, _))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtHostGetDevicePointer(hostPtr, &devPtr, flag);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateHostUnregisterTest)
+{
+    float *hostPtr = reinterpret_cast<float *>(0x01);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsHostUnregister(_))
+        .WillOnce(Return(RT_ERROR_NONE));
+    aclError ret = aclrtHostUnregister(hostPtr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtTemplateMemAllocManagedTest)
+{
+    float *devPtr = nullptr;
+    size_t size = 100;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemAllocManaged(_, _, _, _))
+        .WillRepeatedly(Return(RT_ERROR_NONE));
+    aclError ret = aclrtMemAllocManaged(&devPtr, size);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemAllocManaged(&devPtr, size, ACL_RT_MEM_ATTACH_GLOBAL);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 }

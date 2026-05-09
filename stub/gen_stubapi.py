@@ -67,6 +67,8 @@ def collect_header_files(path):
                 file_path = os.path.join(root, file)
                 file_path = file_path.replace('\\', '/')
                 prof_headers.append(file_path)
+            elif file == "acl_rt_api.h":
+                continue  # skip C++ API header, only process acl_rt.h (pure C API)
             else:
                 file_path = os.path.join(root, file)
                 file_path = file_path.replace('\\', '/')
