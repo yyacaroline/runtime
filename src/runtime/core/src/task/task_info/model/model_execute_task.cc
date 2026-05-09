@@ -273,7 +273,7 @@ static rtError_t ConstructFuncCallPara(TaskInfo * const taskInfo, rtStarsModelEx
         funcCallPara.sqFsmSelBasAddr = baseAddr + DAVID_SIMPLE_RTSQ_FSM_SEL_REG;
     }
     funcCallPara.sqVirtualAddr = RtPtrToValue(stream->Device_()->GetSqVirtualArrBaseAddr_());
-    funcCallPara.dfxAddr = reinterpret_cast<uint64_t>(modelExecuteTaskInfo->model->GetDfxPtr());
+    funcCallPara.dfxAddr = RtPtrToValue(modelExecuteTaskInfo->model->GetDfxPtr());
     return RT_ERROR_NONE;
 }
 
