@@ -107,7 +107,10 @@ int32_t BufferAllocator::AllocBitMap(uint32_t curCount)
 {
     int32_t id = -1;
     if (openHugeBuff_ == true && hugeBitmap_ == nullptr) {
-        hugeBitmap_ = new (std::nothrow) Bitmap(maxCount_ - BUFF_SLIP_NUMBER);
+        const std::lock_guard<std::mutex> lock(hugeBitmapMutex_);
+        if (hugeBitmap_ == nullptr) {
+            hugeBitmap_ = new (std::nothrow) Bitmap(maxCount_ - BUFF_SLIP_NUMBER);
+        }
     }
 
     id = bitmap_.AllocId(curCount);

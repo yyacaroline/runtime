@@ -11,6 +11,7 @@
 #define CCE_RUNTIME_BUFFER_ALLOCATOR_HPP
 
 #include <cmath>
+#include <mutex>
 #include "bitmap.hpp"
 #include "securec.h"
 
@@ -119,6 +120,7 @@ private:
     const AllocFuncPtr allocFunc_;
     const FreeFuncPtr freeFunc_;
     std::atomic<bool> allocFuncState_;
+    std::mutex hugeBitmapMutex_;
     Bitmap *hugeBitmap_{nullptr};
 };
 }
