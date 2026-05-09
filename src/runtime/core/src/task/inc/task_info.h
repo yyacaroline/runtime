@@ -39,7 +39,7 @@ void ToCmdBodyForCallbackLaunchTask(TaskInfo* taskInfo, rtCommand_t *const comma
 
 void ToCommandBodyForGetDevMsgTask(TaskInfo* taskInfo, rtCommand_t * const command);
 void ToCmdBodyForFlipTask(TaskInfo *const taskInfo, rtCommand_t *const command);
-void ToCommandBodyForModelUpdateTask(TaskInfo* taskInfo, rtCommand_t *const command);
+void ToCommandBodyForModelUpdateTask(TaskInfo * const taskInfo, rtCommand_t *const command);
 void ToCommandBodyForSqeUpdateTask(TaskInfo* taskInfo, rtCommand_t *const command);
 void ToCommandBodyForAicpuInfoLoadTask(TaskInfo* taskInfo, rtCommand_t *const command);
 void ToCommandForNopTask(TaskInfo *const taskInfo, rtCommand_t *const command);
@@ -62,4 +62,3 @@ rtError_t WaitAsyncCopyCompleteForUpdateTask(TaskInfo* taskInfo);
 }
 }
 #endif
-

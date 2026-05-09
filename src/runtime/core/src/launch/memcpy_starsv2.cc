@@ -9,7 +9,6 @@
  */
 
 #include <string>
-#include <cstring>
 #include "memcpy_c.hpp"
 #include "stars_david.hpp"
 #include "task_david.hpp"

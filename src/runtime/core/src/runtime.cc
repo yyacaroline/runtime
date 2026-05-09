@@ -1596,7 +1596,7 @@ rtError_t Runtime::KernelRegister(Program *prog, const void *stubFunc, const cha
         /* 去掉kernelName的_mix_aic/_mix_aiv的后缀 */
         tripKName = elfProg->AdjustKernelName(elfKernelInfo->name);
         COND_RETURN_ERROR(tripKName.empty(), RT_ERROR_INVALID_VALUE, "KernelName cannot be empty.");
-        kernelName = tripKName.c_str();
+        return RegisterKernelByStubFunc(elfProg, stubFunc, stubName, kernelInfoExt, funcMode, tripKName.c_str());
     }
 
     return RegisterKernelByStubFunc(elfProg, stubFunc, stubName, kernelInfoExt, funcMode, kernelName);

@@ -19,7 +19,7 @@ namespace cce {
 namespace runtime {
 
 #if F_DESC("ModelTaskUpdate")
-void ToCommandBodyForModelUpdateTask(TaskInfo* taskInfo, rtCommand_t *const command)
+void ToCommandBodyForModelUpdateTask(TaskInfo * const taskInfo, rtCommand_t *const command)
 {
     MdlUpdateTaskInfo *mdlUpdateTaskInfo = &(taskInfo->u.mdlUpdateTask);
     command->u.modelUpdateTask.destaskId = static_cast<uint16_t>(mdlUpdateTaskInfo->destaskId);

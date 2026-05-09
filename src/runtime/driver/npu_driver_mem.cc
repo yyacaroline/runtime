@@ -1603,7 +1603,7 @@ rtError_t NpuDriver::AllocFastRingBufferAndDispatch(void ** const dptr, const ui
 
 rtError_t NpuDriver::SetMemSharing(void *ptr, const uint64_t size, const uint32_t deviceId)
 {
-    COND_PROC_RETURN_ERROR(&halSetMemSharing == nullptr, DRV_ERROR_NOT_SUPPORT, return DRV_ERROR_NOT_SUPPORT,
+    COND_RETURN_ERROR(&halSetMemSharing == nullptr, DRV_ERROR_NOT_SUPPORT,
         "[drv api] halSetMemSharing does not exist.");
     struct drvMemSharingPara para = {};
     para.ptr = ptr;
