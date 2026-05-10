@@ -16,23 +16,13 @@
 #include <stdarg.h>
 #include "log_types.h"
 
-static inline const char *DlogGetFileName(const char *filePath) {
-    const char *result = filePath;
-    for (size_t i = 0; filePath[i] != '\0'; i++) {
-        if (filePath[i] == '/') {
-            result = &filePath[i + 1U];
-        }
-    }
-    return result;
-}
-
-#define DLOG_FILE_NAME (DlogGetFileName(__FILE__))
-
 #ifdef __cplusplus
 #ifndef LOG_CPP
 extern "C" {
 #endif
 #endif // __cplusplus
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 /**
  * @brief           get module debug loglevel and enableEvent
@@ -90,7 +80,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
  */
 #define dlog_error(moduleId, fmt, ...)                                          \
     do {                                                                          \
-        DlogRecord(moduleId, DLOG_ERROR, "[%s:%d]" fmt, DLOG_FILE_NAME, __LINE__, ##__VA_ARGS__); \
+        DlogRecord(moduleId, DLOG_ERROR, "[%s:%d]" fmt, __FILENAME__, __LINE__, ##__VA_ARGS__); \
     } while (0)
 
 /**
@@ -103,7 +93,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
 #define dlog_warn(moduleId, fmt, ...)                                               \
     do {                                                                              \
         if (CheckLogLevel(moduleId, DLOG_WARN) == 1) {                                   \
-            DlogRecord(moduleId, DLOG_WARN, "[%s:%d]" fmt, DLOG_FILE_NAME, __LINE__, ##__VA_ARGS__);  \
+            DlogRecord(moduleId, DLOG_WARN, "[%s:%d]" fmt, __FILENAME__, __LINE__, ##__VA_ARGS__);  \
         }                                                                               \
     } while (0)
 
@@ -117,7 +107,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
 #define dlog_info(moduleId, fmt, ...)                                               \
     do {                                                                              \
         if (CheckLogLevel(moduleId, DLOG_INFO) == 1) {                                   \
-            DlogRecord(moduleId, DLOG_INFO, "[%s:%d]" fmt, DLOG_FILE_NAME, __LINE__, ##__VA_ARGS__);  \
+            DlogRecord(moduleId, DLOG_INFO, "[%s:%d]" fmt, __FILENAME__, __LINE__, ##__VA_ARGS__);  \
         }                                                                               \
     } while (0)
 
@@ -131,7 +121,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
 #define dlog_debug(moduleId, fmt, ...)                                              \
     do {                                                                              \
         if (CheckLogLevel(moduleId, DLOG_DEBUG) == 1) {                                  \
-            DlogRecord(moduleId, DLOG_DEBUG, "[%s:%d]" fmt, DLOG_FILE_NAME, __LINE__, ##__VA_ARGS__); \
+            DlogRecord(moduleId, DLOG_DEBUG, "[%s:%d]" fmt, __FILENAME__, __LINE__, ##__VA_ARGS__); \
         }                                                                               \
     } while (0)
 
@@ -146,7 +136,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
 #define Dlog(moduleId, level, fmt, ...)                                                 \
     do {                                                                                  \
         if (CheckLogLevel(moduleId, level) == 1) {                                           \
-            DlogRecord(moduleId, level, "[%s:%d]" fmt, DLOG_FILE_NAME, __LINE__, ##__VA_ARGS__);   \
+            DlogRecord(moduleId, level, "[%s:%d]" fmt, __FILENAME__, __LINE__, ##__VA_ARGS__);   \
         }                                                                                  \
     } while (0)
 
@@ -162,7 +152,7 @@ LOG_FUNC_VISIBILITY void DlogFlush(void);
 #define DlogSub(moduleId, submodule, level, fmt, ...)                                                   \
     do {                                                                                                  \
         if (CheckLogLevel(moduleId, level) == 1) {                                                           \
-            DlogRecord(moduleId, level, "[%s:%d][%s]" fmt, DLOG_FILE_NAME, __LINE__, submodule, ##__VA_ARGS__);    \
+            DlogRecord(moduleId, level, "[%s:%d][%s]" fmt, __FILENAME__, __LINE__, submodule, ##__VA_ARGS__);    \
         }                                                                                                   \
     } while (0)
 
