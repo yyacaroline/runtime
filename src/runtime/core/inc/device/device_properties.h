@@ -17,6 +17,11 @@ namespace cce {
 namespace runtime {
 
 constexpr uint32_t PTHREAD_STACK_SIZE = 128U * 1024U;
+
+constexpr uint32_t RT_SIMT_MAX_GRID_DIM_DEFAULT = 65535U;
+constexpr uint32_t RT_SIMT_MAX_BLOCK_PER_GRID_DEFAULT = 65535U;
+constexpr uint32_t RT_SIMT_MAX_THREADS_PER_BLOCK_DEFAULT = 2048U;
+constexpr uint32_t RT_SIMT_MAX_BLOCK_DIM_DEFAULT = 2048U;
 constexpr uint32_t TS_4G_CONTIGUOUS_PHY = 0x1U;
 constexpr uint32_t TS_PAGE_HUGE_ALIGNED = 0x2U;
 constexpr uint32_t TS_WITH_HBM = 0x4U;
@@ -333,6 +338,18 @@ struct DevProperties final {
     uint32_t maxTaskNumPerStream;
     uint32_t maxTaskNumPerHugeStream;
     uint32_t rtsqReservedTaskNum;
+
+    uint32_t simtWarpSize;
+    uint32_t simtMaxThreadPerVectorCore;
+    uint32_t simtUbufPerVectorCore;
+    uint32_t simtMaxGridDimX;
+    uint32_t simtMaxGridDimY;
+    uint32_t simtMaxGridDimZ;
+    uint32_t simtMaxBlockPerGrid;
+    uint32_t simtMaxThreadsPerBlock;
+    uint32_t simtMaxBlockDimX;
+    uint32_t simtMaxBlockDimY;
+    uint32_t simtMaxBlockDimZ;
     DeviceCvArchType cvArchType;
     int64_t npuArch;
     uint32_t sqDisableStatPollingCycleNum;

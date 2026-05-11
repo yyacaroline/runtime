@@ -2136,35 +2136,6 @@ rtError_t ApiImplDavid::LaunchHostFunc(Stream * const stm, const rtCallback_t ca
     return StarsLaunchSubscribeProc(curStm, callBackFunc, fnData, isNeedSubscribe, curCtx->GetCallBackThreadId());
 }
 
-rtError_t ApiImplDavid::GetDeviceSimtInfo(uint32_t deviceId, rtDevAttr attr, int64_t *val)
-{
-    RT_LOG(RT_LOG_INFO, "get device simt info, deviceId=%u attr=%d", deviceId, attr);
-    
-    UNUSED(deviceId);
-    rtError_t error = RT_ERROR_NONE;
-
-    switch(attr) {
-        case RT_DEV_ATTR_WARP_SIZE:
-            *val = RT_MAX_THREAD_NUM_PER_WARP;
-            break;
-        case RT_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE:
-            *val = RT_MAX_THREAD_PER_VECTOR_CORE;
-            break;
-        case RT_DEV_ATTR_UBUF_PER_VECTOR_CORE:
-            *val = RT_SIMT_AVAILBALE_UB_SIZE;
-            break;
-        default:
-            RT_LOG_OUTER_MSG_INVALID_PARAM(attr,
-               std::to_string(RT_DEV_ATTR_WARP_SIZE) + " or " +
-               std::to_string(RT_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE) +
-               " or " + std::to_string(RT_DEV_ATTR_UBUF_PER_VECTOR_CORE));
-            error = RT_ERROR_INVALID_VALUE;
-            break;
-    }
-
-    return error;
-}
-
 rtError_t ApiImplDavid::MemWriteValue(const void * const devAddr, const uint64_t value, const uint32_t flag, Stream * const stm)
 {
     UNUSED(flag);

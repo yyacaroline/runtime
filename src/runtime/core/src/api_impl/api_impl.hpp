@@ -742,7 +742,7 @@ public:
 
     rtError_t SetKernelDfxInfoCallback(rtKernelDfxInfoType type, rtKernelDfxInfoProFunc func) override;
 protected:
-    virtual rtError_t GetDeviceSimtInfo(uint32_t deviceId, rtDevAttr attr, int64_t *val);
+    virtual rtError_t GetDeviceSimtInfo(rtDevAttr attr, int64_t *val);
     virtual rtError_t GetDevRunningStreamSnapshotMsg(const rtGetMsgCallback callback);
     rtError_t LoopMemcpyAsync(void** const dsts, const size_t* const destMaxs, void** const srcs, const size_t* const sizes,
         const size_t count, const rtMemcpyBatchAttr* const attrs, const size_t* const attrsIdxs, const size_t numAttrs,
@@ -750,6 +750,7 @@ protected:
     rtError_t ValidateMemCpyParamsAndAttributes(void* dst, size_t destMax, void* src, size_t size, const rtMemcpyBatchAttr& memAttr,
         rtPtrAttributes_t& dstAttr, rtPtrAttributes_t& srcAttr);
 private:
+    rtError_t GetDeviceVirtualInfo(uint32_t deviceId, int64_t *val);
     rtError_t GetDeviceInfoByAttrMisc(uint32_t deviceId, rtDevAttr attr, int64_t *val);
     rtError_t GetDeviceNpuArch(uint32_t deviceId, int64_t *val);
 

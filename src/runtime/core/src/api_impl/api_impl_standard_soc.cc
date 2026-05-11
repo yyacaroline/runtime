@@ -281,6 +281,28 @@ rtError_t ApiImpl::MemGetInfoByDeviceId(uint32_t deviceId, bool isHugeOnly, size
     return npuDrv->MemGetInfo(deviceId, isHugeOnly, freeSize, totalSize);
 }
 
+rtError_t ApiImpl::GetDeviceVirtualInfo(uint32_t deviceId, int64_t *val)
+{
+    unsigned int split_mode;
+    drvError_t drvError;
+    COND_RETURN_WARN(&halGetDeviceSplitMode == nullptr, RT_ERROR_DRV_NOT_SUPPORT,
+        "[drv api] halGetDeviceSplitMode does not exist.");
+    drvError = halGetDeviceSplitMode(deviceId, &split_mode);
+    if (drvError == DRV_ERROR_NONE) {
+        if (split_mode == RT_VMNG_NORMAL_NONE_SPLIT_MODE) {
+            *val = static_cast<int64_t>(RT_NO_SPLIT_MODE);
+        } else if (split_mode == RT_VMNG_VIRTUAL_SPLIT_MODE || split_mode == RT_VMNG_CONTAINER_SPLIT_MODE) {
+            *val = static_cast<int64_t>(RT_SPLIT_MODE);
+        } else {
+            RT_LOG(RT_LOG_INFO, "Invalid split mode, Invalid=%d.", split_mode);
+        }
+    } else {
+        DRV_ERROR_PROCESS(drvError, "[drv api]halGetDeviceSplitMode failed. drvRetCode=%d, device_id=%d.",
+        static_cast<int32_t>(drvError), deviceId);
+    }
+    return RT_GET_DRV_ERRCODE(drvError);
+}
+
 rtError_t ApiImpl::GetDeviceInfoByAttrMisc(uint32_t deviceId, rtDevAttr attr, int64_t *val)
 {
     size_t freeSize = 0UL;
@@ -303,7 +325,23 @@ rtError_t ApiImpl::GetDeviceInfoByAttrMisc(uint32_t deviceId, rtDevAttr attr, in
         case RT_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE:
             [[fallthrough]];
         case RT_DEV_ATTR_UBUF_PER_VECTOR_CORE:
-            error = GetDeviceSimtInfo(deviceId, attr, val);
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_GRID_DIM_X:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_GRID_DIM_Y:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_GRID_DIM_Z:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_BLOCK_PER_GRID:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_THREADS_PER_BLOCK:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_X:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_Y:
+            [[fallthrough]];
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_Z:
+            error = GetDeviceSimtInfo(attr, val);
             break;
         case RT_DEV_ATTR_TOTAL_GLOBAL_MEM_SIZE:
             error = MemGetInfoByDeviceId(deviceId, false, &freeSize, &totalSize);
@@ -316,24 +354,7 @@ rtError_t ApiImpl::GetDeviceInfoByAttrMisc(uint32_t deviceId, rtDevAttr attr, in
             error = GetDeviceNpuArch(deviceId, val);
             break;
         case RT_DEV_ATTR_IS_VIRTUAL:
-            unsigned int split_mode;
-            drvError_t drvError;
-            COND_RETURN_WARN(&halGetDeviceSplitMode == nullptr, RT_ERROR_DRV_NOT_SUPPORT, 
-                "[drv api] halGetDeviceSplitMode does not exist.");
-            drvError = halGetDeviceSplitMode(deviceId, &split_mode);
-            if (drvError == DRV_ERROR_NONE) {
-                if (split_mode == RT_VMNG_NORMAL_NONE_SPLIT_MODE) {
-                    *val = static_cast<int64_t>(RT_NO_SPLIT_MODE);
-                } else if (split_mode == RT_VMNG_VIRTUAL_SPLIT_MODE || split_mode == RT_VMNG_CONTAINER_SPLIT_MODE) {
-                    *val = static_cast<int64_t>(RT_SPLIT_MODE);
-                } else {
-                    RT_LOG(RT_LOG_INFO, "Invalid split mode, Invalid=%d.", split_mode);
-                }
-            } else {
-                DRV_ERROR_PROCESS(drvError, "[drv api]halGetDeviceSplitMode failed. drvRetCode=%d, device_id=%d.",
-                static_cast<int32_t>(drvError), deviceId);
-            }
-            error = RT_GET_DRV_ERRCODE(drvError);
+            error = GetDeviceVirtualInfo(deviceId, val);
             break;
         default:
             RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, "Invalid attr=%d.", attr);

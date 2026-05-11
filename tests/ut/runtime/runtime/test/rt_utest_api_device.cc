@@ -318,6 +318,64 @@ TEST_F(ApiDeviceTest, TestRtsDeviceGetInfo_abnormal_5)
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
 }
 
+TEST_F(ApiDeviceTest, TestRtsDeviceGetInfo_SimtAttrs_KirinChip)
+{
+    rtError_t error;
+    int32_t devid = 0;
+    int64_t val = 0;
+
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    rtChipType_t originalType = rtInstance->chipType_;
+    rtInstance->chipType_ = CHIP_X90;
+    GlobalContainer::SetRtChipType(CHIP_X90);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_WARP_SIZE, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_GRID_DIM_X, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_THREADS_PER_BLOCK, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    rtInstance->chipType_ = originalType;
+    GlobalContainer::SetRtChipType(originalType);
+}
+
+TEST_F(ApiDeviceTest, TestRtsDeviceGetInfo_SimtAttrs_NoPropertiesChip)
+{
+    rtError_t error;
+    int32_t devid = 0;
+    int64_t val = 0;
+
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    rtChipType_t originalType = rtInstance->chipType_;
+    rtInstance->chipType_ = CHIP_NO_DEVICE;
+    GlobalContainer::SetRtChipType(CHIP_NO_DEVICE);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_WARP_SIZE, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_GRID_DIM_X, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_THREADS_PER_BLOCK, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(val, 0);
+
+    rtInstance->chipType_ = originalType;
+    GlobalContainer::SetRtChipType(originalType);
+}
+
 TEST_F(ApiDeviceTest, TestRtsDeviceGetCapabilityUpdate)
 {
     rtError_t error;

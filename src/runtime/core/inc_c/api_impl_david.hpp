@@ -176,7 +176,6 @@ public:
     rtError_t XpuProfilingCommandHandle(uint32_t type, void *data, uint32_t len) override;
 
 protected:
-    rtError_t GetDeviceSimtInfo(uint32_t deviceId, rtDevAttr attr, int64_t *val) override;
     rtError_t GetDevRunningStreamSnapshotMsg(const rtGetMsgCallback callback) override;
 
 private:

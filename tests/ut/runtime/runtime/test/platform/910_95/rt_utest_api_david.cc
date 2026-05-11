@@ -8272,9 +8272,37 @@ TEST_F(ApiDavidTest, TestRtsDeviceGetInfoSimt)
     EXPECT_EQ(error, RT_ERROR_NONE);
     EXPECT_EQ(221184, val);
 
-    ApiImplDavid apiInstance;
-    error = apiInstance.GetDeviceSimtInfo(devid, RT_DEV_ATTR_MAX, &val);
-    EXPECT_EQ(RT_ERROR_INVALID_VALUE, error);
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_GRID_DIM_X, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(65535, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_GRID_DIM_Y, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(65535, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_GRID_DIM_Z, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(65535, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_BLOCK_PER_GRID, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(65535, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_THREADS_PER_BLOCK, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(2048, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_BLOCK_DIM_X, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(2048, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_BLOCK_DIM_Y, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(2048, val);
+
+    error = rtsDeviceGetInfo(devid, RT_DEV_ATTR_MAX_BLOCK_DIM_Z, &val);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(2048, val);
 }
 
 TEST_F(ApiDavidTest, TestLaunchNonKernelByHandle)

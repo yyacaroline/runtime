@@ -3570,12 +3570,57 @@ rtError_t ApiImpl::GetDeviceInfo(const uint32_t deviceId, const int32_t moduleTy
     return error;
 }
 
-rtError_t ApiImpl::GetDeviceSimtInfo(uint32_t deviceId, rtDevAttr attr, int64_t *val)
+rtError_t ApiImpl::GetDeviceSimtInfo(rtDevAttr attr, int64_t *val)
 {
-    UNUSED(deviceId);
-    UNUSED(attr);
     *val = 0;
-    return RT_ERROR_NONE;
+
+    DevProperties properties;
+    rtError_t error = GET_DEV_PROPERTIES(Runtime::Instance()->GetChipType(), properties);
+    if (error != RT_ERROR_NONE) {
+        return RT_ERROR_NONE;
+    }
+
+    switch(attr) {
+        case RT_DEV_ATTR_WARP_SIZE:
+            *val = static_cast<int64_t>(properties.simtWarpSize);
+            break;
+        case RT_DEV_ATTR_MAX_THREAD_PER_VECTOR_CORE:
+            *val = static_cast<int64_t>(properties.simtMaxThreadPerVectorCore);
+            break;
+        case RT_DEV_ATTR_UBUF_PER_VECTOR_CORE:
+            *val = static_cast<int64_t>(properties.simtUbufPerVectorCore);
+            break;
+        case RT_DEV_ATTR_MAX_GRID_DIM_X:
+            *val = static_cast<int64_t>(properties.simtMaxGridDimX);
+            break;
+        case RT_DEV_ATTR_MAX_GRID_DIM_Y:
+            *val = static_cast<int64_t>(properties.simtMaxGridDimY);
+            break;
+        case RT_DEV_ATTR_MAX_GRID_DIM_Z:
+            *val = static_cast<int64_t>(properties.simtMaxGridDimZ);
+            break;
+        case RT_DEV_ATTR_MAX_BLOCK_PER_GRID:
+            *val = static_cast<int64_t>(properties.simtMaxBlockPerGrid);
+            break;
+        case RT_DEV_ATTR_MAX_THREADS_PER_BLOCK:
+            *val = static_cast<int64_t>(properties.simtMaxThreadsPerBlock);
+            break;
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_X:
+            *val = static_cast<int64_t>(properties.simtMaxBlockDimX);
+            break;
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_Y:
+            *val = static_cast<int64_t>(properties.simtMaxBlockDimY);
+            break;
+        case RT_DEV_ATTR_MAX_BLOCK_DIM_Z:
+            *val = static_cast<int64_t>(properties.simtMaxBlockDimZ);
+            break;
+        default:
+            error = RT_ERROR_INVALID_VALUE;
+            RT_LOG_OUTER_MSG_INVALID_PARAM(attr, "[RT_DEV_ATTR_WARP_SIZE, RT_DEV_ATTR_MAX_BLOCK_DIM_Z]");
+            break;
+    }
+
+    return error;
 }
 
 rtError_t ApiImpl::GetPhyDeviceInfo(const uint32_t phyId, const int32_t moduleType, const int32_t infoType,

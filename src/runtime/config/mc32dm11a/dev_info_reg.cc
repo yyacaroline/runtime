@@ -12,6 +12,7 @@
 #include "stars_base.hpp"
 #include "stars_base_cond_isa_define.hpp"
 #include "task_base.hpp"
+#include "base_david.hpp"
 #include "starsv2_base.hpp"
 namespace cce {
 namespace runtime {
@@ -212,6 +213,18 @@ static const DevProperties CHIP_MC32DM11A_PROPERTIES = {
     .maxTaskNumPerStream = 4054U,
     .maxTaskNumPerHugeStream = 0U,
     .rtsqReservedTaskNum = 35U,
+
+    .simtWarpSize = RT_MAX_THREAD_NUM_PER_WARP,
+    .simtMaxThreadPerVectorCore = RT_MAX_THREAD_PER_VECTOR_CORE,
+    .simtUbufPerVectorCore = RT_SIMT_AVAILBALE_UB_SIZE,
+    .simtMaxGridDimX = RT_SIMT_MAX_GRID_DIM_DEFAULT,
+    .simtMaxGridDimY = RT_SIMT_MAX_GRID_DIM_DEFAULT,
+    .simtMaxGridDimZ = RT_SIMT_MAX_GRID_DIM_DEFAULT,
+    .simtMaxBlockPerGrid = RT_SIMT_MAX_BLOCK_PER_GRID_DEFAULT,
+    .simtMaxThreadsPerBlock = RT_SIMT_MAX_THREADS_PER_BLOCK_DEFAULT,
+    .simtMaxBlockDimX = RT_SIMT_MAX_BLOCK_DIM_DEFAULT,
+    .simtMaxBlockDimY = RT_SIMT_MAX_BLOCK_DIM_DEFAULT,
+    .simtMaxBlockDimZ = RT_SIMT_MAX_BLOCK_DIM_DEFAULT,
     .cvArchType = DeviceCvArchType::CV_ARCH_INTERGRATION,
     .npuArch = 0,
     .sqDisableStatPollingCycleNum = SQ_DISABLE_POLLING_CYCLE_ADC_CNT,
