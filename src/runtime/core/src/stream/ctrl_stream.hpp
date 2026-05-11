@@ -26,7 +26,6 @@ public:
     rtError_t Setup() override;
     rtError_t GetTaskIdByPos(const uint16_t recycleHead, uint32_t &taskId) override;
     rtError_t GetHeadPosFromCtrlSq(uint32_t &sqHead);
-    using Stream::Synchronize;
     rtError_t Synchronize();
     rtError_t AddTaskToStream(const uint32_t pos, const TaskInfo * const tsk);
     void DelPosToCtrlTaskIdMap(uint16_t pos);
