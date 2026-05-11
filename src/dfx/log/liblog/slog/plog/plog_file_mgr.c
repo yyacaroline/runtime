@@ -22,6 +22,7 @@
 #define PROC_DIR_NAME                        "plog"
 #define PROC_HEAD                            "plog"
 
+static unsigned int g_rootWritePrintNum = 0;
 STATIC PlogFileMgrInfo *g_plogFileList = NULL;
 
 STATIC bool PlogIsPathValidbyLog(const char *ppath, size_t pathLen)
@@ -387,8 +388,9 @@ STATIC LogStatus PlogWrite(PlogFileList *pstSubInfo, const StLogDataBlock *pstLo
     int32_t ret = ToolWrite(fd, dataBuf, pstLogData->ulDataLen);
     if ((ret < 0) || ((unsigned)ret != pstLogData->ulDataLen)) {
         LOG_CLOSE_FD(fd);
-        SELF_LOG_ERROR("write to file failed, file=%s, data_length=%u bytes, write_length=%d bytes, strerr=%s.",
-                       aucFileName, pstLogData->ulDataLen, ret, strerror(ToolGetErrorCode()));
+        SELF_LOG_ERROR_N(&g_rootWritePrintNum, WRITE_PRINT_NUM,
+            "write to file failed, file=%s, data_length=%u bytes, write_length=%d bytes, strerr=%s.", aucFileName,
+            pstLogData->ulDataLen, ret, strerror(ToolGetErrorCode()));
         LOG_WARN_FPRINTF_ONCE("can not write log to file, file: %s, data_length: %u bytes, "
                               "write_length: %d bytes, possible reason: %s.",
                               aucFileName, pstLogData->ulDataLen, ret, strerror(ToolGetErrorCode()));

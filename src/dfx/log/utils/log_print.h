@@ -16,6 +16,7 @@
 #include "log_print_syslog.h"
 
 #define GENERAL_PRINT_NUM 200U
+#define WRITE_PRINT_NUM 50U
 
 #ifdef __cplusplus
 extern "C" {
