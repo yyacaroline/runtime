@@ -12,7 +12,8 @@
 #define INNER_INC_PROCESS_MODE_MANAGER_H
 
 #include "inc/client_manager.h"
-#include "hdc_client.h"
+#include "device_comm.h"
+#include "driver/ascend_hal.h"
 #include "proto/tsd_message.pb.h"
 
 namespace tsd {
@@ -476,7 +477,7 @@ private:
 
     std::string logLevel_;
     uint32_t tsdSessionId_;
-    std::shared_ptr<HdcClient> hdcTsdClient_;
+    std::shared_ptr<DeviceComm> devCommClient_;
     process_sign procSign_;
     std::string errMsg_;
     std::string errorLog_;

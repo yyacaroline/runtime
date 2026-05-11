@@ -24,6 +24,7 @@ set(TSD_COMMON_SRC_FILE
     ${TSD_SRC_PATH}/common/src/aicpu_package_process.cpp
     ${TSD_SRC_PATH}/common/src/aicpu_thread_package_worker.cpp
     ${TSD_SRC_PATH}/common/src/base_package_worker.cpp
+    ${TSD_SRC_PATH}/basic_component/device_comm/device_comm.cpp
     ${TSD_SRC_PATH}/basic_component/device_comm/hdc_client.cpp
     ${TSD_SRC_PATH}/basic_component/device_comm/hdc_common.cpp
     ${TSD_SRC_PATH}/pub_facility/util_func/tsd_util_func.cpp
@@ -72,6 +73,7 @@ set(TSD_UT_TEST_SRC_FILE
     test/env_internal_api_utest.cpp
     test/hdc_client_utest.cpp
     test/hdc_common_utest.cpp
+    test/device_comm_utest.cpp
     test/main.cpp
     test/common_util_func.cpp
     ../stub/stub_server_reply.cpp

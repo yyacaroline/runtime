@@ -246,3 +246,67 @@ TEST_F(HdcCommonTest, RecvHdcDefaultMsg_LengthMismatch)
     EXPECT_EQ(ret, TSD_HDC_RECV_MSG_ERROR);
     SetHdcGetMsgBufferLengthMismatch(false);
 }
+
+TEST_F(HdcCommonTest, SendHdcDefaultMsg_FreeMsgFailAfterSend)
+{
+    HdcCommon hdcCommon;
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    char_t msgBuf[64] = {0};
+    *(reinterpret_cast<uint32_t*>(msgBuf)) = 64U; // set msg head len so stub parsing is well-formed
+    MOCKER(&drvHdcFreeMsg).stubs().will(returnValue(DRV_ERROR_INNER_ERR));
+    TSD_StatusT ret = hdcCommon.SendHdcDefaultMsg(session, msgBuf, 64U);
+    EXPECT_EQ(ret, TSD_HDC_SEND_ERROR);
+}
+
+TEST_F(HdcCommonTest, SendNormalShortMsg_SendFailNonSocketClose)
+{
+    HdcCommon hdcCommon;
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    HDCMessage msg;
+    msg.set_type(HDCMessage::TSD_START_PROC_MSG);
+    MOCKER(&halHdcSend).stubs().will(returnValue(DRV_ERROR_INNER_ERR));
+    TSD_StatusT ret = hdcCommon.SendNormalShortMsg(msg, 100U, session);
+    EXPECT_EQ(ret, TSD_HDC_SEND_MSG_ERROR);
+}
+
+TEST_F(HdcCommonTest, SendNormalShortMsg_SendSocketClose)
+{
+    HdcCommon hdcCommon;
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    HDCMessage msg;
+    msg.set_type(HDCMessage::TSD_START_PROC_MSG);
+    MOCKER(&halHdcSend).stubs().will(returnValue(DRV_ERROR_SOCKET_CLOSE));
+    TSD_StatusT ret = hdcCommon.SendNormalShortMsg(msg, 100U, session);
+    EXPECT_EQ(ret, TSD_HDC_SERVER_CLIENT_SOCKET_CLOSED);
+}
+
+TEST_F(HdcCommonTest, RecvMsg_AllocMsgReturnNull)
+{
+    HdcCommon hdcCommon;
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    HDCMessage msg;
+    MOCKER(&drvHdcAllocMsg).stubs().will(returnValue(DRV_ERROR_INNER_ERR));
+    TSD_StatusT ret = hdcCommon.RecvMsg(session, msg, 1000U);
+    EXPECT_EQ(ret, TSD_HDC_RECV_MSG_ERROR);
+}
+
+TEST_F(HdcCommonTest, RecvMsg_FreeMsgFailAfterRecv)
+{
+    HdcCommon hdcCommon;
+    hdcCommon.InitMsgSize();
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    HDCMessage msg;
+    MOCKER(&drvHdcFreeMsg).stubs().will(returnValue(DRV_ERROR_INNER_ERR));
+    TSD_StatusT ret = hdcCommon.RecvMsg(session, msg, 1000U);
+    EXPECT_EQ(ret, TSD_HDC_RECV_MSG_ERROR);
+}
+
+TEST_F(HdcCommonTest, GetHdcAttrStatus_HalFail)
+{
+    HdcCommon hdcCommon;
+    HDC_SESSION session = reinterpret_cast<HDC_SESSION>(0x1);
+    int32_t hdcSessStat = 0;
+    MOCKER(&halHdcGetSessionAttr).stubs().will(returnValue(DRV_ERROR_INNER_ERR));
+    TSD_StatusT ret = hdcCommon.GetHdcAttrStatus(session, hdcSessStat);
+    EXPECT_EQ(ret, TSD_HDC_SESSION_STATUS_GET_FAILED);
+}

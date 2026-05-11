@@ -22,7 +22,7 @@ ProcessModeManager::ProcessModeManager(const uint32_t deviceId, const uint32_t d
     : ClientManager(deviceId),
       logLevel_("003"),  // error level
       tsdSessionId_(0U),
-      hdcTsdClient_(nullptr),
+      devCommClient_(nullptr),
       rspCode_(ResponseCode::FAIL),
       rankSize_(0U),
       aicpuPackageExistInDevice_(false),
@@ -65,11 +65,11 @@ ProcessModeManager::ProcessModeManager(const uint32_t deviceId, const uint32_t d
 
 void ProcessModeManager::Destroy()
 {
-    TSD_CHECK_NULLPTR_VOID(hdcTsdClient_);
+    TSD_CHECK_NULLPTR_VOID(devCommClient_);
     initFlag_ = false;
     SetTsdStartInfo(false, false, false);
-    hdcTsdClient_->Destroy();
-    hdcTsdClient_ = nullptr;
+    devCommClient_->CommDestroy();
+    devCommClient_ = nullptr;
     aicpuPackageExistInDevice_ = false;
 }
 

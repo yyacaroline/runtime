@@ -644,3 +644,127 @@ TEST_F(TsdClientTest, TsdCloseNetService_Success)
     const tsd::TSD_StatusT closeResult = TsdCloseNetService(0U);
     EXPECT_NE(closeResult, tsd::TSD_OK);
 }
+
+TEST_F(TsdClientTest, TsdOpen_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdOpen(0U, 0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdOpenEx_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdOpenEx(0U, 0U, 0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdOpenAicpuSd_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdOpenAicpuSd(0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdClose_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdClose(0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdCloseEx_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdCloseEx(0U, 0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, UpdateProfilingMode_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(UpdateProfilingMode(0U, 0U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdInitFlowGw_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    InitFlowGwInfo info{};
+    EXPECT_EQ(TsdInitFlowGw(0U, &info), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdInitFlowGw_NullArg_Fail)
+{
+    EXPECT_EQ(TsdInitFlowGw(0U, nullptr), tsd::TSD_INTERNAL_ERROR);
+}
+
+TEST_F(TsdClientTest, GetHdcConctStatus_NullArg_ReturnOk)
+{
+    EXPECT_EQ(GetHdcConctStatus(0U, nullptr), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, GetHdcConctStatus_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    int32_t status = 0;
+    EXPECT_EQ(GetHdcConctStatus(0U, &status), tsd::TSD_OK);
+    EXPECT_EQ(status, HDC_SESSION_STATUS_CONNECT);
+}
+
+TEST_F(TsdClientTest, TsdSetAttr_NullKey_Fail)
+{
+    EXPECT_EQ(TsdSetAttr(nullptr, "v"), tsd::TSD_INTERNAL_ERROR);
+}
+
+TEST_F(TsdClientTest, TsdSetAttr_NullValue_Fail)
+{
+    EXPECT_EQ(TsdSetAttr("k", nullptr), tsd::TSD_INTERNAL_ERROR);
+}
+
+TEST_F(TsdClientTest, TsdSetAttr_RunMode_OK)
+{
+    EXPECT_EQ(TsdSetAttr("RunMode", "PROCESS"), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdSetAttr_UnsupportedKey_OK)
+{
+    EXPECT_EQ(TsdSetAttr("AnyKey", "v"), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdCapabilityGet_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdCapabilityGet(0U, 0, 0ULL), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdCapabilityGet_TypeOutOfRange_Fail)
+{
+    EXPECT_EQ(TsdCapabilityGet(0U, TSD_CAPABILITY_BUT, 0ULL), tsd::TSD_CLT_OPEN_FAILED);
+}
+
+TEST_F(TsdClientTest, TsdFileLoad_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdFileLoad(0U, "/tmp", 4U, "f", 1U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdFileUnLoad_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdFileUnLoad(0U, "/tmp", 4U), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdProcessOpen_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    ProcOpenArgs args{};
+    EXPECT_EQ(TsdProcessOpen(0U, &args), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdProcessClose_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    EXPECT_EQ(TsdProcessClose(0U, 1234), tsd::TSD_OK);
+}
+
+TEST_F(TsdClientTest, TsdGetProcStatus_DestructFlagTrue_ReturnOk)
+{
+    MOCKER_CPP(&tsd::ClientManager::CheckDestructFlag).stubs().will(returnValue(true));
+    ProcStatusInfo info{};
+    EXPECT_EQ(TsdGetProcStatus(0U, &info, 1U), tsd::TSD_OK);
+}

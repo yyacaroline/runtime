@@ -48,6 +48,12 @@ typedef enum tagChipType {
     CHIP_END
 } ChipType_t;
 
+// 返回给tsdclient的open/close确认码
+enum class ResponseCode {
+    SUCCESS = 0,
+    FAIL = 1
+};
+
 class ClientManager {
 public:
     /**

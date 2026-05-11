@@ -22,16 +22,6 @@
 #include "log.h"
 
 namespace tsd {
-    // 返回给tsdclient的open/close确认码
-    enum class ResponseCode {
-        SUCCESS = 0,
-        FAIL = 1
-    };
-    inline uint64_t KeyCompose(const uint32_t &devId, const HDCServiceType &type)
-    {
-        return ((static_cast<uint64_t>(devId)) << 32U) | (static_cast<uint64_t>(type));
-    }
-
     class HdcCommon {
     public:
         
@@ -61,8 +51,19 @@ namespace tsd {
         */
         TSD_StatusT RecvMsg(HDC_SESSION session, HDCMessage& msg, const uint32_t timeout = 0U);
 
+        /**
+         * @ingroup HdcCommon
+         * @brief 查询指定HDC session的连接状态属性
+         * @param [in] session : HDC session句柄
+         * @param [out] hdcSessStat : 返回的session状态
+         * @return TSD_OK:成功 或者其他错误码
+         */
         TSD_StatusT GetHdcAttrStatus(HDC_SESSION session, int32_t &hdcSessStat);
 
+        /**
+         * @ingroup HdcCommon
+         * @brief HdcCommon默认构造函数
+         */
         HdcCommon();
         virtual ~HdcCommon() = default;
         HdcCommon(const HdcCommon&) = delete;
@@ -87,6 +88,11 @@ namespace tsd {
             return msgMaxSize_;
         }
 
+        /**
+         * @ingroup HdcCommon
+         * @brief 设置当前是否为ADC环境（影响消息发送路径）
+         * @param [in] isAdcEnv : true表示ADC环境，false否。
+         */
         void SetAdcEnv(const bool isAdcEnv)
         {
             isAdcEnv_ = isAdcEnv;

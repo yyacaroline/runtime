@@ -45,6 +45,10 @@ namespace tsd {
         constexpr uint32_t HDC_CLIENT_SEND_WAIT_TIMEOUT_MS = 150000U; // 150s
     }
 
+    /**
+    * @ingroup HdcCommon
+    * @brief HdcCommon默认构造函数，初始化环境标识与消息长度变量
+    */
     HdcCommon::HdcCommon()
         : isAdcEnv_(false),
           msgMaxSize_(0U),
@@ -301,6 +305,13 @@ namespace tsd {
         }
     }
 
+    /**
+    * @ingroup HdcCommon
+    * @brief 查询HDC session当前的连接状态属性
+    * @param [in] session : HDC session句柄
+    * @param [out] hdcSessStat : 返回的session状态
+    * @return TSD_OK:成功 或者其他错误码
+    */
     TSD_StatusT HdcCommon::GetHdcAttrStatus(HDC_SESSION session, int32_t &hdcSessStat)
     {
         const std::lock_guard<std::mutex> lk(hdcSessionMutex_);

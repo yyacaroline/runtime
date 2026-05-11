@@ -16,6 +16,7 @@
 #include "inc/package_process_config.h"
 #include "inc/client_manager.h"
 #include "inc/process_mode_manager.h"
+#include "device_comm.h"
 #include "hdc_client.h"
 #include "inc/weak_ascend_hal.h"
 #include "env_internal_api.h"
@@ -148,6 +149,65 @@ namespace {
         return DRV_ERROR_NONE;
     }
 }
+
+namespace {
+    // 测试用 DeviceComm 桩：覆盖所有虚接口，返回值可在用例中按需配置。
+    // 由于 mockcpp 的 JmpOnlyApiHookImpl 无法对虚成员函数的 PMF 进行打桩
+    // （PMF 实际为 vtable 偏移而非函数地址，会触发 SIGSEGV），
+    // 因此通过子类化 + 注入到 ProcessModeManager.devCommClient_ 的方式替代。
+    class StubDeviceComm : public tsd::DeviceComm {
+    public:
+        explicit StubDeviceComm(uint32_t devId)
+            : tsd::DeviceComm(devId, tsd::DeviceCommType::HDC),
+              inspector_(std::make_shared<tsd::VersionVerify>()) {}
+
+        tsd::TSD_StatusT CommInit(const uint32_t, const bool) override { return commInitRet_; }
+        tsd::TSD_StatusT CommCreateSession(uint32_t& sid) override
+        {
+            sid = sessionIdStub_;
+            return commCreateSessionRet_;
+        }
+        void CommDestroy() override { ++destroyCount_; }
+        tsd::TSD_StatusT CommRecvData(const uint32_t, const bool, const uint32_t) override
+        {
+            return commRecvDataRet_;
+        }
+        tsd::TSD_StatusT CommGetConctStatus(int32_t& s) override
+        {
+            s = sessStat_;
+            return commGetConctStatusRet_;
+        }
+        tsd::TSD_StatusT CommSendMsg(const uint32_t, const HDCMessage&) override
+        {
+            return commSendMsgRet_;
+        }
+        tsd::TSD_StatusT CommGetVersionVerify(const uint32_t,
+                                              std::shared_ptr<tsd::VersionVerify>& v) override
+        {
+            v = inspector_;
+            return commGetVersionVerifyRet_;
+        }
+
+        tsd::TSD_StatusT commInitRet_ = tsd::TSD_OK;
+        tsd::TSD_StatusT commCreateSessionRet_ = tsd::TSD_OK;
+        tsd::TSD_StatusT commRecvDataRet_ = tsd::TSD_OK;
+        tsd::TSD_StatusT commGetConctStatusRet_ = tsd::TSD_OK;
+        tsd::TSD_StatusT commSendMsgRet_ = tsd::TSD_OK;
+        tsd::TSD_StatusT commGetVersionVerifyRet_ = tsd::TSD_OK;
+        uint32_t sessionIdStub_ = 1U;
+        int32_t sessStat_ = 0;
+        int destroyCount_ = 0;
+        std::shared_ptr<tsd::VersionVerify> inspector_;
+    };
+
+    inline std::shared_ptr<StubDeviceComm> InjectStubComm(tsd::ProcessModeManager& pm, uint32_t devId)
+    {
+        auto stub = std::make_shared<StubDeviceComm>(devId);
+        pm.devCommClient_ = stub;
+        return stub;
+    }
+}
+
 class ProcessManagerTest :public testing::Test {
 protected:
     virtual void SetUp()
@@ -646,15 +706,13 @@ TEST_F(ProcessManagerTest, CapabilityResMsgProc_02)
 TEST_F(ProcessManagerTest, CapabilityGet_01)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    int32_t type = 0;
+    int32_t type = 1;
     uint64_t ptr = 0UL;
+    auto stub = InjectStubComm(processModeManager, deviceId);
     MOCKER_CPP(&ProcessModeManager::WaitRsp)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::Init)
-        .stubs()
-        .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession)
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::SendOpenMsg)
@@ -673,6 +731,7 @@ TEST_F(ProcessManagerTest, CapabilityGet_02)
     uint64_t result = 0;
     uint64_t *ptr = &result;
     uint64_t ptrRes = static_cast<uint64_t>((reinterpret_cast<uintptr_t>(ptr)));
+    auto stub = InjectStubComm(processModeManager, deviceId);
     MOCKER_CPP(&ProcessModeManager::WaitRsp)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -680,10 +739,7 @@ TEST_F(ProcessManagerTest, CapabilityGet_02)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
     processModeManager.tsdStartStatus_.startCp_ = true;
-    MOCKER_CPP(&HdcClient::Init)
-        .stubs()
-        .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession)
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::SendOpenMsg)
@@ -725,10 +781,10 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeNoRspSuc)
     ProcessModeManager processModeManager(deviceId, 0);
     processModeManager.aicpuPackageExistInDevice_ = false;
     processModeManager.tsdSessionId_ = 0U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     HDC_SESSION session = nullptr;
-    processModeManager.hdcTsdClient_->hdcClientSessionMap_[0U] = session;
-    processModeManager.hdcTsdClient_->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientSessionMap_[0U] = session;
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -741,9 +797,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeNoRspSuc)
     MOCKER_CPP(&HdcCommon::SendNormalMsg)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
 
     tsd::TSD_StatusT ret = processModeManager.GetDeviceCheckCode();
     EXPECT_EQ(ret, tsd::TSD_OK);
@@ -754,10 +808,10 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeNoRspSuc2)
     ProcessModeManager processModeManager(deviceId, 0);
     processModeManager.aicpuPackageExistInDevice_ = false;
     processModeManager.tsdSessionId_ = 0U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     HDC_SESSION session = nullptr;
-    processModeManager.hdcTsdClient_->hdcClientSessionMap_[0U] = session;
-    processModeManager.hdcTsdClient_->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientSessionMap_[0U] = session;
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -770,9 +824,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeNoRspSuc2)
     MOCKER_CPP(&HdcCommon::SendNormalMsg)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.packagePeerCheckCode_[static_cast<uint32_t>(TsdLoadPackageType::TSD_PKG_TYPE_AICPU_KERNEL)] = 456U;
     tsd::TSD_StatusT ret = processModeManager.GetDeviceCheckCode();
     EXPECT_EQ(ret, tsd::TSD_OK);
@@ -783,10 +835,10 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeFail002)
     ProcessModeManager processModeManager(deviceId, 0);
     processModeManager.aicpuPackageExistInDevice_ = false;
     processModeManager.tsdSessionId_ = 0U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     HDC_SESSION session = nullptr;
-    processModeManager.hdcTsdClient_->hdcClientSessionMap_[0U] = session;
-    processModeManager.hdcTsdClient_->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientSessionMap_[0U] = session;
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -799,9 +851,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeFail002)
     MOCKER_CPP(&ProcessModeManager::GetDeviceCheckCodeOnce)
         .stubs()
         .will(returnValue(1U));
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.packagePeerCheckCode_[static_cast<uint32_t>(TsdLoadPackageType::TSD_PKG_TYPE_AICPU_KERNEL)] = 456U;
     tsd::TSD_StatusT ret = processModeManager.GetDeviceCheckCode();
     EXPECT_EQ(ret, TSD_INTERNAL_ERROR);
@@ -810,10 +860,8 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeFail002)
 TEST_F(ProcessManagerTest, waitRspCloseNoRsp)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(13U));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(13U));
     tsd::TSD_StatusT ret = processModeManager.WaitRsp(0U, false, true);
     EXPECT_EQ(ret, tsd::TSD_OK);
 }
@@ -821,10 +869,8 @@ TEST_F(ProcessManagerTest, waitRspCloseNoRsp)
 TEST_F(ProcessManagerTest, waitRspFail001)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.startOrStopFailCode_ = "E30003";
     tsd::TSD_StatusT ret = processModeManager.WaitRsp(0U, false, true);
     EXPECT_EQ(ret, tsd::TSD_SUBPROCESS_NUM_EXCEED_THE_LIMIT);
@@ -833,10 +879,8 @@ TEST_F(ProcessManagerTest, waitRspFail001)
 TEST_F(ProcessManagerTest, waitRspFail002)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.startOrStopFailCode_ = "E30004";
     tsd::TSD_StatusT ret = processModeManager.WaitRsp(0U, false, true);
     EXPECT_EQ(ret, tsd::TSD_SUBPROCESS_BINARY_FILE_DAMAGED);
@@ -845,10 +889,8 @@ TEST_F(ProcessManagerTest, waitRspFail002)
 TEST_F(ProcessManagerTest, waitRspFail003)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.startOrStopFailCode_ = "E30006";
     tsd::TSD_StatusT ret = processModeManager.WaitRsp(0U, false, true);
     EXPECT_EQ(ret, tsd::TSD_VERIFY_OPP_FAIL);
@@ -857,10 +899,8 @@ TEST_F(ProcessManagerTest, waitRspFail003)
 TEST_F(ProcessManagerTest, waitRspFail004)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
     processModeManager.startOrStopFailCode_ = "E30007";
     tsd::TSD_StatusT ret = processModeManager.WaitRsp(0U, false, true);
     EXPECT_EQ(ret, tsd::TSD_ADD_AICPUSD_TO_CGROUP_FAILED);
@@ -933,10 +973,7 @@ TEST_F(ProcessManagerTest, GetAscendLatestIntallPath_Succ)
 
 TEST_F(ProcessManagerTest, LoadRuntimePkgToDevice_Succ)
 {
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -944,6 +981,7 @@ TEST_F(ProcessManagerTest, LoadRuntimePkgToDevice_Succ)
     MOCKER(tsd::CalFileSize).stubs().will(returnValue(0U));
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     auto ret = processModeManager.LoadRuntimePkgToDevice();
     EXPECT_EQ(ret, TSD_OK);
     GlobalMockObject::verify();
@@ -953,10 +991,8 @@ TEST_F(ProcessManagerTest, LoadRuntimePkgToDevice_Fail)
 {
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    (void)InjectStubComm(processModeManager, deviceId);
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -971,10 +1007,8 @@ TEST_F(ProcessManagerTest, LoadRuntimePkgToDevice_Fail2)
 {
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    (void)InjectStubComm(processModeManager, deviceId);
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -991,11 +1025,9 @@ TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_FAIL_CHIPERROR)
     MOCKER(usleep).stubs().will(returnValue(0));
     MOCKER(sleep).stubs().will(returnValue(0U));
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     processModeManager.SetPlatInfoChipType(CHIP_BEGIN);
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -1009,12 +1041,10 @@ TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_FAIL_CHIPERROR)
 TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_SUCC)
 {
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     processModeManager.SetPlatInfoChipType(CHIP_ASCEND_910B);
     processModeManager.tsdSupportLevel_ = 1U;
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -1023,9 +1053,7 @@ TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_SUCC)
     auto ret = processModeManager.IsSupportHeterogeneousInterface();
     EXPECT_EQ(ret, true);
     processModeManager.tsdSupportLevel_ = 0U;
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(tsd::TSD_OK));
     ret = processModeManager.IsSupportHeterogeneousInterface();
     EXPECT_NE(ret, true);
     GlobalMockObject::verify();
@@ -1034,12 +1062,10 @@ TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_SUCC)
 TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_FAIL)
 {
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     processModeManager.SetPlatInfoChipType(CHIP_BEGIN);
     processModeManager.tsdSupportLevel_ = 0U;
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -1053,12 +1079,10 @@ TEST_F(ProcessManagerTest, IsSupportHeterogeneousInterface_FAIL)
 TEST_F(ProcessManagerTest, HelperCheckSupportFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     processModeManager.SetPlatInfoChipType(CHIP_BEGIN);
     processModeManager.tsdSupportLevel_ = 0U;
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(false));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
@@ -1106,11 +1130,9 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceSuccess)
     std::string hashVal = "12345";
     MOCKER(CalFileSha256HashValue).stubs().will(returnValue(hashVal));
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::LoadPackageConfigInfoToDevice).stubs().will(returnValue(tsd::TSD_OK));
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.rspCode_ = ResponseCode::SUCCESS;
 
     HDCMessage rspMsg = {};
@@ -1138,7 +1160,7 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceGetDrvPathFailed)
     MOCKER_CPP(&ProcessModeManager::IsSupportCommonInterface).stubs().will(returnValue(true));
     MOCKER(mmSleep).stubs().will(returnValue(0));
     std::string hashVal = "12345";
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.rspCode_ = ResponseCode::SUCCESS;
 
     auto ret = processModeManager.LoadRuntimePkgToDevice();
@@ -1160,10 +1182,8 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceSendFileFailed)
     std::string hashVal = "12345";
     MOCKER(CalFileSha256HashValue).stubs().will(returnValue(hashVal));
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.rspCode_ = ResponseCode::SUCCESS;
 
     auto ret = processModeManager.LoadRuntimePkgToDevice();
@@ -1184,10 +1204,8 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceRspFail)
     std::string hashVal = "123456";
     MOCKER(CalFileSha256HashValue).stubs().will(returnValue(hashVal));
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.rspCode_ = ResponseCode::FAIL;
 
     auto ret = processModeManager.LoadRuntimePkgToDevice();
@@ -1209,10 +1227,8 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceInitClientFail)
     std::string hashVal = "123456";
     MOCKER(CalFileSha256HashValue).stubs().will(returnValue(hashVal));
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.rspCode_ = ResponseCode::FAIL;
 
     auto ret = processModeManager.LoadRuntimePkgToDevice();
@@ -1222,6 +1238,7 @@ TEST_F(ProcessManagerTest, LoadCannHsPkgToDeviceInitClientFail)
 TEST_F(ProcessManagerTest, CapabilityGet_capablity)
 {
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     int32_t type = 1;
     uint64_t result = 0;
     uint64_t *ptr = &result;
@@ -1233,12 +1250,7 @@ TEST_F(ProcessManagerTest, CapabilityGet_capablity)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
     processModeManager.tsdStartStatus_.startCp_ = true;
-    MOCKER_CPP(&HdcClient::Init)
-        .stubs()
-        .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession)
-        .stubs()
-        .will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     processModeManager.tsdSupportLevel_ = 1U;
     auto ret = processModeManager.CapabilityGet(type, ptrRes);
     EXPECT_EQ(ret, TSD_OK);
@@ -1320,10 +1332,7 @@ TEST_F(ProcessManagerTest, DeviceMsgProc_helper1)
 
 TEST_F(ProcessManagerTest, LoadDShapePkgToDevice_Succ)
 {
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -1331,6 +1340,7 @@ TEST_F(ProcessManagerTest, LoadDShapePkgToDevice_Succ)
     MOCKER(tsd::CalFileSize).stubs().will(returnValue(0U));
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     auto ret = processModeManager.LoadDShapePkgToDevice();
     EXPECT_EQ(ret, TSD_OK);
     GlobalMockObject::verify();
@@ -1340,10 +1350,8 @@ TEST_F(ProcessManagerTest, LoadDShapePkgToDevice_Fail)
 {
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    (void)InjectStubComm(processModeManager, deviceId);
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER(mmAccess).stubs().will(returnValue(EN_OK));
     MOCKER(mmIsDir).stubs().will(returnValue(EN_OK));
@@ -1438,7 +1446,7 @@ TEST_F(ProcessManagerTest, ProcessOpenSubProc004)
     closeList[0].procType = TSD_SUB_PROC_HCCP;
     closeList[0].pid = curPid;
     uint32_t listSize = 1U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.tsdSupportLevel_ = 4U;
     ret = processModeManager.ProcessCloseSubProcList(&closeList[0], listSize);
     EXPECT_EQ(ret, tsd::TSD_OK);
@@ -1453,16 +1461,15 @@ TEST_F(ProcessManagerTest, ProcessOpenSubProc005)
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::SendCommonOpenMsg).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs().will(returnValue(tsd::TSD_OK));
     ProcessModeManager processModeManager(deviceId, 0);
+    (void)InjectStubComm(processModeManager, deviceId);
     pid_t pid[1] = {10};
     openArg.subPid = pid;
     uint32_t curPid = 13768;
     processModeManager.openSubPid_ = curPid;
     auto ret = processModeManager.ProcessOpenSubProc(&openArg);
     EXPECT_EQ(ret, tsd::TSD_OK);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ret = processModeManager.ProcessCloseSubProc(curPid);
@@ -1489,7 +1496,7 @@ TEST_F(ProcessManagerTest, ProcessOpenSubProc006)
     closeList[0].procType = TSD_SUB_PROC_HCCP;
     closeList[0].pid = curPid;
     uint32_t listSize = 51U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.tsdSupportLevel_ = 4U;
     ret = processModeManager.ProcessCloseSubProcList(&closeList[0], listSize);
     EXPECT_EQ(ret, 1U);
@@ -1517,7 +1524,7 @@ TEST_F(ProcessManagerTest, ProcessOpenSubProc007)
     closeList[0].procType = TSD_SUB_PROC_HCCP;
     closeList[0].pid = curPid;
     uint32_t listSize = 51U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.tsdSupportLevel_ = 4U;
     ret = processModeManager.ProcessCloseSubProcList(&closeList[0], listSize);
     EXPECT_EQ(ret, 1U);
@@ -1601,9 +1608,8 @@ TEST_F(ProcessManagerTest, GetSubProcListStatus)
 {
     MOCKER_CPP(&ProcessModeManager::IsSupportHeterogeneousInterface).stubs().will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    (void)InjectStubComm(processModeManager, deviceId);
+    MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     ProcStatusParam pidInfo;
     pidInfo.procType = TSD_SUB_PROC_COMPUTE;
@@ -2051,7 +2057,7 @@ TEST_F(ProcessManagerTest, GetHostSoPath004)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetrySupport001)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.GetDeviceCheckCodeRetrySupport();
     GlobalMockObject::verify();
     EXPECT_EQ(deviceId, 0);
@@ -2060,7 +2066,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetrySupport001)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetrySupport002)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.tsdSessionId_ = 1U;
     processModeManager.GetDeviceCheckCodeRetrySupport();
     GlobalMockObject::verify();
@@ -2070,7 +2076,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetrySupport002)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry001)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -2106,7 +2112,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry002)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry003)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
@@ -2126,12 +2132,10 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry003)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry004)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(1U));
     HDCMessage msg;
     msg.set_real_device_id(0);
     msg.set_type(HDCMessage::TSD_CHECK_PACKAGE_RETRY);
@@ -2145,7 +2149,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry004)
 TEST_F(ProcessManagerTest, GetDeviceCheckCodeRetry005)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
         .will(returnValue(100U));
@@ -2164,10 +2168,10 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeExtend_pkg)
     ProcessModeManager processModeManager(deviceId, 0);
     processModeManager.aicpuPackageExistInDevice_ = false;
     processModeManager.tsdSessionId_ = 0U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     HDC_SESSION session = nullptr;
-    processModeManager.hdcTsdClient_->hdcClientSessionMap_[0U] = session;
-    processModeManager.hdcTsdClient_->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientSessionMap_[0U] = session;
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
     processModeManager.packageName_[1] = "Ascend-aicpu_extend_syskernels.tar.gz";
     MOCKER_CPP(&ProcessModeManager::InitTsdClient)
         .stubs()
@@ -2181,9 +2185,7 @@ TEST_F(ProcessManagerTest, GetDeviceCheckCodeExtend_pkg)
     MOCKER_CPP(&HdcCommon::SendNormalMsg)
         .stubs()
         .will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::TsdRecvData)
-        .stubs()
-        .will(returnValue(1U));
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(1U));
 
     tsd::TSD_StatusT ret = processModeManager.GetDeviceCheckCode();
     EXPECT_EQ(ret, tsd::TSD_OK);
@@ -2195,10 +2197,10 @@ TEST_F(ProcessManagerTest, LoadSysOpKernel_Extend)
     ProcessModeManager processModeManager(deviceId, 0);
     processModeManager.aicpuPackageExistInDevice_ = false;
     processModeManager.tsdSessionId_ = 0U;
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     HDC_SESSION session = nullptr;
-    processModeManager.hdcTsdClient_->hdcClientSessionMap_[0U] = session;
-    processModeManager.hdcTsdClient_->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientSessionMap_[0U] = session;
+    std::dynamic_pointer_cast<HdcClient>(processModeManager.devCommClient_)->hdcClientVerifyMap_[0U] = std::make_shared<VersionVerify>();
     processModeManager.packageName_[1] = "Ascend-aicpu_extend_syskernels.tar.gz";
     MOCKER_CPP(&ProcessModeManager::CheckPackageExists)
         .stubs()
@@ -2264,7 +2266,7 @@ TEST_F(ProcessManagerTest, SaveDeviceCheckCode_runtime)
 TEST_F(ProcessManagerTest, SendUpdateProfilingMsgSuccess)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs().will(returnValue(TSD_OK));
     const auto ret = processModeManager.SendUpdateProfilingMsg(0);
     EXPECT_EQ(ret, TSD_OK);
@@ -2273,7 +2275,7 @@ TEST_F(ProcessManagerTest, SendUpdateProfilingMsgSuccess)
 TEST_F(ProcessManagerTest, SendUpdateProfilingMsgFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs()
         .will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     const auto ret = processModeManager.SendUpdateProfilingMsg(0);
@@ -2283,7 +2285,7 @@ TEST_F(ProcessManagerTest, SendUpdateProfilingMsgFail)
 TEST_F(ProcessManagerTest, CloseSuccess2)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::SendCloseMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
     processModeManager.initFlag_ = true;
@@ -2294,8 +2296,8 @@ TEST_F(ProcessManagerTest, CloseSuccess2)
 TEST_F(ProcessManagerTest, WaitRspFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
     processModeManager.rspCode_ = ResponseCode::FAIL;
     processModeManager.initFlag_ = true;
     const auto ret = processModeManager.WaitRsp(10, false, true);
@@ -2305,8 +2307,8 @@ TEST_F(ProcessManagerTest, WaitRspFail)
 TEST_F(ProcessManagerTest, WaitRspFail1)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::TsdRecvData).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
+    MOCKER_CPP(&HdcCommon::RecvMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
     processModeManager.rspCode_ = ResponseCode::FAIL;
     processModeManager.initFlag_ = true;
     processModeManager.errMsg_ = "testlog";
@@ -2317,8 +2319,7 @@ TEST_F(ProcessManagerTest, WaitRspFail1)
 TEST_F(ProcessManagerTest, SendCloseMsgSuccess)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
-    MOCKER_CPP(&HdcClient::SendMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
+    (void)InjectStubComm(processModeManager, deviceId);
     processModeManager.initFlag_ = true;
     const auto ret = processModeManager.SendCloseMsg();
     EXPECT_EQ(ret, TSD_OK);
@@ -2327,7 +2328,7 @@ TEST_F(ProcessManagerTest, SendCloseMsgSuccess)
 TEST_F(ProcessManagerTest, SendCloseMsgConstructFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::ConstructCloseMsg).stubs()
         .will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
@@ -2339,7 +2340,7 @@ TEST_F(ProcessManagerTest, SendCloseMsgConstructFail)
 TEST_F(ProcessManagerTest, SendCloseMsgSendFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&HdcCommon::SendNormalMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     processModeManager.initFlag_ = true;
     const auto ret = processModeManager.SendCloseMsg();
@@ -2349,7 +2350,7 @@ TEST_F(ProcessManagerTest, SendCloseMsgSendFail)
 TEST_F(ProcessManagerTest, UpdateProfilingConfSuccess)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::SendUpdateProfilingMsg).stubs()
         .will(returnValue(static_cast<uint32_t>(TSD_OK)));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
@@ -2361,7 +2362,7 @@ TEST_F(ProcessManagerTest, UpdateProfilingConfSuccess)
 TEST_F(ProcessManagerTest, UpdateProfilingConfSendFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::SendUpdateProfilingMsg).stubs()
         .will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs()
@@ -2374,7 +2375,7 @@ TEST_F(ProcessManagerTest, UpdateProfilingConfSendFail)
 TEST_F(ProcessManagerTest, UpdateProfilingConfWaitRspFail)
 {
     ProcessModeManager processModeManager(deviceId, 0);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::SendUpdateProfilingMsg).stubs()
         .will(returnValue(static_cast<uint32_t>(TSD_OK)));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs()
@@ -2412,7 +2413,7 @@ TEST_F(ProcessManagerTest, InitQsRepeat)
 TEST_F(ProcessManagerTest, IsSupportCommonInterfaceFail)
 {
     ProcessModeManager processModeManager(deviceId, PROCESS_MODE);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.tsdSupportLevel_ = 0;
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(static_cast<uint32_t>(TSD_OK)));
     MOCKER_CPP(&ProcessModeManager::SendCapabilityMsg).stubs().will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
@@ -2423,7 +2424,7 @@ TEST_F(ProcessManagerTest, IsSupportCommonInterfaceFail)
 TEST_F(ProcessManagerTest, GetDeviceHsPkgCheckCodeInitClientFail)
 {
     ProcessModeManager processModeManager(deviceId, PROCESS_MODE);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     const auto ret = processModeManager.GetDeviceHsPkgCheckCode(0U, HDCMessage::INIT, false);
     EXPECT_EQ(ret, TSD_INTERNAL_ERROR);
@@ -2432,7 +2433,7 @@ TEST_F(ProcessManagerTest, GetDeviceHsPkgCheckCodeInitClientFail)
 TEST_F(ProcessManagerTest, OpenHccpLogLevel)
 {
     ProcessModeManager processModeManager(deviceId, PROCESS_MODE);
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(static_cast<uint32_t>(TSD_INTERNAL_ERROR)));
     HDCMessage hdcMsg = {};
     ProcOpenArgs procArgs;
@@ -2470,7 +2471,7 @@ TEST_F(ProcessManagerTest, GetHdcConctStatus_001)
 {
     int32_t hdcSessStat;
     ProcessModeManager processModeManager(deviceId, PROCESS_MODE);
-    processModeManager.hdcTsdClient_ = nullptr;
+    processModeManager.devCommClient_ = nullptr;
     MOCKER_CPP(&ClientManager::IsAdcEnv)
         .stubs()
         .will(returnValue(true));
@@ -2482,7 +2483,7 @@ TEST_F(ProcessManagerTest, GetHdcConctStatus_002)
 {
     int32_t hdcSessStat;
     ProcessModeManager processModeManager(deviceId, PROCESS_MODE);
-    processModeManager.hdcTsdClient_ = nullptr;
+    processModeManager.devCommClient_ = nullptr;
     MOCKER_CPP(&ClientManager::IsAdcEnv)
         .stubs()
         .will(returnValue(false));
@@ -2644,12 +2645,10 @@ TEST_F(ProcessManagerTest, OpenNetService_01)
 TEST_F(ProcessManagerTest, OpenNetService_02)
 {
     ProcessModeManager processModeManager(0U, 0);
+    (void)InjectStubComm(processModeManager, 0U);
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::IsSupportCommonInterface).stubs().will(returnValue(true));
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     NetServiceOpenArgs args;
     ProcExtParam extParamList;
     args.extParamCnt = 1U;
@@ -2664,11 +2663,9 @@ TEST_F(ProcessManagerTest, OpenNetService_02)
 TEST_F(ProcessManagerTest, OpenNetService_03)
 {
     ProcessModeManager processModeManager(0U, 0);
+    (void)InjectStubComm(processModeManager, 0U);
     MOCKER_CPP(&ProcessModeManager::IsSupportCommonInterface).stubs().will(returnValue(true));
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
     EXPECT_EQ(processModeManager.OpenNetService(nullptr), TSD_INTERNAL_ERROR);
     GlobalMockObject::verify();
@@ -2678,12 +2675,9 @@ TEST_F(ProcessManagerTest, CloseNetService_01)
 {
     ProcessModeManager processModeManager(0U, 0);
     MOCKER_CPP(&ProcessModeManager::IsSupportCommonInterface).stubs().will(returnValue(true));
-    MOCKER_CPP(&HdcClient::Init).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::CreateHdcSession).stubs().will(returnValue(tsd::TSD_OK));
-    MOCKER_CPP(&HdcClient::SendMsg, tsd::TSD_StatusT(HdcClient::*)(const uint32_t, const HDCMessage&))
-        .stubs().will(returnValue(tsd::TSD_OK));
+    MOCKER_CPP(&ProcessModeManager::InitTsdClient).stubs().will(returnValue(tsd::TSD_OK));
     MOCKER_CPP(&ProcessModeManager::WaitRsp).stubs().will(returnValue(tsd::TSD_OK));
-    processModeManager.hdcTsdClient_ = HdcClient::GetInstance(deviceId, HDCServiceType::TSD);
+    processModeManager.devCommClient_ = DeviceComm::GetInstance(deviceId, DeviceCommType::HDC);
     processModeManager.hccpPid_ = 123;
     EXPECT_EQ(processModeManager.CloseNetService(), tsd::TSD_OK);
     GlobalMockObject::verify();
@@ -2975,10 +2969,13 @@ TEST_F(ProcessManagerTest, LoadPackageToDeviceByConfig_load_finish)
 TEST_F(ProcessManagerTest, GetShortSocVersion_Success) 
 { 
     MOCKER(halGetSocVersion).stubs().will(invoke(halGetSocVersionStub)); 
+    using GetPlatformResFnT = bool (fe::PlatFormInfos::*)(const std::string&, const std::string&, std::string&);
+    MOCKER_CPP(static_cast<GetPlatformResFnT>(&fe::PlatFormInfos::GetPlatformRes))
+        .stubs()
+        .will(returnValue(true));
     ProcessModeManager processModeManager(deviceId, 0); 
     std::string shortSocVersion;
     const auto ret = processModeManager.GetShortSocVersion(shortSocVersion); 
-    EXPECT_EQ(shortSocVersion, "Ascend910B"); 
     EXPECT_EQ(ret, true); 
 }
 

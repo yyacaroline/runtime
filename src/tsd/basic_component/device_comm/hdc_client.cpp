@@ -36,17 +36,13 @@ namespace {
 }
 
 namespace tsd {
-    std::map<uint64_t, std::shared_ptr<HdcClient>> HdcClient::hdcClientMap_;
-    std::recursive_mutex HdcClient::mutexForhdcClientMap_;
     /**
     * @ingroup HdcClient
     * @brief HdcClient构造函数
     */
-    HdcClient::HdcClient(const uint32_t devId, const HDCServiceType hdcType)
-        : hdcClient_(nullptr),
-          deviceId_(devId),
-          type_(hdcType),
-          index_(KeyCompose(devId, hdcType)),
+    HdcClient::HdcClient(const uint32_t devId)
+        : DeviceComm(devId, DeviceCommType::HDC),
+          hdcClient_(nullptr),
           isClientClose_(true),
           hostPid_(0U),
           hdcCommon_()
@@ -55,36 +51,6 @@ namespace tsd {
         for (uint32_t i = HDC_CLIENT_DEFAULT_MAX_SESSION_NUM; i >= 1U; i--) {
             sessionIdNumVec_.push_back(i);
         }
-    }
-
-    /**
-    * @ingroup HdcClient
-    * @brief 静态函数，获得单例类实例
-    * @param [in] devId : 建立连接的Device设备ID
-    * @param [in] type : 建立的连接类型
-    * @return  HdcClient单例类实例
-    */
-    std::shared_ptr<HdcClient> HdcClient::GetInstance(const uint32_t devId, const HDCServiceType hdcType)
-    {
-        // 校验Client端，device ID范围[0-128]
-        if (devId >= MAX_DEVNUM_PER_HOST) {
-            TSD_ERROR("deviceId=%u is not supported, not in [0-128]", devId);
-            return nullptr;
-        }
-        uint64_t hdcIndex = KeyCompose(devId, hdcType);
-        std::shared_ptr<HdcClient> hdcClientPtr = nullptr;
-        {
-            const std::lock_guard<std::recursive_mutex> lk(mutexForhdcClientMap_);
-            const auto iter = hdcClientMap_.find(hdcIndex);
-            if (iter != hdcClientMap_.end()) {
-                hdcClientPtr = iter->second;
-            } else {
-                hdcClientPtr.reset(new(std::nothrow)HdcClient(devId, hdcType));
-                TSD_CHECK((hdcClientPtr != nullptr), nullptr, "Fail to create hdcClientPtr");
-                (void)hdcClientMap_.insert(std::make_pair(hdcIndex, hdcClientPtr));
-            }
-        }
-        return hdcClientPtr;
     }
 
     /**
@@ -116,7 +82,7 @@ namespace tsd {
     * @brief 初始化函数，建立hdcclient
     * @return TSD_OK : 成功，other：TDT错误码
     */
-    TSD_StatusT HdcClient::Init(const uint32_t clientPid, const bool isAdcEnv)
+    TSD_StatusT HdcClient::CommInit(const uint32_t clientPid, const bool isAdcEnv)
     {
         hostPid_ = clientPid;
         TSD_StatusT tdtRet = InitPre();
@@ -135,7 +101,7 @@ namespace tsd {
      * @brief 普通数据接收线程
      * @param [in] sessionId ：某个连接sessionId
      */
-    TSD_StatusT HdcClient::TsdRecvData(const uint32_t sessionId, const bool ignoreRecvErr, const uint32_t timeout)
+    TSD_StatusT HdcClient::CommRecvData(const uint32_t sessionId, const bool ignoreRecvErr, const uint32_t timeout)
     {
         HDCMessage hdcMsg;
         TSD_StatusT recvResult = TSD_OK;
@@ -175,9 +141,9 @@ namespace tsd {
      * @brief 创建连接
      * @return TSD_OK:成功 或者其他错误码
      */
-    TSD_StatusT HdcClient::CreateHdcSession(uint32_t& sessionId)
+    TSD_StatusT HdcClient::CommCreateSession(uint32_t& sessionId)
     {
-        TSD_INFO("HdcClient::CreateHdcSession Start");
+        TSD_INFO("HdcClient::CommCreateSession Start");
         if (isClientClose_) {
             TSD_ERROR("hdc client has been closed");
             return TSD_HDC_CLIENT_CLOSED;
@@ -230,6 +196,12 @@ namespace tsd {
         return TSD_OK;
     }
 
+    /**
+     * @ingroup HdcClient
+     * @brief 与device端进行连接握手测试，确认HDC通道可用
+     * @param [in] sessionId : 待校验的会话ID
+     * @return TSD_OK:成功 或者其他错误码
+     */
     TSD_StatusT HdcClient::CheckHdcConnection(const uint32_t& sessionId)
     {
         HDCMessage hdcMsg;
@@ -240,12 +212,12 @@ namespace tsd {
         proSignPid->set_proc_pid(hostPid_);
         hdcMsg.set_type(HDCMessage::TEST_HDC_SEND);
         std::shared_ptr<VersionVerify> inspector = nullptr;
-        (void)GetVersionVerify(sessionId, inspector);
+        (void)CommGetVersionVerify(sessionId, inspector);
         TSD_CHECK_NULLPTR(inspector, TSD_HDC_RECV_MSG_ERROR, "no VersionVerify available");
         inspector->SetVersionInfo(hdcMsg);
-        const TSD_StatusT ret = SendMsg(sessionId, hdcMsg);
+        const TSD_StatusT ret = CommSendMsg(sessionId, hdcMsg);
         if (ret != TSD_OK) {
-            TSD_ERROR("SendMsg Failed, SendPidMsg sessionId=%u", sessionId);
+            TSD_ERROR("CommSendMsg Failed, SendPidMsg sessionId=%u", sessionId);
             return ret;
         }
         TSD_StatusT recvResult = TSD_OK;
@@ -263,12 +235,12 @@ namespace tsd {
             return recvResult;
         }
         if (hdcMsg.type() != HDCMessage::TEST_HDC_RSP) {
-            TSD_INFO("Service[%u] create hdc not success", static_cast<uint32_t>(type_));
+            TSD_INFO("Service create hdc not success");
             return TSD_HDC_RECV_MSG_ERROR;
         }
         TSD_CHECK(inspector->PeerVersionCheck(hdcMsg.version_info()), TSD_HDC_RECV_MSG_ERROR,
                   "client and server version is inconsistent, you need to update your software");
-        TSD_RUN_INFO("Service[%u] create hdc successfully.", static_cast<uint32_t>(type_));
+        TSD_RUN_INFO("Service create hdc successfully.");
         return TSD_OK;
     }
 
@@ -295,7 +267,14 @@ namespace tsd {
         return TSD_OK;
     }
 
-    TSD_StatusT HdcClient::GetVersionVerify(const uint32_t sessionId, std::shared_ptr<VersionVerify> &inspector)
+    /**
+     * @ingroup HdcClient
+     * @brief 获取指定sessionId对应的版本校验对象
+     * @param [in] sessionId : 会话ID
+     * @param [out] inspector : 版本校验对象的智能指针
+     * @return TSD_OK:成功 或者其他错误码
+     */
+    TSD_StatusT HdcClient::CommGetVersionVerify(const uint32_t sessionId, std::shared_ptr<VersionVerify> &inspector)
     {
         const std::lock_guard<std::recursive_mutex> lk(mutextForClientSessionMap_);
         uint32_t localSessionId = sessionId;
@@ -305,14 +284,20 @@ namespace tsd {
 
         const auto iter = hdcClientVerifyMap_.find(localSessionId);
         if (iter == hdcClientVerifyMap_.end()) {
-            TSD_RUN_INFO("HdcServer::GetVersionVerify(): the %u VersionVerify does not exist", localSessionId);
+            TSD_RUN_INFO("HdcClient::CommGetVersionVerify(): the %u VersionVerify does not exist", localSessionId);
             return TSD_HDC_SESSION_DO_NOT_EXIST;
         }
         inspector = iter->second;
         return TSD_OK;
     }
 
-    TSD_StatusT HdcClient::GetHdcConctStatus(int32_t &hdcSessStat)
+    /**
+     * @ingroup HdcClient
+     * @brief 获取当前HDC连接状态。当driver支持时，会刷新所有sessionMap，关闭已断开的session。
+     * @param [out] hdcSessStat : 输出当前session状态（HDC_SESSION_STATUS_CONNECT/CLOSE）
+     * @return TSD_OK:成功 或者其他错误码
+     */
+    TSD_StatusT HdcClient::CommGetConctStatus(int32_t &hdcSessStat)
     {
         hdcSessStat = HDC_SESSION_STATUS_CONNECT;
         int32_t halVersion;
@@ -362,18 +347,20 @@ namespace tsd {
 
     /**
      * @ingroup HdcClient
-     * @brief 从hdcClientMap里面删除hdcclient指针
+     * @brief 从DeviceComm::deviceCommMap_里面删除当前实例指针
      */
     void HdcClient::ClearClientPtr()
     {
         TSD_INFO("begin HdcClient::ClearClientPtr");
-        const std::lock_guard<std::recursive_mutex> lk(mutexForhdcClientMap_);
-        const auto iter = hdcClientMap_.find(index_);
-        if (iter == hdcClientMap_.end()) {
-            TSD_ERROR("delete the %lu hdcClientPtr from hdcClientMap_ failed", index_);
+        uint64_t index = KeyCompose(deviceId_, DeviceCommType::HDC);
+        const std::lock_guard<std::recursive_mutex> lk(MutexForDeviceCommMap());
+        auto& deviceCommMap = DeviceCommMap();
+        const auto iter = deviceCommMap.find(index);
+        if (iter == deviceCommMap.end()) {
+            TSD_ERROR("delete the %lu deviceCommPtr from deviceCommMap failed", index);
             return;
         }
-        (void)hdcClientMap_.erase(iter);
+        (void)deviceCommMap.erase(iter);
         TSD_INFO("end HdcClient::ClearClientPtr");
     }
 
@@ -398,16 +385,16 @@ namespace tsd {
     * @param 无
     * @return TSD_OK:成功 或者其他错误码
     */
-    void HdcClient::Destroy()
+    void HdcClient::CommDestroy()
     {
-        TSD_INFO("enter HdcClient::Destroy() function");
+        TSD_INFO("enter HdcClient::CommDestroy() function");
         if (!isClientClose_) {
             const std::lock_guard<std::mutex> lk(mutextForHdcFreeMemoryMap_);
             ClearAllSession();
             DestroyClient();
             ClearClientPtr();
             isClientClose_ = true;
-            TSD_INFO("end HdcClient::Destroy() function");
+            TSD_INFO("end HdcClient::CommDestroy() function");
         }
     }
 
@@ -422,16 +409,13 @@ namespace tsd {
     }
 
     /**
-    * @ingroup HdcCommon
-    * @brief   纯虚函数 GetHdcServiceType 获得 HdcServiceType
-    * return HdcServiceType
-    */
-    HDCServiceType HdcClient::GetHdcServiceType() const
-    {
-        return type_;
-    }
-
-    TSD_StatusT HdcClient::SendMsg(const uint32_t sessionId,const HDCMessage& msg)
+     * @ingroup HdcClient
+     * @brief 通过指定session向device发送一条HDC消息，发送前会进行特性兼容校验
+     * @param [in] sessionId : 会话ID
+     * @param [in] msg : 要发送的HDC消息
+     * @return TSD_OK:成功 或者其他错误码
+     */
+    TSD_StatusT HdcClient::CommSendMsg(const uint32_t sessionId, const HDCMessage& msg)
     {
         HDC_SESSION session = nullptr;
         const TSD_StatusT ret = GetHdcSession(sessionId, session);
@@ -440,13 +424,21 @@ namespace tsd {
             return TSD_HDC_SEND_MSG_ERROR;
         }
         std::shared_ptr<VersionVerify> inspector = nullptr;
-        (void)GetVersionVerify(sessionId, inspector);
+        (void)CommGetVersionVerify(sessionId, inspector);
         TSD_CHECK_NULLPTR(inspector, TSD_HDC_RECV_MSG_ERROR, "VersionVerify does not exist.");
         TSD_CHECK(inspector->SpecialFeatureCheck(msg.type()), TSD_HDC_RECV_MSG_ERROR,
                   "client and server feature_list is inconsistent, you need to update your software.");
         return hdcCommon_.SendNormalMsg(msg, session);
     }
 
+    /**
+     * @ingroup HdcClient
+     * @brief 通过指定session从device接收一条HDC消息（带超时）
+     * @param [in] sessionId : 会话ID
+     * @param [out] msg : 接收到的HDC消息
+     * @param [in] timeout : 接收超时（毫秒）
+     * @return TSD_OK:成功 或者其他错误码
+     */
     TSD_StatusT HdcClient::RecvMsg(const uint32_t sessionId, HDCMessage& msg, const uint32_t timeout)
     {
         HDC_SESSION session = nullptr;
@@ -463,4 +455,13 @@ namespace tsd {
     * @brief 析构函数
     */
     HdcClient::~HdcClient() {}
+
+    // 利用静态变量初始化在 main 之前执行的特性完成自注册
+    // 新增子类只需在自己的 .cpp 中加这一行，无需修改任何其他文件
+    static const bool g_hdcClientRegistered = DeviceComm::Register(
+        DeviceCommType::HDC,
+        [](uint32_t devId) -> std::shared_ptr<DeviceComm> {
+            return std::shared_ptr<DeviceComm>(new(std::nothrow) HdcClient(devId));
+        }
+    );
 } // namespace tsd
