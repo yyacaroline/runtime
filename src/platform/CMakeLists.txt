@@ -76,6 +76,7 @@ target_include_directories(platform PRIVATE
 
 target_compile_options(platform PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
+        -fvisibility=hidden
         -Werror
         -fno-common
         -fno-strict-aliasing

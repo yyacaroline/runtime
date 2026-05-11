@@ -81,12 +81,12 @@ PlatformInfoManager::PlatformInfoManager() : init_flag_(false), runtime_init_fla
 PlatformInfoManager::~PlatformInfoManager()
 {}
 
-PlatformInfoManager &PlatformInfoManager::Instance() {
+__attribute__((visibility("default"))) PlatformInfoManager &PlatformInfoManager::Instance() {
   static PlatformInfoManager platform_info;
   return platform_info;
 }
 
-PlatformInfoManager &PlatformInfoManager::GeInstance() {
+__attribute__((visibility("default"))) PlatformInfoManager &PlatformInfoManager::GeInstance() {
   static PlatformInfoManager ge_platform_info;
   return ge_platform_info;
 }
@@ -987,7 +987,8 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
   return PLATFORM_SUCCESS;
 }
 
-void PlatformInfoManager::SetOptionalCompilationInfo(OptionalInfo &opti_compilation_info) {
+__attribute__((visibility("default"))) void PlatformInfoManager::SetOptionalCompilationInfo(
+    OptionalInfo &opti_compilation_info) {
   // add lock
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   opti_compilation_info_ = opti_compilation_info;
@@ -1053,7 +1054,8 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
   return PLATFORM_SUCCESS;
 }
 
-void PlatformInfoManager::SetOptionalCompilationInfo(OptionalInfos &opti_compilation_info) {
+__attribute__((visibility("default"))) void PlatformInfoManager::SetOptionalCompilationInfo(
+    OptionalInfos &opti_compilation_info) {
   // add lock
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   opti_compilation_infos_ = opti_compilation_info;
@@ -1062,7 +1064,8 @@ void PlatformInfoManager::SetOptionalCompilationInfo(OptionalInfos &opti_compila
   }
 }
 
-uint32_t PlatformInfoManager::UpdatePlatformInfos(fe::PlatFormInfos &platform_info) {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::UpdatePlatformInfos(
+    fe::PlatFormInfos &platform_info) {
   // add lock
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   if (opti_compilation_infos_.GetSocVersion().empty()) {
@@ -1077,7 +1080,8 @@ uint32_t PlatformInfoManager::UpdatePlatformInfos(fe::PlatFormInfos &platform_in
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::UpdatePlatformInfos(const std::string &soc_version, fe::PlatFormInfos &platform_info) {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::UpdatePlatformInfos(
+    const std::string &soc_version, fe::PlatFormInfos &platform_info) {
   // add lock
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   if (soc_version.empty()) {
@@ -1097,7 +1101,7 @@ uint32_t PlatformInfoManager::UpdatePlatformInfos(const std::string &soc_version
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::Finalize() {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::Finalize() {
   // add lock
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   if (!init_flag_) {
@@ -1117,8 +1121,8 @@ uint32_t PlatformInfoManager::Finalize() {
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::GetRuntimePlatformInfosByDevice(const uint32_t &device_id,
-    PlatFormInfos &platform_infos, bool need_deep_copy) {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetRuntimePlatformInfosByDevice(
+    const uint32_t &device_id, PlatFormInfos &platform_infos, bool need_deep_copy) {
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   const auto it = runtime_device_platform_infos_map_.find(device_id);
   PlatFormInfos device_platform_infos;
@@ -1138,8 +1142,8 @@ uint32_t PlatformInfoManager::GetRuntimePlatformInfosByDevice(const uint32_t &de
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::UpdateRuntimePlatformInfosByDevice(const uint32_t &device_id,
-    PlatFormInfos &platform_infos) {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::UpdateRuntimePlatformInfosByDevice(
+    const uint32_t &device_id, PlatFormInfos &platform_infos) {
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   PF_LOGD("Update the platform info with device_id %u.", device_id);
   PlatFormInfos device_platform_infos;
@@ -1148,7 +1152,8 @@ uint32_t PlatformInfoManager::UpdateRuntimePlatformInfosByDevice(const uint32_t 
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::InitRuntimePlatformInfos(const std::string &SoCVersion) {
+__attribute__((visibility("default"))) uint32_t PlatformInfoManager::InitRuntimePlatformInfos(
+    const std::string &SoCVersion) {
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   if (runtime_init_flag_) {
     return PLATFORM_SUCCESS;
