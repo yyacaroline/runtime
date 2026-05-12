@@ -432,7 +432,7 @@ void SetResultCommon(TaskInfo *taskInfo, const void *const data, const uint32_t 
 void InitByStream(TaskInfo *const taskInfo, Stream *stream)
 {
     taskInfo->stream = stream;
-    taskInfo->tid = PidTidFetcher::GetCurrentTid();
+    taskInfo->tid = GetCurrentTid();
     taskInfo->bindFlag = false;
     taskInfo->serial = false;
 }
