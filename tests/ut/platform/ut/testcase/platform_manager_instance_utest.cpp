@@ -226,4 +226,22 @@ TEST_F(PlatformManagerUTest, platform_instance_Trim) {
   instance.Trim(strNg);
 }
 
+TEST_F(PlatformManagerUTest, platform_instance_InitByInstance_success) {
+  PlatFormInfos platform_infos;
+  EXPECT_EQ(platform_infos.platform_infos_impl_, nullptr);
+  bool ret = platform_infos.InitByInstance();
+  EXPECT_EQ(ret, true);
+  EXPECT_NE(platform_infos.platform_infos_impl_, nullptr);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_InitByInstance_already_initialized) {
+  PlatFormInfos platform_infos;
+  bool ret = platform_infos.InitByInstance();
+  EXPECT_EQ(ret, true);
+  auto first_impl = platform_infos.platform_infos_impl_;
+  ret = platform_infos.InitByInstance();
+  EXPECT_EQ(ret, true);
+  EXPECT_EQ(platform_infos.platform_infos_impl_, first_impl);
+}
+
 }

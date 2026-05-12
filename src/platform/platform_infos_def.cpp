@@ -30,11 +30,10 @@ using ProtoPlatformMap = platform::tiling::PlatformMap;
 using ProtoBufStringVecMap = ascend_private::protobuf::Map<ProtoBufString, ProtoListDType>;
 using ProtoBufStringMapMap = ascend_private::protobuf::Map<ProtoBufString, ProtoPlatformMap>;
 #endif
-PlatFormInfosImplPtr g_platformInfosImplInstance;
 
 bool PlatFormInfos::Init() {
   std::lock_guard<std::mutex> lock_guard(plt_info_mutex);
-  platform_infos_impl_ = make_shared<PlatFormInfosImpl>();
+  PF_MAKE_SHARED(platform_infos_impl_ = std::make_shared<PlatFormInfosImpl>(), return false);
   if (platform_infos_impl_ == nullptr) {
     return false;
   }
@@ -301,13 +300,12 @@ bool PlatFormInfos::InitByInstance() {
     if (platform_infos_impl_ != nullptr) {
         return true;
     }
-    if (g_platformInfosImplInstance == nullptr) {
-        g_platformInfosImplInstance = make_shared<PlatFormInfosImpl>();
-        if (g_platformInfosImplInstance == nullptr) {
-            return false;
-        }
+    static PlatFormInfosImplPtr platform_infos_impl_instance_ptr = nullptr;
+    if (platform_infos_impl_instance_ptr == nullptr) {
+      PF_MAKE_SHARED(platform_infos_impl_instance_ptr = std::make_shared<PlatFormInfosImpl>(), return false);
     }
-    platform_infos_impl_ = g_platformInfosImplInstance;
+
+    platform_infos_impl_ = platform_infos_impl_instance_ptr;
     return true;
 }
 
@@ -396,7 +394,7 @@ bool PlatFormInfos::LoadFromBuffer(const char *bufPtr, const size_t bufLen) {
 
 bool OptionalInfos::Init() {
   std::lock_guard<std::mutex> lock_guard(opt_info_mutex);
-  optional_infos_impl_ = make_shared<OptionalInfosImpl>();
+  PF_MAKE_SHARED(optional_infos_impl_ = std::make_shared<OptionalInfosImpl>(), return false);
   if (optional_infos_impl_ == nullptr) {
     return false;
   }

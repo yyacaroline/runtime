@@ -291,6 +291,7 @@
         <file value="Ascend950PR_958b.ini" install_mod="440" entity="true"/>
         <file value="Ascend950PR_9579.ini" install_mod="440" entity="true"/>
         <file value="Ascend950PR_957b.ini" install_mod="440" entity="true"/>
+        <file value="Ascend950PR_957bx.ini" install_mod="440" entity="true"/>
         <file value="Ascend950PR_957c.ini" install_mod="440" entity="true"/>
         <file value="Ascend950PR_957d.ini" install_mod="440" entity="true"/>
         <file value="Ascend950PR_950z.ini" install_mod="440" entity="true"/>
@@ -298,6 +299,7 @@
         <file value="Ascend950DT_9592.ini" install_mod="440" entity="true"/>
         <file value="Ascend950DT_9581.ini" install_mod="440" entity="true"/>
         <file value="Ascend950DT_9582.ini" install_mod="440" entity="true"/>
+        <file value="Ascend950DT_9582x.ini" install_mod="440" entity="true"/>
         <file value="Ascend950DT_9584.ini" install_mod="440" entity="true"/>
         <file value="Ascend950DT_9587.ini" install_mod="440" entity="true"/>
         <file value="Ascend950DT_9588.ini" install_mod="440" entity="true"/>

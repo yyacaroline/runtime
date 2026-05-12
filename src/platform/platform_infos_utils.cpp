@@ -32,7 +32,8 @@ void PlatformInfosUtils::Clone(PlatFormInfos &dest_platform_infos, const PlatFor
   if(&dest_platform_infos != &platform_infos) {
     dest_platform_infos.core_num_ = platform_infos.core_num_;
     if (platform_infos.platform_infos_impl_) {
-      dest_platform_infos.platform_infos_impl_ = std::make_shared<PlatFormInfosImpl>(*platform_infos.platform_infos_impl_);
+      PF_MAKE_SHARED(dest_platform_infos.platform_infos_impl_ = 
+                    std::make_shared<PlatFormInfosImpl>(*platform_infos.platform_infos_impl_), return);
     }
   }
 }
