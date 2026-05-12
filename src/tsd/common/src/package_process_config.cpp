@@ -108,7 +108,7 @@ namespace tsd {
         }
         configPath = configPath + fileName;
         if (access(configPath.c_str(), F_OK) != 0) {
-            TSD_RUN_WARN("cannot get package file:%s, reason:%s", configPath.c_str(), SafeStrerror().c_str());
+            TSD_INFO("cannot get package file:%s, reason:%s", configPath.c_str(), SafeStrerror().c_str());
             return "";
         }
         TSD_INFO("get config path:%s", configPath.c_str());

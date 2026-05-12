@@ -2265,7 +2265,7 @@ TSD_StatusT ProcessModeManager::LoadPackageToDeviceByConfig()
             return TSD_INTERNAL_ERROR;
         }
         if (orgFile.empty()) {
-            TSD_RUN_WARN("cannot find package:%s, optional is true skip", pkgPureName.c_str());
+            TSD_RUN_INFO("cannot find package:%s, optional is true skip", pkgPureName.c_str());
             continue;
         }
         const std::string hostPkgHash = CalFileSha256HashValue(orgFile);
