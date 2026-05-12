@@ -3411,24 +3411,16 @@ rtError_t Stream::UpdateAllPersistentTask()
     delayRecycleTaskid_.clear();
     taskPersistentHead_.Set(0U);
     taskPersistentTail_.Set(0U);
-    errno_t ret = memset_s(taskPersistentBuff_, sizeof(taskPersistentBuff_), 0U, sizeof(taskPersistentBuff_));
-    COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
-        "Failed to call memset_s to set taskPersistentBuff_, dest=%p, dest_max=%zu, c=0, count=%zu, retCode=%d.",
-         taskPersistentBuff_, sizeof(taskPersistentBuff_), sizeof(taskPersistentBuff_), ret);
-    ret =
+    errno_t ret =
         memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF, posToTaskIdMapSize_ * sizeof(uint16_t));
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
         "Failed to call memset_s to set posToTaskIdMap_, dest=%p, dest_max=%zu, c=0xFF, count=%zu, retCode=%d.",
         posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), posToTaskIdMapSize_ * sizeof(uint16_t), ret);
     Model* mdl = Model_();
     CaptureModel* captureModel = dynamic_cast<CaptureModel*>(mdl);
-    // 存在融合后sqe变多的场景
+    // 存在融合后sqe变多的场景，这里的buffer是按内存64字节逐个访问，为了提升性能不做memset
     std::unique_ptr<uint8_t[]> sqeBufferBackup(new (std::nothrow) uint8_t[sqeBufferSize_]);
     COND_RETURN_ERROR(!sqeBufferBackup, RT_ERROR_STREAM_NEW, "New sqeBufferBackup failed, size=%u", sqeBufferSize_);
-    ret = memset_s(sqeBufferBackup.get(), sqeBufferSize_, 0U, sqeBufferSize_);
-    COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
-        "Failed to call memset_s to set sqeBufferBackup, dest=%p, dest_max=%u, c=0, count=%u, retCode=%d.",
-        sqeBufferBackup.get(), sqeBufferSize_, sqeBufferSize_, ret);
 
     uint32_t totalSendSqeNum = 0U;
     rtError_t error = RT_ERROR_NONE;

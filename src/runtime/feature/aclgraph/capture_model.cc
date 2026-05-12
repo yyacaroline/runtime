@@ -765,7 +765,6 @@ rtError_t CaptureModel::AllocSqAddr(void) const
     return RT_ERROR_NONE;
 }
 
-
 void CaptureModel::BackupArgHandle(const uint16_t streamId, const uint16_t taskId)
 {
     void* argHandle = GetAndEraseArgHandle(streamId, taskId);
@@ -773,6 +772,7 @@ void CaptureModel::BackupArgHandle(const uint16_t streamId, const uint16_t taskI
         argLoaderBackup_.insert(argHandle);
     }
 }
+
 rtError_t CaptureModel::Update(void)
 {
     uint32_t releaseNum = 0U;
