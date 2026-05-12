@@ -1166,7 +1166,7 @@ rtError_t DavidStream::StreamTaskClean()
         devId, tsId, streamId_, sqId_);
     if (IsAutoSplitSq() && !IsSlaveStream() && autoSplitCtx_ != nullptr) {
         for (Stream *slave : autoSplitCtx_->slaveStreams) {
-            error = Model_()->UnbindStream(slave, true);
+            error = Model_()->UnbindStream(slave, false);
             COND_RETURN_AND_MSG_INNER((error != RT_ERROR_NONE), error,
                 "UnbindStream failed, stream_id=%u, retCode=%#x.", slave->Id_(), static_cast<uint32_t>(error));
             (void)Context_()->TearDownStream(slave, true);

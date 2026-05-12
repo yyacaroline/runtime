@@ -91,7 +91,7 @@ Model::~Model() noexcept
 
     const std::list<Stream *> streamsCpy(streams_);
     for (Stream * const streamObj : streamsCpy) {
-        (void)UnbindStream(streamObj, true);
+        (void)UnbindStream(streamObj, false);
         if (streamObj->GetModelNum() == 0 && !(streamObj->IsAutoSplitSq() && streamObj->IsSlaveStream())) {
             context_->InsertStreamList(streamObj);
         }
