@@ -192,6 +192,7 @@ static const DevProperties CHIP_MC32DM11A_PROPERTIES = {
     .eventPoolSize = 0U,
     .rtsqShamt = 0xFFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_SUPPORT_WITH_OFFLINE,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = RT_AICORE_NUM_25,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

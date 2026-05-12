@@ -268,6 +268,7 @@ static const DevProperties CHIP_CLOUD_V2_PROPERTIES = {
     .eventPoolSize = 64U,
     .rtsqShamt = 0x7FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_SUPPORT,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = RT_AICORE_NUM_25,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

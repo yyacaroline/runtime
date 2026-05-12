@@ -31,6 +31,48 @@ static rtError_t IpcOpenNotifyStubSucc(cce::runtime::ApiImpl *api, Notify ** con
     return RT_ERROR_NONE;
 }
 
+static uint32_t g_halMemCreateMemType = MEM_MAX_TYPE;
+static uint32_t g_halMemGetAllocationGranularityMemType = MEM_MAX_TYPE;
+
+static drvError_t HalMemCreateRecordMemType(drv_mem_handle_t **handle, size_t size,
+                                            const struct drv_mem_prop *prop, uint64_t flag)
+{
+    (void)handle;
+    (void)size;
+    (void)flag;
+    g_halMemCreateMemType = prop->mem_type;
+    return DRV_ERROR_NONE;
+}
+
+static drvError_t HalMemGetAllocationGranularityRecordMemType(const struct drv_mem_prop *prop,
+                                                              drv_mem_granularity_options option,
+                                                              size_t *granularity)
+{
+    (void)option;
+    g_halMemGetAllocationGranularityMemType = prop->mem_type;
+    *granularity = 0;
+    return DRV_ERROR_NONE;
+}
+
+static void CheckRtMemGetAllocationGranularityByPolicy(Runtime *rtInstance, const rtChipType_t oriChipType,
+                                                       rtDrvMemProp_t * const prop)
+{
+    size_t granularity;
+    rtInstance->SetChipType(CHIP_DC);
+    GlobalContainer::SetRtChipType(CHIP_DC);
+    EXPECT_EQ(rtMemGetAllocationGranularity(prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity), ACL_RT_SUCCESS);
+    MOCKER(halMemGetAllocationGranularity).stubs().will(invoke(HalMemGetAllocationGranularityRecordMemType));
+    prop->mem_type = MEM_P2P_HBM_TYPE;
+    EXPECT_EQ(rtMemGetAllocationGranularity(prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity), RT_ERROR_NONE);
+    EXPECT_EQ(g_halMemGetAllocationGranularityMemType, static_cast<uint32_t>(MEM_P2P_DDR_TYPE));
+    GlobalMockObject::verify();
+    MOCKER(halMemGetAllocationGranularity).stubs().will(returnValue(DRV_ERROR_INVALID_VALUE));
+    EXPECT_EQ(rtMemGetAllocationGranularity(prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity),
+        ACL_ERROR_RT_PARAM_INVALID);
+    rtInstance->SetChipType(oriChipType);
+    GlobalContainer::SetRtChipType(oriChipType);
+}
+
 TEST_F(ApiTest, util_test)
 {
     rtError_t error;
@@ -2062,6 +2104,29 @@ TEST_F(ApiTest, rtsMemMallocPhysical_02)
 
     error = rtsMemMallocPhysical(handle, 100, policy, nullptr);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    rtInstance->SetChipType(CHIP_DC);
+    GlobalContainer::SetRtChipType(CHIP_DC);
+    GlobalMockObject::verify();
+    MOCKER(halMemCreate)
+        .stubs()
+        .will(invoke(HalMemCreateRecordMemType));
+
+    rtDrvMemHandle drvHandle = nullptr;
+    rtDrvMemProp_t prop = {};
+    prop.mem_type = MEM_HBM_TYPE;
+    error = rtMallocPhysical(&drvHandle, 100, &prop, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(g_halMemCreateMemType, static_cast<uint32_t>(MEM_DDR_TYPE));
+
+    prop.mem_type = MEM_P2P_HBM_TYPE;
+    error = rtMallocPhysical(&drvHandle, 100, &prop, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(g_halMemCreateMemType, static_cast<uint32_t>(MEM_P2P_DDR_TYPE));
+
+    rtInstance->SetChipType(CHIP_CLOUD);
+    GlobalContainer::SetRtChipType(CHIP_CLOUD);
 }
 
 TEST_F(ApiTest, rtsMemMallocPhysical_03)
@@ -6738,13 +6803,7 @@ TEST_F(ApiTest, rtMemAddress)
     error = rtMemSetPidToShareableHandle(shareableHandle, pid, 2);
     EXPECT_EQ(error, ACL_RT_SUCCESS);
  
-    size_t granularity;
-    error = rtMemGetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
-    EXPECT_EQ(error, ACL_RT_SUCCESS);
- 
-    MOCKER(halMemGetAllocationGranularity).stubs().will(returnValue(DRV_ERROR_INVALID_VALUE));
-    error = rtMemGetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    CheckRtMemGetAllocationGranularityByPolicy(rtInstance, ori_chipType, &prop);
 }
  
 TEST_F(ApiTest, rtOperateWithHostid)
@@ -6896,6 +6955,8 @@ TEST_F(ApiTest, rtMemAddress_01)
     error = rtsMemSetPidToShareableHandle(shareableHandle, pid, 2);
     EXPECT_EQ(error, ACL_RT_SUCCESS);
  
+    rtInstance->SetChipType(CHIP_DC);
+    GlobalContainer::SetRtChipType(CHIP_DC);
     size_t granularity;
     error = rtsMemGetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
     EXPECT_EQ(error, ACL_RT_SUCCESS);
@@ -6903,6 +6964,8 @@ TEST_F(ApiTest, rtMemAddress_01)
     MOCKER(halMemGetAllocationGranularity).stubs().will(returnValue(DRV_ERROR_INVALID_VALUE));
     error = rtMemGetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    rtInstance->SetChipType(ori_chipType);
+    GlobalContainer::SetRtChipType(ori_chipType);
 }
  
 TEST_F(ApiTest, rtsDvppLaunch_test_01)

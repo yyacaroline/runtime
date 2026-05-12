@@ -173,6 +173,7 @@ static const DevProperties CHIP_AS31XM1_PROPERTIES = {
     .eventPoolSize = 0U,
     .rtsqShamt = 0x1FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_NOT_SUPPORT,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = 1U,
     .engineWaitCompletionTImeout = ENGINE_WAIT_COMPLETION_TIMEOUT,
     .reportWaitTimeout = RT_REPORT_MDC_TIMEOUT_TIME,

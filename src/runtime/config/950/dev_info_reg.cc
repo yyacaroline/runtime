@@ -340,6 +340,7 @@ static const DevProperties CHIP_DAVID_PROPERTIES = {
     .eventPoolSize = 0U,
     .rtsqShamt = 0x7FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_SUPPORT_WITH_OFFLINE,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = RT_AICORE_NUM_25,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

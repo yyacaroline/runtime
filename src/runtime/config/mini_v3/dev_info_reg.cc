@@ -175,6 +175,7 @@ static const DevProperties CHIP_MINI_V3_PROPERTIES = {
     .eventPoolSize = 0U,
     .rtsqShamt = 0x1FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_NOT_SUPPORT,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = RT_AICORE_NUM_1,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

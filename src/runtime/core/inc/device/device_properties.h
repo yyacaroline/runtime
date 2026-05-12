@@ -212,6 +212,11 @@ enum class SupportCreateTaskRes : uint8_t {
     CREATE_TASK_RES_SUPPORT
 };
 
+enum class PhysicalMemTypePolicy : uint8_t {
+    DEFAULT,
+    MAP_HBM_TO_DDR
+};
+
 enum class DeviceSatStatusImpl : uint8_t {
     NOT_SUPPORT, // 不支持饱和模式的状态获取和清理
     DEVICE_SAT_STATUS_CONTEXT_LEVEL, // 饱和模式的状态是存储在一个ContextOverflowAddr中
@@ -317,6 +322,7 @@ struct DevProperties final {
     uint8_t eventPoolSize;
     uint32_t rtsqShamt;
     SupportCreateTaskRes supportCreateTaskRes;
+    PhysicalMemTypePolicy physicalMemTypePolicy;
     uint32_t aicNumForCoreStack;
     uint64_t engineWaitCompletionTImeout;
     int32_t reportWaitTimeout;

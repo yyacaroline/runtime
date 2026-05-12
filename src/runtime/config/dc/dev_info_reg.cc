@@ -193,6 +193,7 @@ static const DevProperties CHIP_DC_PROPERTIES = {
     .eventPoolSize = 8U,
     .rtsqShamt = 0x1FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_SUPPORT,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::MAP_HBM_TO_DDR,
     .aicNumForCoreStack = RT_AICORE_NUM_25,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

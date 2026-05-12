@@ -136,6 +136,7 @@ static const DevProperties CHIP_KIRINX90_PROPERTIES = {
     .eventPoolSize = 0U,
     .rtsqShamt = 0x1FFU,
     .supportCreateTaskRes = SupportCreateTaskRes::CREATE_TASK_RES_NOT_SUPPORT,
+    .physicalMemTypePolicy = PhysicalMemTypePolicy::DEFAULT,
     .aicNumForCoreStack = RT_AICORE_NUM_25,
     .engineWaitCompletionTImeout = 0UL,
     .reportWaitTimeout = RT_REPORT_TIMEOUT_TIME,

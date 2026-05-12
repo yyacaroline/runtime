@@ -24,6 +24,19 @@
 namespace cce {
 namespace runtime {
 
+static void MapPhysicalMemTypeByPolicy(rtDrvMemProp_t * const prop, const PhysicalMemTypePolicy policy)
+{
+    if (policy != PhysicalMemTypePolicy::MAP_HBM_TO_DDR) {
+        return;
+    }
+
+    if (prop->mem_type == MEM_HBM_TYPE) {
+        prop->mem_type = MEM_DDR_TYPE;
+    } else if (prop->mem_type == MEM_P2P_HBM_TYPE) {
+        prop->mem_type = MEM_P2P_DDR_TYPE;
+    }
+}
+
 rtError_t NpuDriver::MallocHostSharedMemory(rtMallocHostSharedMemoryIn * const in,
     rtMallocHostSharedMemoryOut * const out, const uint32_t deviceId)
 {
@@ -343,6 +356,7 @@ rtError_t NpuDriver::MallocPhysical(rtDrvMemHandle* handle, size_t size, rtDrvMe
             prop->mem_type = RT_MEMORYINFO_HBM;    // so pass 1 to driver which means DDR type.
         }
     }
+    MapPhysicalMemTypeByPolicy(prop, properties.physicalMemTypePolicy);
 
     drvRet = halMemCreate(RtPtrToPtr<drv_mem_handle_t **>(handle), size,
         RtPtrToPtr<struct drv_mem_prop *>(prop), flags);
@@ -453,7 +467,15 @@ rtError_t NpuDriver::GetAllocationGranularity(const rtDrvMemProp_t *prop, rtDrvM
     COND_RETURN_WARN(&halMemGetAllocationGranularity == nullptr, RT_ERROR_FEATURE_NOT_SUPPORT,
         "[drv api] halMemGetAllocationGranularity does not exist");
 
-    drvRet = halMemGetAllocationGranularity(RtPtrToPtr<const struct drv_mem_prop *>(prop),
+    const rtChipType_t chipType = Runtime::Instance()->GetChipType();
+    DevProperties properties;
+    auto error = GET_DEV_PROPERTIES(chipType, properties);
+    COND_RETURN_WARN(error != RT_ERROR_NONE, RT_ERROR_FEATURE_NOT_SUPPORT,
+        "Failed to access device properties when chipType=%d.", chipType);
+
+    rtDrvMemProp_t mappedProp = *prop;
+    MapPhysicalMemTypeByPolicy(&mappedProp, properties.physicalMemTypePolicy);
+    drvRet = halMemGetAllocationGranularity(RtPtrToPtr<const struct drv_mem_prop *>(&mappedProp),
         static_cast<drv_mem_granularity_options>(option), granularity);
     COND_RETURN_WARN(drvRet == DRV_ERROR_NOT_SUPPORT, RT_ERROR_FEATURE_NOT_SUPPORT,
         "[drv api] halMemGetAllocationGranularity does not support.");
