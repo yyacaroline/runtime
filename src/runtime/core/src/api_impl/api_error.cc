@@ -6218,8 +6218,6 @@ rtError_t ApiErrorDecorator::FunctionGetBinary(const Kernel *const funcHandle, P
 
 rtError_t ApiErrorDecorator::FunctionGetParamCount(const Kernel *funcHandle, size_t *paramCount)
 {
-    NULL_PTR_RETURN_MSG_OUTER(funcHandle, RT_ERROR_INVALID_VALUE);
-    NULL_PTR_RETURN_MSG_OUTER(paramCount, RT_ERROR_INVALID_VALUE);
     COND_RETURN_WARN(funcHandle->GetKernelRegisterType() == RT_KERNEL_REG_TYPE_CPU, RT_ERROR_FEATURE_NOT_SUPPORT,
         "aicpu kernel not support.");
     COND_RETURN_AND_MSG_OUTER(!funcHandle->HasParamSummary(), RT_ERROR_INVALID_VALUE, ErrorCode::EE1001,
@@ -6231,9 +6229,6 @@ rtError_t ApiErrorDecorator::FunctionGetParamCount(const Kernel *funcHandle, siz
 rtError_t ApiErrorDecorator::FunctionGetParamInfo(const Kernel *funcHandle, size_t paramIndex,
                                                     size_t *paramOffset, size_t *paramSize)
 {
-    NULL_PTR_RETURN_MSG_OUTER(funcHandle, RT_ERROR_INVALID_VALUE);
-    COND_RETURN_OUT_ERROR_MSG_CALL((paramOffset == nullptr) && (paramSize == nullptr),
-        RT_ERROR_INVALID_VALUE, "paramOffset and paramSize can not be nullptr at the same time.");
     COND_RETURN_WARN(funcHandle->GetKernelRegisterType() == RT_KERNEL_REG_TYPE_CPU, RT_ERROR_FEATURE_NOT_SUPPORT,
         "aicpu kernel not support.");
     COND_RETURN_AND_MSG_OUTER(!funcHandle->HasParamSummary(), RT_ERROR_INVALID_VALUE, ErrorCode::EE1001,

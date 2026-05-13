@@ -8562,29 +8562,33 @@ TEST_F(UTEST_ACL_Runtime, aclrtFunctionGetParamCount_FuncNullptrTest)
 {
     size_t paramCount = 0;
     
-    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtFunctionGetParamCount(nullptr, _))
-        .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
     aclError ret = aclrtFunctionGetParamCount(nullptr, &paramCount);
-    EXPECT_NE(ret, ACL_SUCCESS);
+    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
 
 TEST_F(UTEST_ACL_Runtime, aclrtFunctionGetParamCount_ParamCountNullptrTest)
 {
     void *func = (void *)0x01;
     
-    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtFunctionGetParamCount(_, nullptr))
-        .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
     aclError ret = aclrtFunctionGetParamCount(func, nullptr);
-    EXPECT_NE(ret, ACL_SUCCESS);
+    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
 
-TEST_F(UTEST_ACL_Runtime, aclrtFunctionGetParamInfo_ParamNullptrTest)
+TEST_F(UTEST_ACL_Runtime, aclrtFunctionGetParamInfo_FuncNullptrTest)
+{
+    size_t paramIndex = 0;
+    size_t paramOffset = 0;
+    size_t paramSize = 0;
+    
+    aclError ret = aclrtFunctionGetParamInfo(nullptr, paramIndex, &paramOffset, &paramSize);
+    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtFunctionGetParamInfo_BothOutputNullptrTest)
 {
     void *func = (void *)0x01;
     size_t paramIndex = 0;
     
-    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtFunctionGetParamInfo(_, _, nullptr, nullptr))
-        .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
     aclError ret = aclrtFunctionGetParamInfo(func, paramIndex, nullptr, nullptr);
-    EXPECT_NE(ret, ACL_SUCCESS);
+    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
