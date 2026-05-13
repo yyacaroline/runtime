@@ -5113,7 +5113,7 @@ void Runtime::ReportPageFaultProc(void)
             const rtError_t error = NpuDriver::GetPageFaultCount(device->Id_(), &value);
             if (error == RT_ERROR_FEATURE_NOT_SUPPORT) {
                 pageFaultSupportFlag_ = false;
-                RT_LOG(RT_LOG_EVENT, "Get page fault count does not support.");
+                RT_LOG(RT_LOG_EVENT, "pageFaultSupportFlag_=%d.", pageFaultSupportFlag_);
                 return;
             } else if ((error == RT_ERROR_NONE) && (value != 0) && (device->GetPageFaultBaseCnt() == 0)) {
                 device->SetPageFaultBaseCnt(value);

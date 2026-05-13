@@ -5051,3 +5051,13 @@ TEST_F(DavidTaskTest, LoadArgsInfoForAicpuKernelTask_LoadFailed)
     
     TaskUnInitProc(&kernTask);
 }
+
+TEST_F(DavidTaskTest, GetPageFaultCount_stub_no_support)
+{
+    MOCKER(NpuDriver::GetPageFaultCount)
+        .stubs()
+        .will(returnValue(RT_ERROR_FEATURE_NOT_SUPPORT));
+    Runtime* rtInstance = (Runtime*)Runtime::Instance();
+    rtInstance->ReportPageFaultProc();
+    EXPECT_EQ(rtInstance->pageFaultSupportFlag_, false);
+}
