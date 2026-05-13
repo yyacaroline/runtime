@@ -575,6 +575,7 @@ macro(add_runtime_v200_library target_name)
         -fno-common
         -fno-strict-aliasing
         $<$<STREQUAL:${CMAKE_CXX_COMPILER_VERSION},7.3.0>:-Werror>
+        -Werror=missing-field-initializers
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wextra>
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )

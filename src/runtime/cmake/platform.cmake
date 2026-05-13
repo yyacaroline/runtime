@@ -103,6 +103,7 @@ macro(runtime_platform_910B_obj target_name)
             -fno-common
             -fno-strict-aliasing
             -Werror
+            -Werror=missing-field-initializers
             -Wextra
             $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -135,6 +136,7 @@ macro(runtime_platform_kirin_obj target_name)
             -fno-common
             -fno-strict-aliasing
             -Werror
+            -Werror=missing-field-initializers
             -Wextra
             $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -180,6 +182,7 @@ macro(runtime_platform_others_obj target_name)
             -fno-common
             -fno-strict-aliasing
             -Werror
+            -Werror=missing-field-initializers
             -Wextra
             $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -211,6 +214,7 @@ target_compile_options(runtime_platform_tiny PRIVATE
         -fno-common
         -fno-strict-aliasing
         -Werror
+        -Werror=missing-field-initializers
         -Wextra
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
 )

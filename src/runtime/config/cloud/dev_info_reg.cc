@@ -15,16 +15,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t CHIP_CLOUD_SOC_INFO[] = {
-    {CHIP_CLOUD, "Ascend910A"},
-    {CHIP_CLOUD, "Ascend910B"},
-    {CHIP_CLOUD, "Ascend910ProA"},
-    {CHIP_CLOUD, "Ascend910ProB"},
-    {CHIP_CLOUD, "Ascend910PremiumA"}
-};
-
-BATCH_REGISTER_SOC_INFO(CHIP_CLOUD_SOC_INFO, sizeof(CHIP_CLOUD_SOC_INFO) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_CLOUD, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_CLOUD_FEATURE{

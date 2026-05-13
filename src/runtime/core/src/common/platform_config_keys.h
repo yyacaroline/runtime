@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -8,17 +8,18 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef CCE_RUNTIME_SOC_INFO_H
-#define CCE_RUNTIME_SOC_INFO_H
-#include <cstdint>
-#include "base.hpp"
-#include "driver/ascend_hal.h"
-#include "thread_local_container.hpp"
+#ifndef CCE_RUNTIME_PLATFORM_CONFIG_KEYS_H
+#define CCE_RUNTIME_PLATFORM_CONFIG_KEYS_H
 
 namespace cce {
 namespace runtime {
-rtError_t GetChipTypeFromPlatform(const char_t* const socName, rtChipType_t& chipType);
-rtError_t GetNpuArchByName(const char_t* const socName, int32_t* hardwareNpuArch);
-}
-}
-#endif
+namespace platform_config {
+constexpr const char *kVersionSection = "version";
+constexpr const char *kSocInfoSection = "SoCInfo";
+constexpr const char *kNpuArchField = "NpuArch";
+constexpr const char *kChipTypeField = "Chip_type";
+}  // namespace platform_config
+}  // namespace runtime
+}  // namespace cce
+
+#endif  // CCE_RUNTIME_PLATFORM_CONFIG_KEYS_H

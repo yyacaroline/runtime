@@ -60,7 +60,7 @@ protected:
     virtual void SetUp()
     {
         GlobalMockObject::verify();
-        (void)rtSetSocVersion("Ascend310");
+        (void)rtSetSocVersion("Ascend910A");
         ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
         rt_ = const_cast<Runtime *>(Runtime::Instance());
         EXPECT_NE(rt_, nullptr);

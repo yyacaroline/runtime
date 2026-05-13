@@ -9,6 +9,7 @@
  */
 
 #include "ini_parse_utils.h"
+#include "platform_config_keys.h"
 
 #include <cinttypes>
 #include <string>
@@ -34,9 +35,6 @@ constexpr StreamFieldConfig kStreamFieldConfigs[] = {
     {"huge_stream_depth", &RtIniAttributes::hugeStreamDepth},
 };
 
-constexpr const char *SOC_INFO_SECTION = "SoCInfo";
-constexpr const char *VERSION_SECTION = "version";
-constexpr const char *NPU_ARCH_FIELD = "NpuArch";
 } // namespace
 
 static int32_t ReadIniUint32(
@@ -89,7 +87,7 @@ static void GetStreamSpecFromIniFile(const std::string& socVersion, RtIniAttribu
 {
     for (const auto& fieldConfig : kStreamFieldConfigs) {
         uint32_t value = 0U;
-        const int32_t ret = ReadIniUint32(socVersion, SOC_INFO_SECTION, fieldConfig.fieldName, value);
+        const int32_t ret = ReadIniUint32(socVersion, platform_config::kSocInfoSection, fieldConfig.fieldName, value);
         if (ret == RT_ERROR_NOT_FOUND) {
             continue;
         }
@@ -112,11 +110,12 @@ static void GetStreamSpecFromIniFile(const std::string& socVersion, RtIniAttribu
 static void GetArchInfoFromIniFile(const std::string& socVersion, RtIniAttributes& iniAttrs)
 {
     int64_t npuArch = 0;
-    const int32_t ret = ReadIniInt64(socVersion, VERSION_SECTION, NPU_ARCH_FIELD, npuArch);
+    const int32_t ret = ReadIniInt64(socVersion, platform_config::kVersionSection, platform_config::kNpuArchField,
+        npuArch);
     if (ret == RT_ERROR_NOT_FOUND) {
         RT_LOG(RT_LOG_WARNING,
             "GetSocSpec not found for socVersion[%s], section[%s], field[%s], keep default npuArch.",
-            socVersion.c_str(), VERSION_SECTION, NPU_ARCH_FIELD);
+            socVersion.c_str(), platform_config::kVersionSection, platform_config::kNpuArchField);
         return;
     }
     if (ret != RT_ERROR_NONE) {

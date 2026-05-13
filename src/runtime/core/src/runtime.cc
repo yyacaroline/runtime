@@ -647,20 +647,11 @@ rtError_t Runtime::GetSocVersionByHardwareVer(int64_t hardwareVersion, int64_t a
         case CHIP_610LITE:
             socVersion_ = "Ascend610Lite";
             break;
-        case CHIP_MC62CM12A:
-            socVersion_ = "MC62CM12AA";
-            break;
-        case CHIP_MC32DM11A:
-            socVersion_ = "MC32DM11AA";
-            break;
         case CHIP_X90:
             socVersion_ = "KirinX90";
             break;
         case CHIP_9030:
             socVersion_ = "Kirin9030";
-            break;
-        case CHIP_MINI:
-            socVersion_ = "Ascend310";
             break;
         default:
             socVersion_ = "";
@@ -680,16 +671,17 @@ rtError_t Runtime::InitSocVersionAndChipType(const uint32_t deviceId)
             return RT_GET_DRV_ERRCODE(drvRet);
         }
 
-        if (drvRet == DRV_ERROR_NONE) {
-            rtSocInfo_t info = {CHIP_END, nullptr};
-            const rtError_t ret = DevInfoManage::Instance().GetDevInfo(socVersion, info);
-            if (ret == RT_ERROR_NONE) {
-                chipType_ = info.chipType;
-                socVersion_ = socVersion;
-                RT_LOG(RT_LOG_INFO, "socVersion=%s, chipType=%d", socVersion_.c_str(), chipType_);
-                return RT_ERROR_NONE;
+        if ((drvRet == DRV_ERROR_NONE) && (socVersion[0] != '\0')) {
+            rtChipType_t chipType = CHIP_END;
+            const rtError_t ret = GetChipTypeFromPlatform(socVersion, chipType);
+            if (ret != RT_ERROR_NONE) {
+                RT_LOG(RT_LOG_ERROR, "Get chipType by socVersion=%s from platform failed.", socVersion);
+                return ret;
             }
-            RT_LOG(RT_LOG_INFO, "not find socVersion=%s in DEV_INFO", socVersion);
+            chipType_ = chipType;
+            socVersion_ = socVersion;
+            RT_LOG(RT_LOG_INFO, "socVersion=%s, chipType=%d", socVersion_.c_str(), chipType_);
+            return RT_ERROR_NONE;
         }
     }
     RT_LOG(RT_LOG_INFO, "drv_ret=%d", drvRet);

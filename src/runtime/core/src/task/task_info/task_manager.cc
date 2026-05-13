@@ -1258,8 +1258,7 @@ void TaskFuncReg(void)
     static const std::vector<rtChipType_t> chipTypes = {
         CHIP_MINI, CHIP_CLOUD, CHIP_ADC, CHIP_LHISI, CHIP_DC, CHIP_910_B_93,
         CHIP_NO_DEVICE, CHIP_MINI_V3, CHIP_ASCEND_031, CHIP_NANO, CHIP_RESERVED,
-        CHIP_AS31XM1, CHIP_610LITE, CHIP_CLOUD_V3, CHIP_BS9SX1A,
-        CHIP_X90, CHIP_9030, CHIP_XPU
+        CHIP_AS31XM1, CHIP_610LITE, CHIP_CLOUD_V3, CHIP_BS9SX1A, CHIP_XPU
     };
 
     RegTaskToCommandFunc(chipTypes);

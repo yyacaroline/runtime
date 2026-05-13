@@ -6693,7 +6693,7 @@ TEST_F(ApiTest, rtModelCheckCompatibility_socVersion)
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
 
     error = rtModelCheckCompatibility("Ascend910A", "10");
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    EXPECT_EQ(error, RT_ERROR_NONE);
  
     // restore all type
     rtInstance->SetChipType(oriChipType);

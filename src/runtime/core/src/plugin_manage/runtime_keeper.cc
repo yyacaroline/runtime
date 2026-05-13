@@ -46,6 +46,17 @@ Runtime *Runtime::runtime_ = nullptr;
 static bool g_isRuntimeKeeperExiting = false;
 static RuntimeKeeper g_runtimeKeeper;
 
+/**
+ * 获取设备硬件版本信息
+ * 
+ * 在无 NPU 卡的服务器上：
+ * - 不安装驱动包，hal 等驱动接口在 devlib 中提供（打桩处理）
+ * - 直接返回 0（成功），但硬件版本为无效值
+ * - 所有出参一定要有默认无效值
+ * 
+ * @param hwVersion 硬件版本输出参数（必须初始化为无效值）
+ * @return rtError_t 错误码
+ */
 rtError_t GetDeviceType(int64_t *hwVersion)
 {
     int64_t hardwareVersion = RTS_INVALID_HARDWARE_VERSION;

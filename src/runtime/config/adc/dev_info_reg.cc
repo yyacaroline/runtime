@@ -14,15 +14,6 @@
 #include "task_base.hpp"
 namespace cce {
 namespace runtime {
-static constexpr rtSocInfo_t CHIP_ADC_SOC_INFO[] = {
-    {CHIP_ADC, "Ascend610"},
-    {CHIP_ADC, "BS9SX1AA"},
-    {CHIP_ADC, "BS9SX1AB"},
-    {CHIP_ADC, "BS9SX1AC"},
-};
-
-BATCH_REGISTER_SOC_INFO(CHIP_ADC_SOC_INFO, sizeof(CHIP_ADC_SOC_INFO) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_ADC, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_ADC_FEATURE{

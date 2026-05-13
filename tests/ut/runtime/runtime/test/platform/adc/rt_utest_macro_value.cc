@@ -52,8 +52,8 @@ TEST_F(UpdateDevPropertiesValueTest, UpdateDevPropertiesValue)
     EXPECT_EQ(props.expandStreamAdditionalSqeNum, 0U);
     EXPECT_EQ(props.rsvAicpuStreamNum, 0U);
     EXPECT_EQ(props.maxPhysicalStreamNum, 255U);
-    EXPECT_EQ(props.maxAllocStreamNum, 255U);
-    EXPECT_EQ(props.rtsqDepth, 4096U);
-    EXPECT_EQ(props.maxTaskNumPerStream, 1018U);
+    EXPECT_EQ(props.maxAllocStreamNum, 512U);
+    EXPECT_EQ(props.rtsqDepth, 2048U);
+    EXPECT_EQ(props.maxTaskNumPerStream, 2048U);
     EXPECT_EQ(props.rtsqReservedTaskNum, 0U);
 }

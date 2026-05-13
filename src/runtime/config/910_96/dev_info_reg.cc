@@ -17,12 +17,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t SOC_INFO_910_96[] = {
-    {CHIP_CLOUD_V5, "Ascend910_5591"},
-};
-
-BATCH_REGISTER_SOC_INFO(SOC_INFO_910_96, sizeof(SOC_INFO_910_96) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_CLOUD_V5, "libruntime_v200.so");
 
 const std::unordered_set<RtOptionalFeatureType> CHIP_CLOUD_V5_FEATURE{

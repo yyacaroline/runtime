@@ -12,6 +12,7 @@
 #include "dev_info_manage.h"
 #include "soc_info.h"
 #include "platform_manager_v2.h"
+#include "feature_type.h"
 
 using namespace testing;
 using namespace cce::runtime;
@@ -46,23 +47,13 @@ TEST_F(DevInfoManageTest, DevInfoManageDestroy)
     EXPECT_EQ(ret, false);
     ret = info.IsSupportChipFeature(CHIP_910_B_93, RtOptionalFeatureType::RT_FEATURE_DEVICE_SPM_POOL);
     EXPECT_EQ(ret, false);
-    rtSocInfo_t soc;
-    ret = info.RegisterSocInfo(soc);
-    EXPECT_EQ(ret, false);
-    rtSocInfo_t soc2[2];
-    ret = info.BatchRegSocInfo(soc2, 2);
-    EXPECT_EQ(ret, false);
-    rtError_t error = info.GetSocInfo(nullptr, soc);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
     std::array<bool, FEATURE_MAX_VALUE> tmp{false};
-    error = info.GetChipFeatureSet(CHIP_910_B_93, tmp);
+    rtError_t error = info.GetChipFeatureSet(CHIP_910_B_93, tmp);
     EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
     ret = info.RegPlatformSoNameInfo(CHIP_910_B_93, "lib");
     EXPECT_EQ(ret, false);
     std::string str;
     error = info.GetPlatformSoName(CHIP_910_B_93, str);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-    error = info.GetSocInfo(0, soc);
     EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
 }
 
@@ -78,36 +69,28 @@ TEST_F(DevInfoManageTest, DevInfoManagePlatform)
     EXPECT_EQ(soName, std::string("libruntime.so"));
 }
 
-TEST_F(DevInfoManageTest, DevInfoManageDevInfo)
+TEST_F(DevInfoManageTest, GetChipTypeFromPlatform)
 {
-    DevInfoManage info;
-    rtSocInfo_t i = {CHIP_910_B_93, "Ascend910_9362"};
-    bool ret = info.RegisterDevInfo(i);
-    EXPECT_EQ(ret, true);
-    std::string soName;
-    rtSocInfo_t out;
-    rtError_t result = info.GetDevInfo("Ascend910_9362", out);
+    rtChipType_t chipType = CHIP_END;
+    rtError_t result = GetChipTypeFromPlatform("Ascend910A", chipType);
     EXPECT_EQ(result, RT_ERROR_NONE);
-    EXPECT_EQ(out.chipType, CHIP_910_B_93);
-}
+    EXPECT_EQ(chipType, CHIP_CLOUD);
 
-TEST_F(DevInfoManageTest, DevInfoManageSocInfo)
-{
-    DevInfoManage info;
-    rtSocInfo_t s = {CHIP_910_B_93, "Ascend910B1"};
-    bool ret = info.RegisterSocInfo(s);
-    EXPECT_EQ(ret, true);
-    rtSocInfo_t out;
-    rtError_t result = info.GetSocInfo("Ascend910B1", out);
+    result = GetChipTypeFromPlatform("Ascend610Lite", chipType);
     EXPECT_EQ(result, RT_ERROR_NONE);
-    EXPECT_EQ(out.chipType, CHIP_910_B_93);
-}
+    EXPECT_EQ(chipType, CHIP_610LITE);
 
-TEST_F(DevInfoManageTest, GetSocInfo)
-{
-    rtSocInfo_t s = {CHIP_910_B_93, "Ascend910_9391"};
-    rtError_t result = GetSocInfoFromRuntimeByName("Ascend910_9372", s);
+    result = GetChipTypeFromPlatform("BS9SX1AA", chipType);
     EXPECT_EQ(result, RT_ERROR_NONE);
+    EXPECT_EQ(chipType, CHIP_ADC);
+
+    result = GetChipTypeFromPlatform("KirinX90", chipType);
+    EXPECT_EQ(result, RT_ERROR_NONE);
+    EXPECT_EQ(chipType, CHIP_X90);
+
+    result = GetChipTypeFromPlatform("Kirin9030", chipType);
+    EXPECT_EQ(result, RT_ERROR_NONE);
+    EXPECT_EQ(chipType, CHIP_9030);
 }
 
 TEST_F(DevInfoManageTest, GetNpuArchByName)
@@ -123,109 +106,44 @@ TEST_F(DevInfoManageTest, GetNpuArchByName)
     EXPECT_EQ(result, RT_ERROR_INVALID_VALUE);
 }
 
-void test_soc_info_by_soc_name(const char_t *const socName)
+TEST_F(DevInfoManageTest, GetPlatformInfoWithNullInput)
 {
-    rtSocInfo_t socInfo = {CHIP_END, nullptr};
-    rtError_t result = RT_ERROR_NONE;
- 
-    // get soc info by name
-    result = DevInfoManage::Instance().GetSocInfo(socName, socInfo);
- 
-    EXPECT_EQ(result, RT_ERROR_NONE);
-    EXPECT_EQ(socInfo.chipType, CHIP_DAVID);
-    EXPECT_EQ(strcmp(socInfo.socName, socName), 0);
+    rtChipType_t chipType = CHIP_END;
+    int32_t hardwareNpuArch = 0;
+    EXPECT_EQ(GetChipTypeFromPlatform(nullptr, chipType), RT_ERROR_INVALID_VALUE);
+    EXPECT_EQ(GetNpuArchByName(nullptr, &hardwareNpuArch), RT_ERROR_INVALID_VALUE);
+    EXPECT_EQ(GetNpuArchByName("Ascend910B1", nullptr), RT_ERROR_INVALID_VALUE);
 }
- 
-TEST_F(DevInfoManageTest, GetSocInfo_David_V120_test)
-{
-    const char_t *const socName_957c = "Ascend950PR_957c";
-    test_soc_info_by_soc_name(socName_957c);
- 
-    const char_t *const socName_95a1 = "Ascend950DT_95A1";
-    test_soc_info_by_soc_name(socName_95a1);
- 
-    const char_t *const socName_95a2 = "Ascend950DT_95A2";
-    test_soc_info_by_soc_name(socName_95a2);
- 
-    const char_t *const socName_9595 = "Ascend950DT_9595";
-    test_soc_info_by_soc_name(socName_9595);
 
-    const char_t *const socName_9596 = "Ascend950DT_9596";
-    test_soc_info_by_soc_name(socName_9596);
- 
-    const char_t *const socName_9585 = "Ascend950DT_9585";
-    test_soc_info_by_soc_name(socName_9585);
- 
-    const char_t *const socName_9586 = "Ascend950DT_9586";
-    test_soc_info_by_soc_name(socName_9586);
- 
-    const char_t *const socName_9583 = "Ascend950DT_9583";
-    test_soc_info_by_soc_name(socName_9583);
- 
-    const char_t *const socName_9571 = "Ascend950DT_9571";
-    test_soc_info_by_soc_name(socName_9571);
- 
-    const char_t *const socName_9573 = "Ascend950DT_9573";
-    test_soc_info_by_soc_name(socName_9573);
-}
- 
-void test_dev_info_by_soc_name(const char_t *const socName)
+TEST_F(DevInfoManageTest, GetChipTypeFromPlatformInvalid)
 {
-    rtSocInfo_t devInfo = {CHIP_END, nullptr};
- 
-    rtError_t result = DevInfoManage::Instance().GetDevInfo(socName, devInfo);
- 
-    EXPECT_EQ(result, RT_ERROR_NONE);
-    EXPECT_EQ(devInfo.chipType, CHIP_DAVID);
-    EXPECT_EQ(strcmp(devInfo.socName, socName), 0);
-}
- 
-TEST_F(DevInfoManageTest, get_david_v120_dev_info_test)
-{
-    const char_t *const socName_957c = "Ascend950PR_957c";
-    test_dev_info_by_soc_name(socName_957c);
- 
-    const char_t *const socName_95a1 = "Ascend950DT_95A1";
-    test_dev_info_by_soc_name(socName_95a1);
- 
-    const char_t *const socName_95a2 = "Ascend950DT_95A2";
-    test_dev_info_by_soc_name(socName_95a2);
- 
-    const char_t *const socName_9595 = "Ascend950DT_9595";
-    test_dev_info_by_soc_name(socName_9595);
- 
-    const char_t *const socName_9596 = "Ascend950DT_9596";
-    test_dev_info_by_soc_name(socName_9596);
- 
-    const char_t *const socName_9585 = "Ascend950DT_9585";
-    test_dev_info_by_soc_name(socName_9585);
- 
-    const char_t *const socName_9586 = "Ascend950DT_9586";
-    test_dev_info_by_soc_name(socName_9586);
- 
-    const char_t *const socName_9583 = "Ascend950DT_9583";
-    test_dev_info_by_soc_name(socName_9583);
- 
-    const char_t *const socName_9571 = "Ascend950DT_9571";
-    test_dev_info_by_soc_name(socName_9571);
- 
-    const char_t *const socName_9573 = "Ascend950DT_9573";
-    test_dev_info_by_soc_name(socName_9573);
+    rtChipType_t chipType = CHIP_END;
+    rtError_t result = GetChipTypeFromPlatform("ChipTypeMissing", chipType);
+    EXPECT_EQ(result, RT_ERROR_INVALID_VALUE);
+
+    result = GetChipTypeFromPlatform("ChipTypeInvalid", chipType);
+    EXPECT_EQ(result, RT_ERROR_INVALID_VALUE);
+
+    result = GetChipTypeFromPlatform("ChipTypeOutOfRange", chipType);
+    EXPECT_EQ(result, RT_ERROR_INVALID_VALUE);
+
+    result = GetChipTypeFromPlatform("ChipTypeQueryError", chipType);
+    EXPECT_EQ(result, RT_ERROR_INVALID_VALUE);
 }
 
 TEST_F(DevInfoManageTest, DevInfoManageSocInfoKirinX90)
 {
     DevInfoManage info;
-    rtSocInfo_t out;
-    rtError_t result = info.GetSocInfo("KirinX90", out);
+    std::string soName;
+    rtError_t result = info.GetPlatformSoName(CHIP_X90, soName);
     EXPECT_NE(result, RT_ERROR_NONE);
 }
 
 TEST_F(DevInfoManageTest, DevInfoManageDevInfoKirinX90)
 {
     DevInfoManage info;
-    rtSocInfo_t out;
-    rtError_t result = info.GetDevInfo("KirinX90", out);
+    DevProperties out;
+    rtError_t result = info.GetDevProperties(CHIP_X90, out);
     EXPECT_NE(result, RT_ERROR_NONE);
 }
 
@@ -247,16 +165,16 @@ TEST_F(DevInfoManageTest, DevInfoManageDevPropertiesKirinX90)
 TEST_F(DevInfoManageTest, DevInfoManageSocInfoKirin9030)
 {
     DevInfoManage info;
-    rtSocInfo_t out;
-    rtError_t result = info.GetSocInfo("Kirin9030", out);
+    std::string soName;
+    rtError_t result = info.GetPlatformSoName(CHIP_9030, soName);
     EXPECT_NE(result, RT_ERROR_NONE);
 }
 
 TEST_F(DevInfoManageTest, DevInfoManageDevInfoKirin9030)
 {
     DevInfoManage info;
-    rtSocInfo_t out;
-    rtError_t result = info.GetDevInfo("Kirin9030", out);
+    DevProperties out;
+    rtError_t result = info.GetDevProperties(CHIP_9030, out);
     EXPECT_NE(result, RT_ERROR_NONE);
 }
 
@@ -273,4 +191,52 @@ TEST_F(DevInfoManageTest, DevInfoManageDevPropertiesKirin9030)
     DevProperties out;
     rtError_t result = info.GetDevProperties(CHIP_9030, out);
     EXPECT_NE(result, RT_ERROR_NONE);
+}
+
+TEST_F(DevInfoManageTest, DevInfoManageChipFeatureAllFalseKirinX90)
+{
+    DevInfoManage info;
+    std::array<bool, FEATURE_MAX_VALUE> features;
+    rtError_t result = info.GetChipFeatureSet(CHIP_X90, features);
+    EXPECT_EQ(result, RT_ERROR_NONE);
+
+    for (uint32_t i = 0; i < FEATURE_MAX_VALUE; i++) {
+        EXPECT_EQ(features[i], false) << "Feature[" << i << "] should be false for CHIP_X90";
+    }
+}
+
+TEST_F(DevInfoManageTest, DevInfoManageChipFeatureAllFalseKirin9030)
+{
+    DevInfoManage info;
+    std::array<bool, FEATURE_MAX_VALUE> features;
+    rtError_t result = info.GetChipFeatureSet(CHIP_9030, features);
+    EXPECT_EQ(result, RT_ERROR_NONE);
+
+    for (uint32_t i = 0; i < FEATURE_MAX_VALUE; i++) {
+        EXPECT_EQ(features[i], false) << "Feature[" << i << "] should be false for CHIP_9030";
+    }
+}
+
+TEST_F(DevInfoManageTest, DevInfoManageChipFeatureExtSegmentOutOfRange)
+{
+    DevInfoManage info;
+    constexpr rtChipType_t EXT_CHIP_OUT_OF_RANGE = static_cast<rtChipType_t>(CHIP_EXT_END + 5);
+
+    std::array<bool, FEATURE_MAX_VALUE> features;
+    rtError_t result = info.GetChipFeatureSet(EXT_CHIP_OUT_OF_RANGE, features);
+    EXPECT_EQ(result, RT_ERROR_INVALID_VALUE) << "Ext chip out of range should return error";
+}
+
+TEST_F(DevInfoManageTest, DevInfoManageRegChipFeatureExtSegmentOutOfRange)
+{
+    DevInfoManage info;
+    constexpr rtChipType_t TEST_EXT_CHIP_OUT_OF_RANGE = static_cast<rtChipType_t>(CHIP_EXT_END + 1);
+
+    std::unordered_set<RtOptionalFeatureType> featureSet = {
+        RtOptionalFeatureType::RT_FEATURE_DEVICE_SPM_POOL,
+        RtOptionalFeatureType::RT_FEATURE_DEVICE_P2P
+    };
+
+    bool ret = info.RegChipFeatureSet(TEST_EXT_CHIP_OUT_OF_RANGE, featureSet);
+    EXPECT_EQ(ret, false) << "Register ext chip out of range should fail";
 }

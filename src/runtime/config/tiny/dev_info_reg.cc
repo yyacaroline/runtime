@@ -15,12 +15,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t CHIP_5612_SOC_INFO[] = {
-    {CHIP_ASCEND_031, "Ascend031"},
-};
-
-BATCH_REGISTER_SOC_INFO(CHIP_5612_SOC_INFO, sizeof(CHIP_5612_SOC_INFO) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_ASCEND_031, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_5612_FEATURE{

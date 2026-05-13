@@ -1023,36 +1023,30 @@ TEST_F(ApiImplTest, rtSetSocVersionFeInitFailed)
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     rtChipType_t chipType = rtInstance->GetChipType();
 
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0xF));
     GlobalContainer::SetHardwareSocVersion("");
-    rtError_t error = rtSetSocVersion("Ascend610Lite");
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    rtError_t error = rtSetSocVersion("ChipTypeQueryError");
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     rtInstance->SetChipType(chipType);
     GlobalContainer::SetRtChipType(chipType);
+    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(ApiImplTest, rtSetSocVersionFeGetPlatformInfoFailed)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     rtChipType_t chipType = rtInstance->GetChipType();
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().will(returnValue(0xF));
     GlobalContainer::SetHardwareSocVersion("");
-    rtError_t error = rtSetSocVersion("Ascend610Lite");
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    rtError_t error = rtSetSocVersion("ChipTypeMissing");
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     rtInstance->SetChipType(chipType);
     GlobalContainer::SetRtChipType(chipType);
+    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(ApiImplTest, rtSetSocVersionFeGetPlatformInfoSuccess)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     rtChipType_t chipType = rtInstance->GetChipType();
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.chip_type = CHIP_CLOUD;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
     GlobalContainer::SetHardwareSocVersion("");
     rtError_t error = rtSetSocVersion("Ascend910A");
     EXPECT_EQ(error, RT_ERROR_NONE);
@@ -1064,17 +1058,12 @@ TEST_F(ApiImplTest, rtSetSocVersionFeGetPlatInfoInvalidChip)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     rtChipType_t chipType = rtInstance->GetChipType();
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.arch_type = -1;
-    platInfo.soc_info.chip_type = -1;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
     GlobalContainer::SetHardwareSocVersion("");
-    rtError_t error = rtSetSocVersion("Ascend910A");
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    rtError_t error = rtSetSocVersion("ChipTypeOutOfRange");
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     rtInstance->SetChipType(chipType);
     GlobalContainer::SetRtChipType(chipType);
+    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(ApiImplTest, rtSetSocVersionFeGetPlatInfoInvalidArch)
@@ -1082,17 +1071,12 @@ TEST_F(ApiImplTest, rtSetSocVersionFeGetPlatInfoInvalidArch)
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     rtChipType_t chipType = rtInstance->GetChipType();
     GlobalContainer::SetHardwareSocVersion("Ascend910A");
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.arch_type = ARCH_V100;
-    platInfo.soc_info.chip_type = CHIP_CLOUD;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
-    GlobalContainer::SetHardwareSocVersion("Ascend910A");
     rtError_t error = rtSetSocVersion("BS9SX1AA");
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     rtInstance->SetChipType(chipType);
     GlobalContainer::SetRtChipType(chipType);
+    GlobalContainer::SetHardwareSocVersion("");
+    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(ApiImplTest, SetIpcMemPid_01)

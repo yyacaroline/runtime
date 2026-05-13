@@ -11,6 +11,9 @@
 #include "platform/platform_info.h"
 #include "platform_manager_v2.h"
 #include "base.hpp"
+
+#include <map>
+
 bool g_init_platform_info_flag = true;
 bool g_get_platform_info_flag = true;
 
@@ -126,72 +129,187 @@ PlatformManagerV2 &PlatformManagerV2::Instance() {
   return platform_info;
 }
 
-int32_t stubPlatformManagerV2GetSocSpec(
-    const std::string& soc_version, const std::string& label, const std::string& key, std::string& value)
+namespace {
+using cce::runtime::RT_ERROR_INVALID_VALUE;
+using cce::runtime::RT_ERROR_NOT_FOUND;
+
+using StubFieldMap = std::map<std::string, std::string>;
+
+struct StubVersionInfo {
+    const char* chipType;
+    const char* npuArch;
+};
+
+const std::map<std::string, StubVersionInfo> kVersionInfoMap = {
+    {"Ascend910A", {"1", "1001"}},        {"Ascend910", {"1", "1001"}},   {"Ascend910B", {"1", "1001"}},
+    {"Ascend910B1", {"5", "2201"}},       {"Ascend910B2", {"5", "2201"}}, {"Ascend310B1", {"7", "3002"}},
+    {"Ascend310P", {"4", "2002"}},        {"Ascend310P1", {"4", "2002"}}, {"Ascend310P3", {"4", "2002"}},
+    {"Ascend310P5", {"4", "2002"}},       {"Ascend610", {"2", "2001"}},   {"BS9SX1AA", {"2", "2001"}},
+    {"BS9SX1AB", {"2", "2001"}},          {"BS9SX1AC", {"2", "2001"}},    {"AS31XM1X", {"11", "3001"}},
+    {"Ascend610Lite", {"12", "3101"}},    {"MC62CM12AA", {"17", "3511"}}, {"MC32DM11AA", {"18", "3512"}},
+    {"Ascend950PR_9599", {"15", "3510"}}, {"KirinX90", {"200", "3003"}},  {"Kirin9030", {"201", "3006"}},
+};
+
+const std::map<std::string, StubFieldMap> kSocInfoMap = {
+    {"Ascend610Lite",
+     {{"normal_stream_num", "512"},
+      {"normal_stream_depth", "2048"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "8"},
+      {"vector_core_cnt", "8"},
+      {"ai_cpu_cnt", "4"}}},
+    {"BS9SX1AA",
+     {{"normal_stream_num", "512"},
+      {"normal_stream_depth", "2048"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "8"},
+      {"vector_core_cnt", "0"},
+      {"ai_cpu_cnt", "4"}}},
+    {"BS9SX1AB",
+     {{"normal_stream_num", "512"},
+      {"normal_stream_depth", "2048"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "8"},
+      {"vector_core_cnt", "0"},
+      {"ai_cpu_cnt", "4"}}},
+    {"BS9SX1AC",
+     {{"normal_stream_num", "512"},
+      {"normal_stream_depth", "2048"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "8"},
+      {"vector_core_cnt", "0"},
+      {"ai_cpu_cnt", "4"}}},
+    {"AS31XM1X",
+     {{"normal_stream_num", "1024"},
+      {"normal_stream_depth", "2048"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "32"},
+      {"vector_core_cnt", "0"},
+      {"ai_cpu_cnt", "8"}}},
+    {"MC62CM12AA",
+     {{"normal_stream_num", "65535"},
+      {"normal_stream_depth", "4089"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "25"},
+      {"vector_core_cnt", "50"},
+      {"ai_cpu_cnt", "8"}}},
+    {"MC32DM11AA",
+     {{"normal_stream_num", "65535"},
+      {"normal_stream_depth", "4089"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "25"},
+      {"vector_core_cnt", "50"},
+      {"ai_cpu_cnt", "8"}}},
+    {"Ascend950PR_9599",
+     {{"normal_stream_num", "65535"},
+      {"normal_stream_depth", "2049"},
+      {"huge_stream_num", "0"},
+      {"huge_stream_depth", "0"},
+      {"ai_core_cnt", "36"},
+      {"vector_core_cnt", "72"},
+      {"ai_cpu_cnt", "8"}}},
+    {"LLT_ParseIniFile_Success",
+     {{"normal_stream_num", "64"},
+      {"normal_stream_depth", "8192"},
+      {"huge_stream_num", "16"},
+      {"huge_stream_depth", "4096"}}},
+};
+
+int32_t GetVersionSocSpec(const std::string& socVersion, const std::string& key, std::string& value)
 {
-    if (soc_version == "LLT_ParseIniFile_Success" && label == "SoCInfo") {
-        if (key == "normal_stream_num") {
-            value = "64";
-        } else if (key == "normal_stream_depth") {
-            value = "8192";
-        } else if (key == "huge_stream_num") {
-            value = "16";
-        } else if (key == "huge_stream_depth") {
-            value = "4096";
-        }
+    if ((socVersion == "ChipTypeMissing") && (key == "Chip_type")) {
+        return RT_ERROR_NOT_FOUND;
+    }
+    if ((socVersion == "ChipTypeInvalid") && (key == "Chip_type")) {
+        value = "invalid";
         return RT_ERROR_NONE;
-    } else if (soc_version == "LLT_ParseIniFile_Mixed" && label == "SoCInfo") {
+    }
+    if ((socVersion == "ChipTypeOutOfRange") && (key == "Chip_type")) {
+        value = "99";
+        return RT_ERROR_NONE;
+    }
+    if ((socVersion == "ChipTypeQueryError") && (key == "Chip_type")) {
+        return RT_ERROR_INVALID_VALUE;
+    }
+
+    const auto versionIter = kVersionInfoMap.find(socVersion);
+    if (versionIter == kVersionInfoMap.end()) {
+        return RT_ERROR_NOT_FOUND;
+    }
+
+    if (key == "Chip_type") {
+        value = versionIter->second.chipType;
+        return RT_ERROR_NONE;
+    }
+    if (key == "NpuArch") {
+        value = versionIter->second.npuArch;
+        return RT_ERROR_NONE;
+    }
+    return RT_ERROR_NOT_FOUND;
+}
+
+int32_t GetSoCInfoSocSpec(const std::string& socVersion, const std::string& key, std::string& value)
+{
+    if (socVersion == "LLT_ParseIniFile_Mixed") {
         if (key == "normal_stream_num") {
-            return cce::runtime::RT_ERROR_NOT_FOUND;
+            return RT_ERROR_NOT_FOUND;
         }
         if (key == "normal_stream_depth") {
             value = "invalid";
-            return 0U;
+            return RT_ERROR_NONE;
         }
         if (key == "huge_stream_num") {
             value = "4294967296";
-            return 0U;
+            return RT_ERROR_NONE;
         }
         if (key == "huge_stream_depth") {
             value = "256";
-            return 0U;
+            return RT_ERROR_NONE;
         }
-    } else if (soc_version == "LLT_ParseIniFile_QueryError" && label == "SoCInfo") {
+    }
+    if (socVersion == "LLT_ParseIniFile_QueryError") {
         if (key == "normal_stream_num") {
-            return cce::runtime::RT_ERROR_INVALID_VALUE;
+            return RT_ERROR_INVALID_VALUE;
         }
         value = "1024";
-        return 0U;
-    } else if (label == "SoCInfo") {
-        return cce::runtime::RT_ERROR_NOT_FOUND;
-    } else {
-        value = "test";
-        return 0U;
+        return RT_ERROR_NONE;
     }
+
+    const auto socInfoIter = kSocInfoMap.find(socVersion);
+    if (socInfoIter == kSocInfoMap.end()) {
+        return RT_ERROR_NOT_FOUND;
+    }
+
+    const auto fieldIter = socInfoIter->second.find(key);
+    if (fieldIter == socInfoIter->second.end()) {
+        return RT_ERROR_NOT_FOUND;
+    }
+    value = fieldIter->second;
+    return RT_ERROR_NONE;
+}
+} // namespace
+
+int32_t stubPlatformManagerV2GetSocSpec(
+    const std::string& soc_version, const std::string& label, const std::string& key, std::string& value)
+{
+    if (label == "version") {
+        return GetVersionSocSpec(soc_version, key, value);
+    }
+    if (label == "SoCInfo") {
+        return GetSoCInfoSocSpec(soc_version, key, value);
+    }
+    return cce::runtime::RT_ERROR_NOT_FOUND;
 }
 
 int32_t PlatformManagerV2::GetSocSpec(
     const std::string& soc_version, const std::string& label, const std::string& key, std::string& value)
 {
-  if (soc_version == "Ascend910B1" && label == "version" && key == "NpuArch") {
-    value = "2201";
-    return 0U;
-  } else if (soc_version == "Ascend950PR_9599" && label == "version" && key == "NpuArch") {
-    value = "3510";
-    return 0U;
-  } else if (soc_version == "Ascend310P5" && label == "version" && key == "NpuArch") {
-    value = "2002";
-    return 0U;
-  } else if (soc_version == "Ascend910A" && label == "version" && key == "NpuArch") {
-    value = "1001";
-    return 0U;
-  } else if (soc_version == "Ascend950PR_9599" && label == "SoCInfo" && key == "ai_core_cnt") {
-      value = "36";
-      return 0U;
-  } else if (soc_version == "Ascend950PR_9599" && label == "SoCInfo" && key == "ai_cpu_cnt") {
-      value = "8";
-      return 0U;
-  } else {
     return stubPlatformManagerV2GetSocSpec(soc_version, label, key, value);
-  }
 }

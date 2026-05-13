@@ -147,6 +147,7 @@ TEST_F(TaskTestV201L, Test_SetSocTypeByChipType)
     GlobalContainer::SetRtChipType(CHIP_MC32DM11A);
     rtError_t ret = rtInstance->GetSocVersionByHardwareVer(PLAT_COMBINE(ARCH_M510, CHIP_MC32DM11A, VER_NA), 0, 0);
     EXPECT_EQ(ret, RT_ERROR_NONE);
+    EXPECT_EQ(rtInstance->GetRawSocVersion(), "");
     rtInstance->SetChipType(oriChipType);
     GlobalContainer::SetRtChipType(oriChipType);
     rtInstance->SetSocVersion(oriSocVersion);

@@ -17,12 +17,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t CHIP_MC32DM11A_SOC_INFO[] = {
-    {CHIP_MC32DM11A, "MC32DM11AA"},
-};
-
-BATCH_REGISTER_SOC_INFO(CHIP_MC32DM11A_SOC_INFO, sizeof(CHIP_MC32DM11A_SOC_INFO) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_MC32DM11A, "libruntime_v201.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_MC32DM11A_FEATURE{

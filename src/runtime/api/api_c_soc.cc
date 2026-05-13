@@ -17,7 +17,6 @@
 #include "thread_local_container.hpp"
 #include "heterogenous.h"
 #include "soc_info.h"
-#include "dev_info_manage.h"
 
 using namespace cce::runtime;
 
@@ -83,29 +82,31 @@ VISIBILITY_DEFAULT
 rtError_t rtSetSocVersion(const char_t *ver)
 {
     PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(ver, RT_ERROR_INVALID_VALUE);
-    rtSocInfo_t socInfo = {CHIP_END, nullptr};
-    const rtError_t ret = GetSocInfoFromRuntimeByName(ver, socInfo);
+    rtChipType_t chipType = CHIP_END;
+    const rtError_t ret = GetChipTypeFromPlatform(ver, chipType);
     if (ret != RT_ERROR_NONE) {
         RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, "SoC version [%s] is invalid.", ver);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
     if (!GlobalContainer::GetHardwareSocVersion().empty() &&
-        (strcmp(GlobalContainer::GetHardwareSocVersion().c_str(), socInfo.socName)) != 0) {
-        RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, "The device has been set to real soc version %s, "
+        (strcmp(GlobalContainer::GetHardwareSocVersion().c_str(), ver) != 0)) {
+        RT_LOG_OUTER_MSG(
+            RT_INVALID_ARGUMENT_ERROR,
+            "The device has been set to real soc version %s, "
             "and a different soc version %s cannot be set."
             "The currently input SoC version (%s) does not match the NPU type.",
-            GlobalContainer::GetHardwareSocVersion().c_str(), socInfo.socName, ver);
+            GlobalContainer::GetHardwareSocVersion().c_str(), ver, ver);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
-    GlobalContainer::SetRtChipType(socInfo.chipType);
+    GlobalContainer::SetRtChipType(chipType);
     const std::string inputSocVersion = std::string(ver);
     GlobalContainer::SetUserSocVersion(inputSocVersion);
     GlobalContainer::SetSocVersion(inputSocVersion);
     const auto rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     rtInstance->SetIsUserSetSocVersion(true);
-    rtInstance->UpdateDevProperties(socInfo.chipType, inputSocVersion);
-    RT_LOG(RT_LOG_INFO, "soc version is %s, type=%d", ver, socInfo.chipType);
+    rtInstance->UpdateDevProperties(chipType, inputSocVersion);
+    RT_LOG(RT_LOG_INFO, "soc version is %s, type=%d", ver, chipType);
     return ACL_RT_SUCCESS;
 }
 

@@ -40,6 +40,11 @@ class RtMemoryApiTest : public testing::Test
 protected:
     static void SetUpTestCase()
     {
+        Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
+        rtInstance->SetIsUserSetSocVersion(false);
+        rtInstance->SetSocVersion("Ascend910B2");
+        GlobalContainer::SetRtChipType(CHIP_910_B_93);
+        GlobalContainer::SetSocVersion("Ascend910B2");
         GlobalContainer::SetHardwareSocVersion("Ascend910B2");
         RawDevice *rawDevice = new RawDevice(0);
         MOCKER_CPP_VIRTUAL(rawDevice, &RawDevice::SetTschVersionForCmodel).stubs().will(ignoreReturnValue());
@@ -53,7 +58,13 @@ protected:
 
     virtual void SetUp()
     {
-        (void)rtSetDevice(0);
+        Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
+        rtInstance->SetIsUserSetSocVersion(false);
+        rtInstance->SetSocVersion("Ascend910B2");
+        GlobalContainer::SetRtChipType(CHIP_910_B_93);
+        GlobalContainer::SetSocVersion("Ascend910B2");
+        GlobalContainer::SetHardwareSocVersion("Ascend910B2");
+        EXPECT_EQ(rtSetDevice(0), RT_ERROR_NONE);
         RawDevice *rawDevice = new RawDevice(0);
         MOCKER_CPP_VIRTUAL(rawDevice, &RawDevice::SetTschVersionForCmodel).stubs().will(ignoreReturnValue());
         delete rawDevice;
@@ -316,7 +327,7 @@ TEST_F(RtMemoryApiTest, rtsMallocHost_001)
     rtError_t error;
     Api *Api_= const_cast<Api *>(Runtime::runtime_->api_);
     ApiDecorator *apiDecorator_ = new ApiDecorator(Api_);
-    void * hostPtr;
+    void * hostPtr = nullptr;
     rtMallocConfig_t *malloCfg = (rtMallocConfig_t *)malloc(sizeof(rtMallocConfig_t));
     rtMallocAttribute_t* mallocAttrs = new rtMallocAttribute_t[1];
     malloCfg->numAttrs = 1;
@@ -347,7 +358,7 @@ TEST_F(RtMemoryApiTest, rtsMallocHost_002)
     rtError_t error;
     Api *Api_= const_cast<Api *>(Runtime::runtime_->api_);
     ApiDecorator *apiDecorator_ = new ApiDecorator(Api_);
-    void * hostPtr;
+    void * hostPtr = nullptr;
     rtMallocConfig_t *malloCfg = (rtMallocConfig_t *)malloc(sizeof(rtMallocConfig_t));
     rtMallocAttribute_t* mallocAttrs = new rtMallocAttribute_t[1];
     malloCfg->numAttrs = 1;
@@ -367,8 +378,10 @@ TEST_F(RtMemoryApiTest, rtsMallocHost_002)
     mallocAttrs[0].value.moduleId = 1;
     error = apiDecorator_->HostMallocWithCfg(&hostPtr, 60, malloCfg);
     EXPECT_EQ(error, RT_ERROR_NONE);
-    error = apiDecorator_->HostFree(hostPtr);
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    if (error == RT_ERROR_NONE) {
+        error = apiDecorator_->HostFree(hostPtr);
+        EXPECT_EQ(error, RT_ERROR_NONE);
+    }
 
     delete[] mallocAttrs;
     free(malloCfg);
@@ -380,7 +393,7 @@ TEST_F(RtMemoryApiTest, rtsMallocHost_003)
     rtError_t error;
     Api *Api_= const_cast<Api *>(Runtime::runtime_->api_);
     ApiDecorator *apiDecorator_ = new ApiDecorator(Api_);
-    void * hostPtr;
+    void * hostPtr = nullptr;
     rtMallocConfig_t *malloCfg = (rtMallocConfig_t *)malloc(sizeof(rtMallocConfig_t));
     rtMallocAttribute_t* mallocAttrs = new rtMallocAttribute_t[1];
     malloCfg->numAttrs = 1;
@@ -391,15 +404,19 @@ TEST_F(RtMemoryApiTest, rtsMallocHost_003)
     mallocAttrs[0].value.vaFlag = 0;
     error = apiDecorator_->HostMallocWithCfg(&hostPtr, 60, malloCfg);
     EXPECT_EQ(error, RT_ERROR_NONE);
-    error = apiDecorator_->HostFree(hostPtr);
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    if (error == RT_ERROR_NONE) {
+        error = apiDecorator_->HostFree(hostPtr);
+        EXPECT_EQ(error, RT_ERROR_NONE);
+    }
 
     // UVA类型，value设置为1，启用特性
     mallocAttrs[0].value.vaFlag = 1;
     error = apiDecorator_->HostMallocWithCfg(&hostPtr, 60, malloCfg);
     EXPECT_EQ(error, RT_ERROR_NONE);
-    error = apiDecorator_->HostFree(hostPtr);
-    EXPECT_EQ(error, RT_ERROR_NONE);
+    if (error == RT_ERROR_NONE) {
+        error = apiDecorator_->HostFree(hostPtr);
+        EXPECT_EQ(error, RT_ERROR_NONE);
+    }
 
     delete[] mallocAttrs;
     free(malloCfg);

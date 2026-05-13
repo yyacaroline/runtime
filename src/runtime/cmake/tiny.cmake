@@ -517,6 +517,7 @@ macro(add_runtime_common_library target_name)
         -fno-common
         -fno-strict-aliasing
         -Werror
+        -Werror=missing-field-initializers
         -Wextra
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -618,6 +619,7 @@ macro(add_runtime_api_library target_name)
         -fno-common
         -fno-strict-aliasing
         -Werror
+        -Werror=missing-field-initializers
         -Wextra
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -707,6 +709,7 @@ macro(add_runtime_v100_library target_name)
         -fno-common
         -fno-strict-aliasing
         $<$<STREQUAL:${CMAKE_CXX_COMPILER_VERSION},7.3.0>:-Werror>
+        -Werror=missing-field-initializers
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wextra>
         $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wfloat-equal>
     )
@@ -810,15 +813,16 @@ set_target_properties(static_runtime
 )
 
 target_compile_options(static_runtime PRIVATE
-    -O3
-    -fvisibility=hidden
-    -fno-common
-    -fno-strict-aliasing
-    -ffunction-sections
-    -fdata-sections
-    $<$<STREQUAL:${CMAKE_CXX_COMPILER_VERSION},7.3.0>:-Werror>
-    $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wextra>
-)
+        -O3
+        -fvisibility=hidden
+        -fno-common
+        -fno-strict-aliasing
+        -ffunction-sections
+        -fdata-sections
+        $<$<STREQUAL:${CMAKE_CXX_COMPILER_VERSION},7.3.0>:-Werror>
+        -Werror=missing-field-initializers
+        $<$<NOT:$<STREQUAL:${TARGET_SYSTEM_NAME},Windows>>:-Wextra>
+    )
 
 target_include_directories(static_runtime PRIVATE
     ${RUNTIME_INC_DIR_TINY}

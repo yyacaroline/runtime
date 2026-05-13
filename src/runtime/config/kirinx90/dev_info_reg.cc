@@ -16,18 +16,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t SOC_INFO_KIRINX90[] = {
-    {CHIP_X90, "KirinX90"}
-};
-
-BATCH_REGISTER_SOC_INFO(SOC_INFO_KIRINX90, sizeof(SOC_INFO_KIRINX90) / sizeof(rtSocInfo_t));
-
-constexpr rtSocInfo_t DEV_INFO_KIRINX90[] = {
-    {CHIP_X90, "KirinX90"},
-};
-
-BATCH_REGISTER_DEV_INFO(DEV_INFO_KIRINX90, sizeof(DEV_INFO_KIRINX90) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_X90, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> KIRINX90_FEATURE{};

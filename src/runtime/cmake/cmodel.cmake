@@ -692,11 +692,12 @@ target_compile_definitions(runtime_model PRIVATE
 )
 
 target_compile_options(runtime_model PRIVATE
-    -fno-common
-    -fno-strict-aliasing
-    -Wextra
-    -Wfloat-equal
-)
+        -fno-common
+        -fno-strict-aliasing
+        -Werror=missing-field-initializers
+        -Wextra
+        -Wfloat-equal
+    )
 
 target_link_libraries(runtime_model PRIVATE
     $<BUILD_INTERFACE:intf_pub>
@@ -742,11 +743,12 @@ target_compile_definitions(runtime_model_v200 PRIVATE
 )
 
 target_compile_options(runtime_model_v200 PRIVATE
-    -fno-common
-    -fno-strict-aliasing
-    -Wextra
-    -Wfloat-equal
-)
+        -fno-common
+        -fno-strict-aliasing
+        -Werror=missing-field-initializers
+        -Wextra
+        -Wfloat-equal
+    )
 
 target_link_libraries(runtime_model_v200 PRIVATE
     $<BUILD_INTERFACE:intf_pub>
@@ -783,6 +785,7 @@ foreach(product_type ${PRODUCT_TYPE_LIST})
     target_compile_options(runtime_cmodel_${product_type} PRIVATE
         -fno-common
         -fno-strict-aliasing
+        -Werror=missing-field-initializers
         -Wextra
         -Wfloat-equal
     )
@@ -830,6 +833,7 @@ foreach(product_type ${PRODUCT_TYPE_LIST})
     target_compile_options(runtime_camodel_${product_type} PRIVATE
         -fno-common
         -fno-strict-aliasing
+        -Werror=missing-field-initializers
         -Wextra
         -Wfloat-equal
     )

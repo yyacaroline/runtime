@@ -42,6 +42,7 @@
 #include "subscribe.hpp"
 #include "rdma_task.h"
 #include <fstream>
+#include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include "thread_local_container.hpp"
@@ -65,9 +66,19 @@ protected:
 
     virtual void SetUp()
     {
-        GlobalContainer::SetHardwareSocVersion("Ascend910B1");
         Runtime *rtInstance = (Runtime *)Runtime::Instance();
         oldChipType = rtInstance->GetChipType();
+        oldRuntimeSocVersion = rtInstance->GetRawSocVersion();
+        oldRtChipType = GlobalContainer::GetRtChipType();
+        oldSocVersion = GlobalContainer::GetSocVersion();
+        oldHardwareSocVersion = GlobalContainer::GetHardwareSocVersion();
+        oldUserSocVersion = GlobalContainer::GetUserSocVersion();
+        oldIsUserSetSocVersion = rtInstance->GetIsUserSetSocVersion();
+        rtInstance->SetIsUserSetSocVersion(false);
+        rtInstance->SetSocVersion("Ascend910B1");
+        GlobalContainer::SetRtChipType(CHIP_910_B_93);
+        GlobalContainer::SetSocVersion("Ascend910B1");
+        GlobalContainer::SetHardwareSocVersion("Ascend910B1");
         (void)rtSetDevice(0);
     }
 
@@ -77,9 +88,21 @@ protected:
         rtInstance->SetChipType(oldChipType);
         GlobalMockObject::verify();
         rtDeviceReset(0);
+        rtInstance->SetSocVersion(oldRuntimeSocVersion);
+        GlobalContainer::SetRtChipType(oldRtChipType);
+        GlobalContainer::SetSocVersion(oldSocVersion);
+        GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+        GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+        rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
     }
 private:
     rtChipType_t oldChipType;
+    std::string oldRuntimeSocVersion;
+    rtChipType_t oldRtChipType;
+    std::string oldSocVersion;
+    std::string oldHardwareSocVersion;
+    std::string oldUserSocVersion;
+    bool oldIsUserSetSocVersion;
 };
 
 TEST_F(CloudV2ApiAbnormalTest, rtsGetMemcpyDescSizeTest)
@@ -184,10 +207,29 @@ TEST(RdmaPiValueModifyTaskTest, ConstructSqeRdmaPiValueModifyTaskSuccess)
 
 TEST(RdmaPiValueModifyTaskTest, RdmaPiValueModifyTaskUnInitSuccess)
 {
-    (void)rtSetSocVersion("Ascend910B1");
-    ASSERT_EQ(rtSetDevice(0), RT_ERROR_NONE);
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
     ASSERT_NE(rtInstance, nullptr);
+    const std::string oldRuntimeSocVersion = rtInstance->GetRawSocVersion();
+    const rtChipType_t oldRtChipType = GlobalContainer::GetRtChipType();
+    const std::string oldSocVersion = GlobalContainer::GetSocVersion();
+    const std::string oldHardwareSocVersion = GlobalContainer::GetHardwareSocVersion();
+    const std::string oldUserSocVersion = GlobalContainer::GetUserSocVersion();
+    const bool oldIsUserSetSocVersion = rtInstance->GetIsUserSetSocVersion();
+
+    GlobalContainer::SetHardwareSocVersion("Ascend910B1");
+    EXPECT_EQ(rtSetSocVersion("Ascend910B1"), RT_ERROR_NONE);
+    rtInstance->SetSocVersion("Ascend910B1");
+    rtError_t ret = rtSetDevice(0);
+    EXPECT_EQ(ret, RT_ERROR_NONE);
+    if (ret != RT_ERROR_NONE) {
+        rtInstance->SetSocVersion(oldRuntimeSocVersion);
+        GlobalContainer::SetRtChipType(oldRtChipType);
+        GlobalContainer::SetSocVersion(oldSocVersion);
+        GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+        GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+        rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
+        return;
+    }
     Device *device = rtInstance->DeviceRetain(0, 0);
     ASSERT_NE(device, nullptr);
     Stream *stream = static_cast<Stream *>(malloc(sizeof(Stream)));
@@ -218,7 +260,12 @@ TEST(RdmaPiValueModifyTaskTest, RdmaPiValueModifyTaskUnInitSuccess)
     free(stream);
     rtInstance->DeviceRelease(device);
     (void)rtDeviceReset(0);
-    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
+    rtInstance->SetSocVersion(oldRuntimeSocVersion);
+    GlobalContainer::SetRtChipType(oldRtChipType);
+    GlobalContainer::SetSocVersion(oldSocVersion);
+    GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+    GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+    rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
     GlobalMockObject::verify();
 }
 
@@ -237,16 +284,35 @@ TEST(RdmaPiValueModifyTaskTest, PrintDfxInfoForRdmaPiValueModifyTaskCountNotifyR
 
 TEST(RdmaPiValueModifyTaskTest, PrintDfxInfoForRdmaPiValueModifyTaskSuccess)
 {
-    std::string socVersion = GlobalContainer::GetHardwareSocVersion();
-    GlobalContainer::SetSocVersion("Ascend910B2");
+    Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
+    ASSERT_NE(rtInstance, nullptr);
+    const std::string oldRuntimeSocVersion = rtInstance->GetRawSocVersion();
+    const rtChipType_t oldRtChipType = GlobalContainer::GetRtChipType();
+    const std::string oldSocVersion = GlobalContainer::GetSocVersion();
+    const std::string oldHardwareSocVersion = GlobalContainer::GetHardwareSocVersion();
+    const std::string oldUserSocVersion = GlobalContainer::GetUserSocVersion();
+    const bool oldIsUserSetSocVersion = rtInstance->GetIsUserSetSocVersion();
+
     GlobalContainer::SetHardwareSocVersion("Ascend910B2");
+    EXPECT_EQ(rtSetSocVersion("Ascend910B2"), RT_ERROR_NONE);
+    rtInstance->SetSocVersion("Ascend910B2");
 
     rtContext_t ctx = nullptr;
-    ASSERT_EQ(rtCtxCreate(&ctx, 0, 0), RT_ERROR_NONE);
+    rtError_t ret = rtCtxCreate(&ctx, 0, 0);
+    EXPECT_EQ(ret, RT_ERROR_NONE);
+    if (ret != RT_ERROR_NONE) {
+        rtInstance->SetSocVersion(oldRuntimeSocVersion);
+        GlobalContainer::SetRtChipType(oldRtChipType);
+        GlobalContainer::SetSocVersion(oldSocVersion);
+        GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+        GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+        rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
+        return;
+    }
     Context *curCtx = static_cast<Context *>(ctx);
 
     rtStream_t stream = nullptr;
-    rtError_t ret = rtStreamCreate(&stream, 0);
+    ret = rtStreamCreate(&stream, 0);
     ASSERT_EQ(ret, RT_ERROR_NONE);
     Stream *stm = rt_ut::UnwrapOrNull<Stream>(stream);
 
@@ -289,7 +355,12 @@ TEST(RdmaPiValueModifyTaskTest, PrintDfxInfoForRdmaPiValueModifyTaskSuccess)
     curCtx->models_.clear();
     ret = rtCtxDestroy(ctx);
     EXPECT_EQ(ret, RT_ERROR_NONE);
-    GlobalContainer::SetHardwareSocVersion(socVersion);
+    rtInstance->SetSocVersion(oldRuntimeSocVersion);
+    GlobalContainer::SetRtChipType(oldRtChipType);
+    GlobalContainer::SetSocVersion(oldSocVersion);
+    GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+    GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+    rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
     GlobalMockObject::verify();
 }
 

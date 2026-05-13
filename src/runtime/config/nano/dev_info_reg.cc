@@ -15,13 +15,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t CHIP_NANO_SOC_INFO[] = {
-    {CHIP_NANO, "Ascend035"},
-    {CHIP_NANO, "Ascend035A"},
-    {CHIP_NANO, "Ascend035B"},
-};
-
-BATCH_REGISTER_SOC_INFO(CHIP_NANO_SOC_INFO, sizeof(CHIP_NANO_SOC_INFO) / sizeof(rtSocInfo_t));
 REGISTER_PLATFORM_LIB_INFO(CHIP_NANO, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_NANO_FEATURE{

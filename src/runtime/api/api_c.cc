@@ -3637,7 +3637,10 @@ RTS_API rtError_t rtModelCheckCompatibility(const char_t *omSocVersion, const ch
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
-    PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(omSocVersion, RT_ERROR_INVALID_VALUE);
+    if ((omSocVersion == nullptr) || (omSocVersion[0] == '\0')) {
+        RT_LOG_OUTER_MSG_INVALID_PARAM(omSocVersion);
+        return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
+    }
 
     const rtError_t error = apiInstance->ModelCheckArchVersion(omSocVersion);
     if (error != RT_ERROR_NONE) {

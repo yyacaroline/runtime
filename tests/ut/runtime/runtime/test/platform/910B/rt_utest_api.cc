@@ -37,7 +37,7 @@ public:
 protected:
     static void SetUpTestCase()
     {
-        (void)rtSetSocVersion("Ascend310");
+        (void)rtSetSocVersion("Ascend910B1");
         ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
         Runtime *rtInstance = (Runtime *)Runtime::Instance();
         RawDevice *rawDevice = new RawDevice(0);
@@ -1235,7 +1235,7 @@ class CloudV2ApiTest3 : public testing::Test
 protected:
     static void SetUpTestCase()
     {
-        (void)rtSetSocVersion("Ascend310");
+        (void)rtSetSocVersion("Ascend910B1");
         ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
         Runtime *rtInstance = (Runtime *)Runtime::Instance();
         RawDevice *rawDevice = new RawDevice(0);
@@ -3018,6 +3018,9 @@ TEST_F(CloudV2ApiTest, check_get_soc_spec)
 
     int32_t rtn = 0U;
 
+    MOCKER_CPP(&rtGetSocVersion)
+        .stubs()
+        .will(returnValue(ACL_RT_SUCCESS));
     MOCKER_CPP(&PlatformManagerV2::GetSocSpec)
         .stubs()
         .will(returnValue(rtn));
@@ -3033,6 +3036,9 @@ TEST_F(CloudV2ApiTest, check_get_soc_spec_no_platform_info)
 
     int32_t rtn = RT_ERROR_NOT_FOUND;
 
+    MOCKER_CPP(&rtGetSocVersion)
+        .stubs()
+        .will(returnValue(ACL_RT_SUCCESS));
     MOCKER_CPP(&PlatformManagerV2::GetSocSpec)
         .stubs()
         .will(returnValue(rtn));
@@ -3048,6 +3054,9 @@ TEST_F(CloudV2ApiTest, check_get_soc_spec_error_return)
 
     int32_t rtn = 0x1U;
 
+    MOCKER_CPP(&rtGetSocVersion)
+        .stubs()
+        .will(returnValue(ACL_RT_SUCCESS));
     MOCKER_CPP(&PlatformManagerV2::GetSocSpec)
         .stubs()
         .will(returnValue(rtn));
@@ -3063,6 +3072,9 @@ TEST_F(CloudV2ApiTest, check_get_soc_spec_exceed_limit)
 
     int32_t rtn = 0U;
 
+    MOCKER_CPP(&rtGetSocVersion)
+        .stubs()
+        .will(returnValue(ACL_RT_SUCCESS));
     MOCKER_CPP(&PlatformManagerV2::GetSocSpec)
         .stubs()
         .will(returnValue(rtn));

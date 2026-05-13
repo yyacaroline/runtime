@@ -1197,59 +1197,53 @@ TEST_F(CloudV2ApiImplTest, rtSetSocVersionFeInitFailed)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
 
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0xF));
-    rtError_t error = rtSetSocVersion("Ascend610Lite");
-    EXPECT_NE(error, RT_ERROR_NONE);
+    rtError_t error = rtSetSocVersion("ChipTypeQueryError");
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(CloudV2ApiImplTest, rtSetSocVersionFeGetPlatformInfoFailed)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().will(returnValue(0xF));
-    rtError_t error = rtSetSocVersion("Ascend610Lite");
+    rtError_t error = rtSetSocVersion("ChipTypeMissing");
     ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
-    EXPECT_NE(error, RT_ERROR_NONE);
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
 }
 
 TEST_F(CloudV2ApiImplTest, rtSetSocVersionFeGetPlatformInfoSuccess)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.arch_type = ARCH_C100;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
-    rtError_t error = rtSetSocVersion("Ascend910");
-    EXPECT_NE(error, RT_ERROR_NONE);
-    ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
+    const rtChipType_t oldRtChipType = GlobalContainer::GetRtChipType();
+    const std::string oldSocVersion = GlobalContainer::GetSocVersion();
+    const std::string oldHardwareSocVersion = GlobalContainer::GetHardwareSocVersion();
+    const std::string oldUserSocVersion = GlobalContainer::GetUserSocVersion();
+    const bool oldIsUserSetSocVersion = rtInstance->GetIsUserSetSocVersion();
+
+    GlobalContainer::SetHardwareSocVersion("");
+    rtError_t error = rtSetSocVersion("Ascend910A");
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    GlobalContainer::SetRtChipType(oldRtChipType);
+    GlobalContainer::SetSocVersion(oldSocVersion);
+    GlobalContainer::SetHardwareSocVersion(oldHardwareSocVersion);
+    GlobalContainer::SetUserSocVersion(oldUserSocVersion);
+    rtInstance->SetIsUserSetSocVersion(oldIsUserSetSocVersion);
 }
 
 TEST_F(CloudV2ApiImplTest, rtSetSocVersionFeGetPlatInfoInvalidChip)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.arch_type = -1;
-    platInfo.soc_info.chip_type = -1;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
-    rtError_t error = rtSetSocVersion("Ascend910");
-    EXPECT_NE(error, RT_ERROR_NONE);
+    rtError_t error = rtSetSocVersion("ChipTypeOutOfRange");
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
     ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 
 TEST_F(CloudV2ApiImplTest, rtSetSocVersionFeGetPlatInfoInvalidArch)
 {
     Runtime *rtInstance = const_cast<Runtime *>(Runtime::Instance());
-    fe::PlatformInfo platInfo;
-    platInfo.soc_info.arch_type = ARCH_V100;
-    MOCKER_CPP(&fe::PlatformInfoManager::InitializePlatformInfo).stubs().will(returnValue(0U));
-    MOCKER_CPP(&fe::PlatformInfoManager::GetPlatformInfo).stubs().with(mockcpp::any(), outBound(platInfo), mockcpp::any())
-        .will(returnValue(0U));
+    GlobalContainer::SetHardwareSocVersion("Ascend910A");
     rtError_t error = rtSetSocVersion("BS9SX1AA");
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    GlobalContainer::SetHardwareSocVersion("");
     ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
 }
 

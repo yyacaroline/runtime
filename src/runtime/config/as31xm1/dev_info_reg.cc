@@ -14,9 +14,6 @@
 namespace cce {
 namespace runtime {
 
-static constexpr rtSocInfo_t CHIP_AS31XM1_SOC_INFO[] = {{CHIP_AS31XM1, "AS31XM1X"}};
-BATCH_REGISTER_SOC_INFO(CHIP_AS31XM1_SOC_INFO, sizeof(CHIP_AS31XM1_SOC_INFO) / sizeof(rtSocInfo_t));
-
 REGISTER_PLATFORM_LIB_INFO(CHIP_AS31XM1, "libruntime_v100.so");
 
 static const std::unordered_set<RtOptionalFeatureType> CHIP_AS31XM1_FEATURE{

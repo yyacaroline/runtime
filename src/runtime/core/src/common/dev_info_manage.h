@@ -41,8 +41,6 @@ class DevInfoManage {
 public:
     DevInfoManage()
     {
-        (void)mmRWLockInit(&devInfoLock);
-        (void)mmRWLockInit(&socInfoLock);
         (void)mmRWLockInit(&soLock);
         (void)mmRWLockInit(&propertiesLock);
         (void)mmRWLockInit(&devInfoProcLock);
@@ -50,22 +48,12 @@ public:
     ~DevInfoManage()
     {
         SetDestroy();
-        (void)mmRWLockDestroy(&devInfoLock);
-        (void)mmRWLockDestroy(&socInfoLock);
         (void)mmRWLockDestroy(&soLock);
         (void)mmRWLockDestroy(&propertiesLock);
         (void)mmRWLockDestroy(&devInfoProcLock);
     };
 
     static DevInfoManage &Instance();
-
-    bool RegisterSocInfo(const rtSocInfo_t &conf);
-    bool BatchRegSocInfo(const rtSocInfo_t *conf, size_t size);
-    rtError_t GetSocInfo(const char_t *const socName, rtSocInfo_t &info);
-
-    bool RegisterDevInfo(const rtSocInfo_t &conf);
-    bool BatchRegDevInfo(const rtSocInfo_t *conf, size_t size);
-    rtError_t GetDevInfo(const char_t *socName, rtSocInfo_t &info);
 
     bool RegPlatformSoNameInfo(rtChipType_t chip, const std::string &soName);
     rtError_t GetPlatformSoName(rtChipType_t chip, std::string &soName);
@@ -87,17 +75,16 @@ public:
 
 private:
     std::atomic<bool> isDestroy{false};
-    std::mutex info_lock;
-    mmRWLock_t devInfoLock;
-    std::vector<rtSocInfo_t> devInfos;
-    mmRWLock_t socInfoLock;
-    std::vector<rtSocInfo_t> socInfos;
-
     mmRWLock_t soLock;
     std::unordered_map<rtChipType_t, std::string> platformSoName;
 
     // Static feature table. each chip must be registered only once when startup. Dynamic registration is prohibited.
+    // 常规芯片类型段（CHIP_BEGIN ~ CHIP_END）
     std::array<std::array<bool, FEATURE_MAX_VALUE>, CHIP_END> chipFeatureSet{{}};
+    
+    // 扩展芯片类型段（CHIP_X90, CHIP_9030）
+    // 使用单独的数组处理扩展段，避免数组过大
+    std::unordered_map<rtChipType_t, std::array<bool, FEATURE_MAX_VALUE>> extChipFeatureSet{};
 
     mmRWLock_t propertiesLock;
     std::unordered_map<rtChipType_t, DevProperties> propertiesMap;
@@ -115,20 +102,6 @@ private:
 #else
 #define ATTRIBUTE_USED
 #endif
-
-#define REGISTER_DEV_INFO(conf) \
-    static bool g_Register_##conf ATTRIBUTE_USED = cce::runtime::DevInfoManage::Instance().RegisterDevInfo(conf)
-
-#define BATCH_REGISTER_DEV_INFO(conf, size)              \
-    static bool g_Batch_Register_##conf ATTRIBUTE_USED = \
-        cce::runtime::DevInfoManage::Instance().BatchRegDevInfo((conf), (size))
-
-#define BATCH_REGISTER_SOC_INFO(conf, size)                 \
-    static bool g_Batch_RegisterSoc_##conf ATTRIBUTE_USED = \
-        cce::runtime::DevInfoManage::Instance().BatchRegSocInfo((conf), (size))
-
-#define REGISTER_SOC_INFO(conf) \
-    static bool g_RegisterSoc_##conf ATTRIBUTE_USED = cce::runtime::DevInfoManage::Instance().RegisterSocInfo(conf)
 
 #define REGISTER_PLATFORM_LIB_INFO(chipType, soName)      \
     static bool g_RegisterLib_##chipType ATTRIBUTE_USED = \

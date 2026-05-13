@@ -24,7 +24,7 @@ public:
 protected:
     static void SetUpTestCase()
     {
-        (void)rtSetSocVersion("Ascend310");
+        (void)rtSetSocVersion("Ascend910B1");
         ((Runtime *)Runtime::Instance())->SetIsUserSetSocVersion(false);
         Runtime *rtInstance = (Runtime *)Runtime::Instance();
         RawDevice *rawDevice = new RawDevice(0);

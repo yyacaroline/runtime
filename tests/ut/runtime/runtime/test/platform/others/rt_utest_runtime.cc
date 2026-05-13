@@ -349,6 +349,28 @@ TEST_F(ChipRuntimeTest, ut_GetSocVersionByHardwareVer02)
     rtInstance->SetSocVersion(oriSocVersion);
 }
 
+TEST_F(ChipRuntimeTest, ut_GetSocVersionByHardwareVerSelectiveChipFallback)
+{
+    Runtime* rtInstance = ((Runtime *)Runtime::Instance());
+    rtChipType_t oriChipType = rtInstance->GetChipType();
+    std::string oriSocVersion = rtInstance->GetSocVersion();
+
+    rtInstance->SetChipType(CHIP_910_B_93);
+    GlobalContainer::SetRtChipType(CHIP_910_B_93);
+    rtError_t ret = rtInstance->GetSocVersionByHardwareVer(PLAT_COMBINE(ARCH_V200, CHIP_910_B_93, VER_NA), 0, 0);
+    EXPECT_EQ(ret, RT_ERROR_NONE);
+    EXPECT_EQ(rtInstance->GetRawSocVersion(), "Ascend910B4");
+
+    rtInstance->SetChipType(CHIP_MINI);
+    GlobalContainer::SetRtChipType(CHIP_MINI);
+    ret = rtInstance->GetSocVersionByHardwareVer(PLAT_COMBINE(ARCH_V200, CHIP_MINI, VER_NA), 0, 0);
+    EXPECT_EQ(ret, RT_ERROR_NONE);
+    EXPECT_EQ(rtInstance->GetRawSocVersion(), "");
+
+    rtInstance->SetChipType(oriChipType);
+    GlobalContainer::SetRtChipType(oriChipType);
+    rtInstance->SetSocVersion(oriSocVersion);
+}
 
 TEST_F(ChipRuntimeTest, ut_InitSocTypeFromVersion)
 {
