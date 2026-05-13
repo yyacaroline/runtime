@@ -11,6 +11,7 @@
 #define RUNTIME_MODEL_UPDATE_TASK_H
 
 #include "task_info.hpp"
+#include "hwts.hpp"
 
 namespace cce {
 namespace runtime {

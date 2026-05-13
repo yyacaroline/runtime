@@ -159,7 +159,8 @@ void DoCompleteSuccessForStarsVersionTask(TaskInfo* taskInfo, const uint32_t dev
     UNUSED(devId);
     Device *const dev = taskInfo->stream->Device_();
     COND_RETURN_VOID(dev == nullptr, "dev is NULL.");
-    uint32_t tschVersion = taskInfo->errorCode == 0 ? (uint32_t)TS_VERSION_STARS_COMPATIBILITY : taskInfo->errorCode;
+    uint32_t tschVersion = taskInfo->errorCode == 0
+        ? static_cast<uint32_t>(TS_VERSION_STARS_COMPATIBILITY) : taskInfo->errorCode;
     RT_LOG(RT_LOG_INFO, "Complete StarsVersionTask success, retCode=%u, tschVersion=%u.",
            taskInfo->errorCode, tschVersion);
     dev->SetTschVersion(tschVersion);

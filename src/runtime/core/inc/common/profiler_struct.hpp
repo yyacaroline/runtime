@@ -13,6 +13,7 @@
 #include "aprof_pub.h"
 #include "prof_common.h"
 #include "toolchain/prof_api.h"
+#include "aprof_pub.h"
 
 #define M_PROF_DIRSTR_LEN       (128)
 #define M_PROF_FMTSTR_LEN       (64)
