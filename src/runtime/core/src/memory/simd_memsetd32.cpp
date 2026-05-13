@@ -26,7 +26,8 @@ namespace runtime {
 
 // LCOV_EXCL_START
 // -------------------- Naive implementation --------------------
-static inline void Memset32_Naive(uint32_t* dst, uint32_t value, size_t count)
+// Dynamic selection
+static inline __attribute__((unused)) void Memset32_Naive(uint32_t* dst, uint32_t value, size_t count)
 {
     for (size_t i = 0UL; i < count; ++i) {
         dst[i] = value;
