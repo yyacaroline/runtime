@@ -505,21 +505,96 @@ static void AixLinkErrProc(const Device * const dev, const StarsDeviceErrorInfo 
     AiCoreUnknownErrProc(dev, info);
 }
 
+static void GetMteDeviceFaultEvent(const Device * const dev, uint32_t &faultEventId, bool &isHitBlklist)
+{
+    constexpr uint32_t maxFaultNum = 128U;
+    rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
+    COND_RETURN_VOID((faultEventInfo == nullptr), "new rtDmsFaultEvent failed.");
+    const size_t totalSize = maxFaultNum * sizeof(rtDmsFaultEvent);
+    (void)memset_s(faultEventInfo, totalSize, 0, totalSize);
+
+    const std::function<void()> releaseFunc = [&faultEventInfo]() { DELETE_A(faultEventInfo); };
+    ScopeGuard faultEventInfoRelease(releaseFunc);
+    uint32_t eventCount = 0U;
+    rtError_t error = GetDeviceFaultEvents(dev->Id_(), faultEventInfo, eventCount, maxFaultNum);
+    if (error != RT_ERROR_NONE) {
+        return;
+    }
+
+    if (IsFaultEventOccur(L2_BUFFER_ECC_EVENT_ID, faultEventInfo, eventCount)) {
+        isHitBlklist = IsHitBlacklist(faultEventInfo, eventCount, g_l2MulBitEccEventIdBlkList);
+        if (!isHitBlklist) {
+            faultEventId = L2_BUFFER_ECC_EVENT_ID;
+            return;
+        }
+    }
+
+    isHitBlklist = IsHitBlacklist(faultEventInfo, eventCount, g_mulBitEccEventIdBlkList);
+    if (IsFaultEventOccur(HBM_ECC_EVENT_ID, faultEventInfo, eventCount) && !isHitBlklist) {
+        faultEventId = HBM_ECC_EVENT_ID;
+    }
+}
+
+static void SetTaskMteErrByType(const rtErrorType errType, const Device * const dev, TaskInfo *errTaskPtr)
+{
+    if (errTaskPtr == nullptr) {
+        return;
+    }
+
+    /*
+     * L2_BUFFER_ECC    HBM_ECC_NOTIFY    HBM_ECC    hit_black_list   mte_error       fault_type
+     * YES              \                 \          NO               local_error     L2_BUFFER_ERROR
+     * NO               NOT_SUPPORT       YES        NO               local_error     HBM_UCE_ERROR
+     * NO               YES               \          NO               local_error     HBM_UCE_ERROR
+     * NO               NO                \          NO               remote_error    LINK_ERROR
+     * OTHERS                                                         0               AICORE_UNKNOWN_ERROR
+     */
+    if (errType == AICORE_ERROR) {
+        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::AICORE_UNKNOWN_ERROR);
+    }
+
+    const bool suppHbmRas = (Runtime::Instance()->GetHbmRasProcFlag() != HBM_RAS_NOT_SUPPORT);
+    bool hasMteHbmErr = suppHbmRas ? HasMteErr(dev) : false;
+
+    uint32_t faultEventId = 0U;
+    bool isHitBlklist = false;
+    GetMteDeviceFaultEvent(dev, faultEventId, isHitBlklist);
+    bool hasL2BuffEcc = (faultEventId == L2_BUFFER_ECC_EVENT_ID);
+    bool hasHbmEcc = (faultEventId == HBM_ECC_EVENT_ID);
+    bool isHitHbmBlkList = !hasL2BuffEcc && isHitBlklist;
+    RT_LOG(RT_LOG_ERROR, "mte error, support_hbm_ras_report=%d, has_l2_buffer_ecc_event=%d, has_hbm_ecc_notify_evnet=%d, "
+        "has_hbm_ecc_evnet=%d, hit_black_list=%d.", suppHbmRas, hasL2BuffEcc, hasMteHbmErr, hasHbmEcc, isHitBlklist);
+
+    const uint16_t local_error = (errType == AICORE_ERROR) ? TS_ERROR_AICORE_MTE_ERROR : TS_ERROR_SDMA_POISON_ERROR;
+    const uint16_t remote_error = TS_ERROR_SDMA_LINK_ERROR;
+    if (hasL2BuffEcc) {
+        errTaskPtr->mte_error = local_error;
+        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::L2_BUFFER_ERROR);
+        return;
+    }
+    if ((!suppHbmRas && hasHbmEcc) || (hasMteHbmErr && !isHitHbmBlkList)) {
+        errTaskPtr->mte_error = local_error;
+        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::HBM_UCE_ERROR);
+        return;
+    }
+    if (suppHbmRas && !hasMteHbmErr && !isHitHbmBlkList) {
+        errTaskPtr->mte_error = remote_error;
+        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::LINK_ERROR);
+        return;
+    }
+    errTaskPtr->mte_error = TS_SUCCESS;
+}
+
 static void SetDeviceFaultTypeByAixErrClass(const Device * const dev, const StarsDeviceErrorInfo * const info, TaskInfo *errTaskPtr)
 {
     switch (static_cast<AixErrClass>(info->u.coreErrorInfo.comm.flag)) {
-        case AixErrClass::AIX_MTE_POISON_ERROR: {
-            bool isMteError = false;
-            COND_PROC((errTaskPtr == nullptr) && (Runtime::Instance()->GetHbmRasProcFlag() == HBM_RAS_NOT_SUPPORT),
-                SetDeviceFaultTypeByErrorType(dev, AICORE_ERROR, isMteError));
-            if (errTaskPtr != nullptr) {
-                SetTaskMteErr(errTaskPtr, dev, g_mulBitEccEventIdBlkList);
-                RT_LOG(RT_LOG_ERROR, "mte error, stream_id=%hu, task_id=%hu, errorCode=%u.",
-                    info->u.coreErrorInfo.comm.streamId, info->u.coreErrorInfo.comm.taskId, errTaskPtr->mte_error);
-            }
+        case AixErrClass::AIX_MTE_POISON_ERROR:
+            SetTaskMteErrByType(AICORE_ERROR, dev, errTaskPtr);
+            RT_LOG(RT_LOG_ERROR, "mte error, stream_id=%hu, task_id=%hu, errorCode=%#hx.",
+                info->u.coreErrorInfo.comm.streamId, info->u.coreErrorInfo.comm.taskId,
+                (errTaskPtr == nullptr) ? static_cast<uint16_t>(TS_ERROR_RESERVED) : errTaskPtr->mte_error);
             CheckAndPrintRasInfo(dev);
             break;
-        }
         case AixErrClass::AIX_HW_L_ERROR:
             if (!HasBlacklistEventOnDevice(dev->Id_(), g_mulBitEccEventIdBlkList)) {
                 (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::AICORE_HW_L_ERROR);
@@ -693,14 +768,10 @@ static void RecordSdmaErrorInfo(const Device * const dev, uint32_t coreNum, Task
         const uint32_t cqeStatus = info->u.sdmaErrorInfo.sdma.starsInfoForDavid[coreIdx].cqeStatus;
         if ((cqeStatus == TS_SDMA_STATUS_DDRC_ERROR) || (cqeStatus == TS_SDMA_STATUS_LINK_ERROR) ||
             (cqeStatus == TS_SDMA_STATUS_POISON_ERROR)) {
-            bool isMteError = false;
-            COND_PROC((errTaskPtr == nullptr) && (Runtime::Instance()->GetHbmRasProcFlag() == HBM_RAS_NOT_SUPPORT),
-                SetDeviceFaultTypeByErrorType(dev, SDMA_ERROR, isMteError));
-            if (errTaskPtr != nullptr) {
-                GetMteErrFromCqeStatus(errTaskPtr, dev, cqeStatus, g_mulBitEccEventIdBlkList);
-                RT_LOG(RT_LOG_ERROR, "Get sdma mte error, stream_id=%hu, task_id=%hu, errorCode=%u.",
-                    info->u.coreErrorInfo.comm.streamId, info->u.coreErrorInfo.comm.taskId, errTaskPtr->mte_error);
-            }
+            SetTaskMteErrByType(SDMA_ERROR, dev, errTaskPtr);
+            RT_LOG(RT_LOG_ERROR, "Get sdma mte error, stream_id=%hu, task_id=%hu, errorCode=%#hx.",
+                info->u.coreErrorInfo.comm.streamId, info->u.coreErrorInfo.comm.taskId,
+                (errTaskPtr == nullptr) ? static_cast<uint16_t>(TS_ERROR_RESERVED) : errTaskPtr->mte_error);
         }
     }
 }

@@ -550,6 +550,26 @@ void ProcessSdmaError(TaskInfo *taskInfo)
     }
 }
 
+static void SetDeviceFaultTypeByErrorType(const Device * const dev, const rtErrorType errorType, bool &isMteError)
+{
+    UNUSED(errorType);
+    if ((!IsHitBlacklist(dev->Id_(), g_mulBitEccEventId)) && (!IsSmmuFault(dev->Id_()))) {
+        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::HBM_UCE_ERROR);
+        isMteError = true;
+    }
+}
+
+static void MteErrorProc(const TaskInfo * const errTaskPtr, const Device * const dev, const int32_t errorCode, bool &isMteError)
+{
+    if ((errTaskPtr->stream != nullptr) && (errTaskPtr->stream->Context_() != nullptr) &&
+        (errTaskPtr->stream->Device_() != nullptr) && (errorCode == RT_ERROR_DEVICE_MEM_ERROR)) {
+        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->SetAbortStatus(errorCode);
+        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->Context_()->SetFailureError(errorCode);
+        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->Device_()->SetDeviceStatus(errorCode);
+    }
+    SetDeviceFaultTypeByErrorType(dev, AICORE_ERROR, isMteError);
+}
+
 void SetTaskMteErr(TaskInfo *errTaskPtr, const Device * const dev,
     const std::map<uint32_t, std::string>& eventIdBlkList)
 {
@@ -578,7 +598,7 @@ void GetMteErrFromCqeStatus(TaskInfo *errTaskPtr, const Device * const dev, cons
     if ((cqeStatus == TS_SDMA_STATUS_DDRC_ERROR) || (cqeStatus == TS_SDMA_STATUS_LINK_ERROR) ||
         (cqeStatus == TS_SDMA_STATUS_POISON_ERROR)) {
         // 若不支持ras上报接口，处理0x8、0x9和0xa直接返回内存错误
-        bool isMteError= false;
+        bool isMteError = false;
         if (Runtime::Instance()->GetHbmRasProcFlag() == HBM_RAS_NOT_SUPPORT) {
             SetDeviceFaultTypeByErrorType(dev, SDMA_ERROR, isMteError);
             errTaskPtr->mte_error = (isMteError ? TS_ERROR_SDMA_POISON_ERROR : TS_SUCCESS);

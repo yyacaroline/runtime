@@ -42,26 +42,6 @@ uint16_t GetMteErrWaitCount()
     return 120U;
 }
 
-void MteErrorProc(const TaskInfo * const errTaskPtr, const Device * const dev, const int32_t errorCode, bool &isMteError)
-{
-    if ((errTaskPtr->stream != nullptr) && (errTaskPtr->stream->Context_() != nullptr) &&
-        (errTaskPtr->stream->Device_() != nullptr) && (errorCode == RT_ERROR_DEVICE_MEM_ERROR)) {
-        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->SetAbortStatus(errorCode);
-        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->Context_()->SetFailureError(errorCode);
-        (RtPtrToUnConstPtr<TaskInfo *>(errTaskPtr))->stream->Device_()->SetDeviceStatus(errorCode);
-    }
-    SetDeviceFaultTypeByErrorType(dev, AICORE_ERROR, isMteError);
-}
-
-void SetDeviceFaultTypeByErrorType(const Device * const dev, const rtErrorType errorType, bool &isMteError)
-{
-    UNUSED(errorType);
-    if ((!IsHitBlacklist(dev->Id_(), g_mulBitEccEventId)) && (!IsSmmuFault(dev->Id_()))) {
-        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::HBM_UCE_ERROR);
-        isMteError = true;
-    }
-}
-
 uint32_t GetRingbufferElementNum()
 {
     return RINGBUFFER_LEN;

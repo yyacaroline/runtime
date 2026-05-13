@@ -236,8 +236,6 @@ uint32_t GetRingbufferElementNum();
 
 void UpdateDeviceErrorProcFunc(std::map<uint64_t, DeviceErrorProc::StarsErrorInfoProc> &funcMap);
 uint16_t GetMteErrWaitCount();
-void MteErrorProc(const TaskInfo * const errTaskPtr, const Device * const dev, const int32_t errorCode, bool &isMteError);
-void SetDeviceFaultTypeByErrorType(const Device * const dev, const rtErrorType errorType, bool &isMteError);
 void CheckAndPrintRasInfo(const Device * const dev);
 void ConvertErrorCodeForFastReport(StarsOpExceptionInfo *report);
 void GetFastRingBufferErrorMap(std::unordered_map<uint32_t, std::unordered_map<uint32_t, uint32_t>> &errorMap);

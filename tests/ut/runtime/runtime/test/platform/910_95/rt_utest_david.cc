@@ -2633,7 +2633,7 @@ TEST_F(DavidTaskTest, aicore_task_hw_r_error_not_support_get_fault_event)
     faultEventFlag = 0;
     EXPECT_EQ(ret, RT_ERROR_NONE);
     const DeviceFaultType faultType = dev_->GetDeviceFaultType();
-    EXPECT_EQ(faultType, DeviceFaultType::NO_ERROR);
+    EXPECT_EQ(faultType, DeviceFaultType::HBM_UCE_ERROR);
     GlobalMockObject::verify();
     delete errorProc;
 }
@@ -2674,7 +2674,7 @@ TEST_F(DavidTaskTest, aicore_task_hw_r_error_mte_error_proc)
     faultEventFlag = 0;
     EXPECT_EQ(ret, RT_ERROR_NONE);
     const DeviceFaultType faultType = dev_->GetDeviceFaultType();
-    EXPECT_EQ(faultType, DeviceFaultType::AICORE_UNKNOWN_ERROR);
+    EXPECT_EQ(faultType, DeviceFaultType::HBM_UCE_ERROR);
     dev_->SetDeviceFaultType(DeviceFaultType::NO_ERROR);
     GlobalMockObject::verify();
     delete errorProc;
@@ -2789,7 +2789,7 @@ TEST_F(DavidTaskTest, ProcessStarsSdmaErrorInfoSupportRasAndNotSupportGetFaultEv
     faultEventFlag = 0;
     EXPECT_EQ(ret, RT_ERROR_NONE);
     const DeviceFaultType faultType = dev_->GetDeviceFaultType();
-    EXPECT_EQ(faultType, DeviceFaultType::NO_ERROR);
+    EXPECT_EQ(faultType, DeviceFaultType::HBM_UCE_ERROR);
     GlobalMockObject::verify();
     delete errorProc;
 }

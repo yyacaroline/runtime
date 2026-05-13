@@ -41,43 +41,6 @@ uint16_t GetMteErrWaitCount()
     return 20U;
 }
 
-void MteErrorProc(const TaskInfo * const errTaskPtr, const Device * const dev, const int32_t errorCode, bool &isMteError)
-{
-    UNUSED(errTaskPtr);
-    UNUSED(errorCode);
-    SetDeviceFaultTypeByErrorType(dev, AICORE_ERROR, isMteError);
-}
-
-void SetDeviceFaultTypeByErrorType(const Device * const dev, const rtErrorType errorType, bool &isMteError)
-{
-    constexpr uint32_t maxFaultNum = 128U;
-    rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_RETURN_VOID((faultEventInfo == nullptr), "new rtDmsFaultEvent failed.");
-    const size_t totalSize = maxFaultNum * sizeof(rtDmsFaultEvent);
-    (void)memset_s(faultEventInfo, totalSize, 0, totalSize);
-
-    const std::function<void()> releaseFunc = [&faultEventInfo]() { DELETE_A(faultEventInfo); };
-    ScopeGuard faultEventInfoRelease(releaseFunc);
-    uint32_t eventCount = 0U;
-    rtError_t error = GetDeviceFaultEvents(dev->Id_(), faultEventInfo, eventCount, maxFaultNum);
-    if (error != RT_ERROR_NONE) {
-        return;
-    }
-
-    if (errorType == AICORE_ERROR) {  // if hit the blacklist, aicore set aicore unknow error and sdma do nothing.
-        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::AICORE_UNKNOWN_ERROR);
-    }
-    if (IsFaultEventOccur(L2_BUFFER_ECC_EVENT_ID, faultEventInfo, eventCount) &&
-        (!IsHitBlacklist(faultEventInfo, eventCount, g_l2MulBitEccEventIdBlkList))) {
-        isMteError = true;
-        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::L2_BUFFER_ERROR);
-    } else if (IsFaultEventOccur(HBM_ECC_EVENT_ID, faultEventInfo, eventCount) &&
-        (!IsHitBlacklist(faultEventInfo, eventCount, g_mulBitEccEventIdBlkList))) {
-        isMteError = true;
-        (RtPtrToUnConstPtr<Device *>(dev))->SetDeviceFaultType(DeviceFaultType::HBM_UCE_ERROR);
-    }
-}
-
 // fast ringbuffer(4k): DevRingBufferCtlInfo + RingBufferElementInfo + StarsOpExceptionInfo
 void DeviceErrorProc::ProcessReportFastRingBuffer()
 {
