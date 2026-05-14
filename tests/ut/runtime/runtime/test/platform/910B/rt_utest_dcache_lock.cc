@@ -34,6 +34,7 @@
 #include "utils.h"
 #include <functional>
 #include "npu_driver_dcache_lock.hpp"
+#include "aix_c.hpp"
 #include "thread_local_container.hpp"
 #include "rt_unwrap.h"
 #undef private
@@ -239,16 +240,7 @@ TEST_F(CloudV2DcacheDeviceTest, LaunchDcacheLockOp_05)
         .will(returnValue(RT_ERROR_NONE));
     Context ctx(dev, 0);
     ctx.Init();
-    MOCKER_CPP(&Context::LaunchKernel,
-        int(Context::*)(const void *const,
-            const uint32_t,
-            const rtArgsEx_t *,
-            Stream *,
-            const uint32_t,
-            const TaskCfg *const,
-            const bool))
-        .stubs()
-        .will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER(StreamLaunchKernelV1).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
     rtError_t ret = dev->RegisterAndLaunchDcacheLockOp(&ctx);
     EXPECT_EQ(ret, RT_ERROR_INVALID_VALUE);
     delete dev;
@@ -272,16 +264,7 @@ TEST_F(CloudV2DcacheDeviceTest, LaunchDcacheLockOp_06)
         .will(returnValue(RT_ERROR_NONE));
     Context ctx(dev, 0);
     ctx.Init();
-    MOCKER_CPP(&Context::LaunchKernel,
-        int(Context::*)(const void *const,
-            const uint32_t,
-            const rtArgsEx_t *,
-            Stream *,
-            const uint32_t,
-            const TaskCfg *const,
-            const bool))
-        .stubs()
-        .will(returnValue(RT_ERROR_NONE));
+    MOCKER(StreamLaunchKernelV1).stubs().will(returnValue(RT_ERROR_NONE));
 
     dev->primaryStream_ = new Stream(dev, 0);
     MOCKER_CPP_VIRTUAL(dev->primaryStream_, &Stream::Synchronize).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
@@ -308,16 +291,7 @@ TEST_F(CloudV2DcacheDeviceTest, LaunchDcacheLockOp_07)
         .will(returnValue(RT_ERROR_NONE));
     Context ctx(dev, 0);
     ctx.Init();
-    MOCKER_CPP(&Context::LaunchKernel,
-        int(Context::*)(const void *const,
-            const uint32_t,
-            const rtArgsEx_t *,
-            Stream *,
-            const uint32_t,
-            const TaskCfg *const,
-            const bool))
-        .stubs()
-        .will(returnValue(RT_ERROR_NONE));
+    MOCKER(StreamLaunchKernelV1).stubs().will(returnValue(RT_ERROR_NONE));
     dev->primaryStream_ = new Stream(dev, 0);
     MOCKER_CPP_VIRTUAL(dev->primaryStream_, &Stream::Synchronize).stubs().will(returnValue(RT_ERROR_NONE));
     rtError_t ret = dev->RegisterAndLaunchDcacheLockOp(&ctx);

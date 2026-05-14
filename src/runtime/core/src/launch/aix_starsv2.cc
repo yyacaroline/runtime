@@ -246,9 +246,13 @@ static rtError_t CheckUpdateDavidTaskInfo(const TaskInfo * const updateTask, con
     return RT_ERROR_NONE;
 }
 
-rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim, const rtArgsEx_t *argsInfo,
-    Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo)
+rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim,
+    const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
+    const rtTaskCfgInfo_t * const cfgInfo, const TaskCfg * const taskCfg, const bool isLaunchVec)
 {
+    UNUSED(taskCfg);
+    UNUSED(isLaunchVec);
+
     rtKernelAttrType kernelAttrType = RT_KERNEL_ATTR_TYPE_AICORE;
     StarsArgLoaderResult result = {nullptr, nullptr, nullptr, UINT32_MAX, nullptr, nullptr};
     uint64_t addr1 = 0ULL;
@@ -260,7 +264,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
     Runtime * const rt = Runtime::Instance();
     TaskInfo *kernelTask = nullptr;
     rtError_t error = CheckTaskCanSend(stm);
-    TaskCfg taskCfg = {};
+    TaskCfg localTaskCfg = {};
     ERROR_RETURN_MSG_INNER(error, "Failed to check task send status, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     error = StreamLaunchKernelPrepare(stm, registeredKernel, prog, kernelAttrType, launchMdl, stubFunc,
                                       addr1, addr2, nullptr, 0);
@@ -296,10 +300,10 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
     }
 
     if (cfgInfo != nullptr) {
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base = *cfgInfo;
+        localTaskCfg.isBaseValid = 1U;
+        localTaskCfg.base = *cfgInfo;
     }
-    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, &taskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, &localTaskCfg, false);
     // for simt
     error = CheckDynSizeValid(kernelTask, registeredKernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
@@ -346,8 +350,10 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
 }
 
 rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo)
+        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
+        const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
+    UNUSED(isLaunchVec);
     NULL_PTR_RETURN_MSG_OUTER(progHandle, RT_ERROR_PROGRAM_NULL);
 
     rtKernelAttrType kernelAttrType = RT_KERNEL_ATTR_TYPE_AICORE;
@@ -485,9 +491,11 @@ void AicTaskInitByExtendAgrs(TaskInfo *kernelTask, const rtKernelAttrType kernel
     AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, &taskCfg_, false);
 }
 
-rtError_t StreamLaunchKernelV2(Kernel * const kernel, const uint32_t coreDim, Stream *stm,
-    const rtStreamLaunchKernelV2ExtendArgs_t * const extendAgrs)
+rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *stm,
+    const rtStreamLaunchKernelV2ExtendArgs_t *extendAgrs, const bool isLaunchVec)
 {
+    UNUSED(isLaunchVec);
+
     Program * const prog = kernel->Program_();
     NULL_PTR_RETURN_MSG(prog, RT_ERROR_PROGRAM_NULL);
 

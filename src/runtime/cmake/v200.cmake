@@ -351,7 +351,7 @@ set(libruntime_v200_v201_common_src_files
     ${RUNTIME_CORE_DIR}/src/engine/hwts/direct_hwts_engine.cc
     ${RUNTIME_CORE_DIR}/src/task/v200_base/stars_david.cc
     ${RUNTIME_FEATURE_DIR}/cntnotify/count_notify.cc
-    ${RUNTIME_CORE_DIR}/src/launch/aix_c.cc
+    ${RUNTIME_CORE_DIR}/src/launch/aix_starsv2.cc
     ${RUNTIME_CORE_DIR}/src/launch/aicpu_starsv2.cc
     ${RUNTIME_FEATURE_DIR}/fusion/fusion_c.cc
     ${RUNTIME_CORE_DIR}/src/launch/dvpp_starsv2.cc

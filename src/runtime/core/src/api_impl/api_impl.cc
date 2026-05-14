@@ -54,6 +54,7 @@
 #include "capture_model_utils.hpp"
 #include "capture_adapt.hpp"
 #include "stars_engine.hpp"
+#include "aix_c.hpp"
 #include "memcpy_c.hpp"
 #include "memory_c.hpp"
 #include "binary_loader.hpp"
@@ -521,7 +522,7 @@ rtError_t ApiImpl::KernelLaunch(const void * const stubFunc, const uint32_t core
         taskCfg.base = *cfgInfo;
     }
 
-    return curCtx->LaunchKernel(stubFunc, coreDim, argsInfo, curStm, flag, &taskCfg, isLaunchVec);
+    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, flag, cfgInfo, &taskCfg, isLaunchVec);
 }
 
 rtError_t ApiImpl::KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
@@ -545,7 +546,7 @@ rtError_t ApiImpl::KernelLaunchWithHandle(void * const hdl, const uint64_t tilin
         flag = static_cast<uint32_t>(cfgInfo->dumpflag);
         RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", flag);
     }
-    return curCtx->LaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo, isLaunchVec);
+    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo, isLaunchVec);
 }
 
 rtError_t ApiImpl::KernelLaunchEx(const char_t * const opName, const void * const args, const uint32_t argsSize,
@@ -1170,7 +1171,10 @@ rtError_t ApiImpl::LaunchNonKernelByHandle(Kernel * const kernel, uint32_t block
         rtHostInputInfo_t specialArgsInfos[SPECIAL_ARGS_MAX_CNT];
         error = ConvertArgsByArgsHandle(argsInfo, argHandle, specialArgsInfos, SPECIAL_ARGS_MAX_CNT);
         ERROR_RETURN(error, "ConvertArgsByArgsHandle failed, phNum=%u, error=%#x", phNum, error);
-        return curStm->Context_()->LaunchKernel(kernel, blockDim, &argsInfo, curStm, &taskCfg, isVecLaunch);
+        rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+        launchKernelExtendArgs.argsInfo = &argsInfo;
+        launchKernelExtendArgs.taskCfg = &taskCfg;
+        return StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs, isVecLaunch);
     }
 
     rtHostInputInfo_t *hostArgsInfos = new (std::nothrow) rtHostInputInfo_t[phNum];
@@ -1178,7 +1182,10 @@ rtError_t ApiImpl::LaunchNonKernelByHandle(Kernel * const kernel, uint32_t block
         sizeof(rtHostInputInfo_t) * phNum);
     error = ConvertArgsByArgsHandle(argsInfo, argHandle, hostArgsInfos, phNum);
     COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, DELETE_A(hostArgsInfos), "convert args failed.");
-    error = curStm->Context_()->LaunchKernel(kernel, blockDim, &argsInfo, curStm, &taskCfg, isVecLaunch);
+    rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+    launchKernelExtendArgs.argsInfo = &argsInfo;
+    launchKernelExtendArgs.taskCfg = &taskCfg;
+    error = StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs, isVecLaunch);
     DELETE_A(hostArgsInfos);
     ERROR_RETURN(error, "launch kernel failed, blockDim=%u, streamId=%d, error=%#x",blockDim, curStm->Id_(), error);
 
@@ -1230,7 +1237,10 @@ rtError_t ApiImpl::LaunchKernelV2(Kernel * const kernel, uint32_t blockDim, cons
     switch (argsWithType->type) {
         case RT_ARGS_NON_CPU_EX: {
             const bool isVecLaunch = (taskCfg.isExtendValid == 1U) && (taskCfg.extend.engineType == RT_ENGINE_TYPE_AIV);
-            error = curCtx->LaunchKernel(kernel, blockDim, argsWithType->args.nonCpuArgsInfo, curStm, &taskCfg, isVecLaunch);
+            rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+            launchKernelExtendArgs.argsInfo = argsWithType->args.nonCpuArgsInfo;
+            launchKernelExtendArgs.taskCfg = &taskCfg;
+            error = StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs, isVecLaunch);
             break;
         }
         case RT_ARGS_CPU_EX: {
@@ -1251,7 +1261,10 @@ rtError_t ApiImpl::LaunchKernelV2(Kernel * const kernel, uint32_t blockDim, cons
                 break;
             }
             const bool isVecLaunch = (taskCfg.isExtendValid == 1U) && (taskCfg.extend.engineType == RT_ENGINE_TYPE_AIV);
-            error = curCtx->LaunchKernel(kernel, blockDim, &argsEx, curStm, &taskCfg, isVecLaunch);
+            rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+            launchKernelExtendArgs.argsInfo = &argsEx;
+            launchKernelExtendArgs.taskCfg = &taskCfg;
+            error = StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs, isVecLaunch);
             break;
         }
         default:
@@ -1286,7 +1299,10 @@ rtError_t ApiImpl::LaunchKernel(Kernel * const kernel, uint32_t blockDim, const 
         taskCfg.isBaseValid = 1U;
         taskCfg.base = *cfgInfo;
     }
-    return curCtx->LaunchKernel(kernel, blockDim, argsInfo, curStm, &taskCfg);
+    rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+    launchKernelExtendArgs.argsInfo = argsInfo;
+    launchKernelExtendArgs.taskCfg = &taskCfg;
+    return StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs);
 }
 
 rtError_t ApiImpl::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,

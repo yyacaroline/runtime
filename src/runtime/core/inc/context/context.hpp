@@ -104,17 +104,6 @@ public:
     // Wait event recorded to complete.
     rtError_t Synchronize(int32_t timeout);
 
-    // Launch a kernel function to run on device cores.
-    rtError_t LaunchKernel(const void * const stubFunc, const uint32_t coreDim, const rtArgsEx_t *argsInfo,
-        Stream *stm, const uint32_t flag, const TaskCfg * const taskcfg = nullptr, const bool isLaunchVec = false);
-
-    rtError_t LaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo = nullptr,
-        const bool isLaunchVec = false);
-
-    rtError_t LaunchKernel(Kernel * const kernel, const uint32_t coreDim, const rtArgsEx_t *argsInfo, Stream *stm,
-        const TaskCfg * const taskcfg = nullptr, const bool isLaunchVec = false);
-
     rtError_t LaunchKernelGetPrefetchCnt(const Kernel * const kernelPtr, const Program * const prog,
         uint32_t &icachePrefetchCnt1, uint32_t &icachePrefetchCnt2, uint8_t &mixType) const;
 
@@ -409,6 +398,11 @@ public:
         infMode_ = mode;
     }
 
+    bool IsINFMode() const
+    {
+        return infMode_;
+    }
+
     rtError_t GetNotifyAddress(Notify * const notify, uint64_t &addr, Stream * const stm);
 
     void *CtxGetOverflowAddr() const
@@ -444,15 +438,7 @@ public:
         return streams_;
     }
 
-    rtError_t LaunchKernelPrepare(
-        Kernel *&registeredKernel, Program *&prog, rtKernelAttrType &kernelAttrType, Module *&mdl, const void * const stubFunc,
-        uint64_t &addr1, uint64_t &addr2, void * const progHandle, const uint64_t tilingKey,
-        uint32_t &prefetchCnt1, uint32_t &prefetchCnt2);
-    rtError_t LaunchKernelSubmit(
-        TaskInfo*& submitTask, Stream*& stm, const rtArgsEx_t*& argsInfo, StarsArgLoaderResult& result,
-        const Program* const programPtr);
     rtError_t SyncStreamsWithTimeout(const std::list<Stream *> &streams, int32_t timeout, const mmTimespec start) const;
-    void LaunchKernelRecycle(StarsArgLoaderResult& result, TaskInfo*& recycleTask, const Program* const prog) const;
     void GetStreamlist(rtStreamlistType_t type, StreamList_t *stmList);
     void GetModelList(ModelList_t *mdlList);
 	rtError_t CheckMemAlign(const void * const addr, const rtDataType_t type) const;
@@ -525,17 +511,6 @@ public:
         isForceReset_ = isForceReset;
     }
 
-    rtError_t LaunchUpdateKernelSubmit(
-        TaskInfo* const updateTask, Stream* const stm, const rtArgsEx_t* const argsInfo, StarsArgLoaderResult& result);
-    rtError_t UpdateTaskPrepare(TaskInfo * const updateTask, const Kernel * const kernel,
-                                const Stream * const stm) const;
-    rtError_t UpdateMixKernelTask(TaskInfo * const updateTask, Stream * const stm, void * const updateArgHandle) const;
-    rtError_t UpdateNormalKernelTask(TaskInfo * const updateTask, Stream * const stm, void * const updateArgHandle) const;
-    rtError_t UpdateNormalKernelTaskH2DSubmit(TaskInfo * const updateTask, Stream * const stm, void * const updateArgHandle) const;
-    rtError_t UpdateNormalKernelTaskD2HSubmit(TaskInfo * const updateTask, Stream * const stm) const;
-    rtError_t UpdateNormalKernelTaskByTS(TaskInfo * const updateTask, Stream * const stm, void * const updateArgHandle) const;
-    rtError_t UpdateNormalKernelTaskH2DSubmitComm(TaskInfo * const updateTask, Stream * const stm, void * const targetAddrOfUpdatedSqe, void * const updateArgHandle) const;
-    rtError_t UpdateNormalKernelTaskForSoftwareSq(TaskInfo * const updateTask, Stream * const stm, void * const updateArgHandle) const;
     rtError_t UpdateEndGraphTask(Stream * const origCaptureStream, Stream * const exeStream, Notify *ntf) const;
     rtError_t SendAndRecvDebugTask(RtDebugSendInfo * const sendInfo, rtDebugReportInfo_t * const reportInfo) const;
     uint64_t GetCallBackThreadId() const

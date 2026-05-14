@@ -296,6 +296,7 @@ set(libruntime_v100_src_files
     ${RUNTIME_CORE_DIR}/src/launch/cond_stars.cc
     ${RUNTIME_CORE_DIR}/src/launch/label_common.cc
     ${RUNTIME_CORE_DIR}/src/launch/label_stars.cc
+    ${RUNTIME_CORE_DIR}/src/launch/aix_stars.cc
     ${RUNTIME_CORE_DIR}/src/launch/aicpu_stars.cc
     ${RUNTIME_CORE_DIR}/src/launch/dvpp_stars.cc
     ${RUNTIME_CORE_DIR}/src/event/event.cc

@@ -71,7 +71,7 @@ rtError_t ApiImplDavid::KernelLaunch(const void * const stubFunc, const uint32_t
     }
     COND_RETURN_AND_MSG_OUTER(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT,
         ErrorCode::EE1010, __func__, "stream");
-    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, flag, cfgInfo);
+    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, flag, cfgInfo, nullptr, isLaunchVec);
 }
 
 rtError_t ApiImplDavid::KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
@@ -100,7 +100,7 @@ rtError_t ApiImplDavid::KernelLaunchWithHandle(void * const hdl, const uint64_t 
         RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", flag);
     }
 
-    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo);
+    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo, isLaunchVec);
 }
 
 rtError_t ApiImplDavid::LaunchKernel(Kernel * const kernel, uint32_t blockDim, const rtArgsEx_t * const argsInfo,

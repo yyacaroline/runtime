@@ -31,6 +31,7 @@
 #include "stream_sqcq_manage.hpp"
 #include "npu_driver.hpp"
 #include "api.hpp"
+#include "aix_c.hpp"
 #include "task_submit.hpp"
 #include "task.hpp"
 #include "task_res.hpp"
@@ -437,9 +438,11 @@ unsigned char dynamic_kernel_data_mix_1_2_data[] = {
     argsInfo.args = &arg;
     argsInfo.argsSize = 4100;
     Stream *stream = (Stream *)ctx->DefaultStream_();
+    rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+    launchKernelExtendArgs.argsInfo = &argsInfo;
     rtChipType_t oldChipType = ((RawDevice *)(ctx->Device_()))->chipType_;
     ((RawDevice *)(ctx->Device_()))->chipType_ = static_cast<rtChipType_t>(PLAT_GET_CHIP(static_cast<uint64_t>(0x400)));
-    error = ctx->LaunchKernel(kernelPtr, 8, &argsInfo, stream, NULL, true);
+    error = StreamLaunchKernelV2(kernelPtr, 8, stream, &launchKernelExtendArgs, true);
     ((RawDevice *)(ctx->Device_()))->chipType_ = oldChipType;
 
     error = rtDevBinaryUnRegister(m_handle);

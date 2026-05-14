@@ -30,7 +30,7 @@ rtError_t DcacheLockSendTask(Context *ctx, const uint32_t blockDim, const void *
     argsInfo.argsSize = argsSize;
     rtTaskCfgInfo_t cfgInfo = {};
     cfgInfo.schemMode = 1U;
-    const rtError_t error = StreamLaunchKernelV1(funcAddr, blockDim, &argsInfo, stream, 0U, &cfgInfo);
+    const rtError_t error = StreamLaunchKernelV1(funcAddr, blockDim, &argsInfo, stream, 0U, &cfgInfo, nullptr, false);
     if (error != RT_ERROR_NONE) {
         RT_LOG(RT_LOG_ERROR, "launch kernel failed, reCode=%#x", error);
         return error;

@@ -19,6 +19,7 @@
 #include "api.hpp"
 #include "api_impl.hpp"
 #include "api_impl_david.hpp"
+#include "aix_c.hpp"
 #include "program.hpp"
 #include "context.hpp"
 #include "raw_device.hpp"

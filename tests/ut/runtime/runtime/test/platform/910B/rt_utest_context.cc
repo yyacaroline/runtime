@@ -37,6 +37,7 @@
 #include "stream_sqcq_manage.hpp"
 #include "npu_driver.hpp"
 #include "api.hpp"
+#include "aix_c.hpp"
 #include "task_submit.hpp"
 #include "task.hpp"
 #include "task_res.hpp"
@@ -657,7 +658,7 @@ TEST_F(CloudV2ContextTest, LAUNCH_KERNEL_WITH_HANDLE)
     argsInfo.args = &arg;
     argsInfo.argsSize = 4100;
     Stream *stream = (Stream *)ctx->DefaultStream_();
-    error = ctx->LaunchKernelWithHandle(m_handle, 355, 1, &argsInfo, stream, 0, NULL);
+    error = StreamLaunchKernelWithHandle(m_handle, 355, 1, &argsInfo, stream, 0, NULL);
 
     error = rtDevBinaryUnRegister(m_handle);
     EXPECT_EQ(error, RT_ERROR_NONE);
@@ -1035,7 +1036,7 @@ unsigned char dynamic_kernel_data_mix_1_2_data[] = {
     Stream *stream = (Stream *)ctx->DefaultStream_();
     rtChipType_t oldChipType = ((RawDevice *)(ctx->Device_()))->chipType_;
     ((RawDevice *)(ctx->Device_()))->chipType_ = static_cast<rtChipType_t>(PLAT_GET_CHIP(static_cast<uint64_t>(0x400)));
-    error = ctx->LaunchKernelWithHandle(m_handle, 1, 1, &argsInfo, stream, 0, NULL);
+    error = StreamLaunchKernelWithHandle(m_handle, 1, 1, &argsInfo, stream, 0, NULL);
     ((RawDevice *)(ctx->Device_()))->chipType_ = oldChipType;
 
     error = rtDevBinaryUnRegister(m_handle);
@@ -1412,9 +1413,11 @@ unsigned char dynamic_kernel_data_mix_1_2_data[] = {
     argsInfo.args = &arg;
     argsInfo.argsSize = 4100;
     Stream *stream = (Stream *)ctx->DefaultStream_();
+    rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
+    launchKernelExtendArgs.argsInfo = &argsInfo;
     rtChipType_t oldChipType = ((RawDevice *)(ctx->Device_()))->chipType_;
     ((RawDevice *)(ctx->Device_()))->chipType_ = static_cast<rtChipType_t>(PLAT_GET_CHIP(static_cast<uint64_t>(0x400)));
-    error = ctx->LaunchKernel(kernelPtr, 8, &argsInfo, stream, NULL, true);
+    error = StreamLaunchKernelV2(kernelPtr, 8, stream, &launchKernelExtendArgs, true);
     ((RawDevice *)(ctx->Device_()))->chipType_ = oldChipType;
 
     error = rtDevBinaryUnRegister(m_handle);
@@ -1792,7 +1795,7 @@ unsigned char dynamic_kernel_data_mix_1_2_data[] = {
     argsInfo.args = &arg;
     argsInfo.argsSize = 4100;
     Stream *stream = (Stream *)ctx->DefaultStream_();
-    error = ctx->LaunchKernelWithHandle(m_handle, 1, 1, &argsInfo, stream, 0, NULL);
+    error = StreamLaunchKernelWithHandle(m_handle, 1, 1, &argsInfo, stream, 0, NULL);
 
     error = rtDevBinaryUnRegister(m_handle);
     EXPECT_EQ(error, RT_ERROR_NONE);
@@ -3451,7 +3454,7 @@ TEST_F(CloudV2ContextTest, MixKernelUpdate_test_3)
     updateTask.u.aicTaskInfo.kernel = kernel;
     updateTask.u.aicTaskInfo.kernel->mixType_ = MIX_AIC;
 
-    error = ctx->LaunchUpdateKernelSubmit(&updateTask, updateStream, nullptr, result);
+    error = LaunchUpdateKernelSubmit(ctx, &updateTask, updateStream, nullptr, result);
     EXPECT_EQ(error, RT_ERROR_DRV_ERR);
 
     TaskInfo updateTask2 = {};
@@ -3461,7 +3464,7 @@ TEST_F(CloudV2ContextTest, MixKernelUpdate_test_3)
     updateTask2.u.aicTaskInfo.kernel = kernel;
     updateTask2.u.aicTaskInfo.kernel->mixType_ = NO_MIX;
 
-    error = ctx->LaunchUpdateKernelSubmit(&updateTask2, updateStream, nullptr, result);
+    error = LaunchUpdateKernelSubmit(ctx, &updateTask2, updateStream, nullptr, result);
     EXPECT_EQ(error, RT_ERROR_DRV_ERR);
 
     StreamList_t stmList = {};
@@ -3522,7 +3525,7 @@ TEST_F(CloudV2ContextTest, UpdateTaskPrepare_test_1)
     taskInfo.stream = updateStream;
     MOCKER_CPP(&TaskFactory::Alloc).stubs().will(returnValue(&taskInfo));
 
-    ArgLoaderResult result = {};
+    StarsArgLoaderResult result = {};
     TaskInfo updateTask = {};
     updateTask.stream = stream;
     updateTask.id = 1;
@@ -3530,7 +3533,7 @@ TEST_F(CloudV2ContextTest, UpdateTaskPrepare_test_1)
     updateTask.u.aicTaskInfo.kernel = kernel;
     updateTask.u.aicTaskInfo.kernel->mixType_ = MIX_AIC;
 
-    error = ctx->UpdateTaskPrepare(&updateTask, nullptr, updateStream);
+    error = UpdateTaskPrepare(ctx, &updateTask, nullptr, updateStream);
     EXPECT_EQ(error, RT_ERROR_MODEL_NULL);
     ((Runtime *)Runtime::Instance())->DeviceRelease(deviceStub);
     (void)((Runtime *)Runtime::Instance())->PrimaryContextRelease(devId);

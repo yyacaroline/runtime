@@ -185,7 +185,7 @@ set(runtimeut_src_api_list
 )
 
 set(runtimeut_src_david_series_common_c_list
-    ${TOP_DIR}/src/runtime/core/src/launch/aix_c.cc
+    ${TOP_DIR}/src/runtime/core/src/launch/aix_starsv2.cc
     ${TOP_DIR}/src/runtime/core/src/launch/aicpu_starsv2.cc
     ${TOP_DIR}/src/runtime/core/src/launch/dvpp_starsv2.cc
     ${TOP_DIR}/src/runtime/feature/fusion/fusion_c.cc
@@ -516,6 +516,7 @@ set(runtimeut_src_list
     ${TOP_DIR}/src/runtime/core/src/launch/memory_common.cc
     ${TOP_DIR}/src/runtime/core/src/launch/memcpy_stars.cc
     ${TOP_DIR}/src/runtime/core/src/launch/memory_stars.cc
+    ${TOP_DIR}/src/runtime/core/src/launch/aix_stars.cc
     ${TOP_DIR}/src/runtime/core/src/launch/aicpu_stars.cc
     ${TOP_DIR}/src/runtime/core/src/launch/dvpp_stars.cc
     ${TOP_DIR}/src/runtime/core/src/device/aicpu_err_msg.cc

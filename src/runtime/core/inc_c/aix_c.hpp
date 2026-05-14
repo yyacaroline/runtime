@@ -14,6 +14,8 @@
 
 namespace cce {
 namespace runtime {
+    class Context;
+    struct StarsArgLoaderResult;
     struct rtStreamLaunchKernelV2ExtendArgs_t {
         const rtArgsEx_t *argsInfo;
         const rtTaskCfgInfo_t *cfgInfo;
@@ -22,12 +24,18 @@ namespace runtime {
         void **argsArray;
     };
 
-    rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim, const rtArgsEx_t *argsInfo,
-        Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo);
+    rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim,
+        const rtArgsEx_t *argsInfo,
+        Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo,
+        const TaskCfg * const taskCfg, const bool isLaunchVec);
     rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo = nullptr);
-    rtError_t StreamLaunchKernelV2(Kernel * const kernel, const uint32_t coreDim, Stream *stm,
-        const rtStreamLaunchKernelV2ExtendArgs_t * const extendAgrs);
+        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
+        const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false);
+    rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *stm,
+        const rtStreamLaunchKernelV2ExtendArgs_t *extendAgrs, const bool isLaunchVec = false);
+    rtError_t UpdateTaskPrepare(Context *ctx, TaskInfo *updateTask, const Kernel *kernel, const Stream *stm);
+    rtError_t LaunchUpdateKernelSubmit(Context *ctx, TaskInfo *updateTask, Stream *stm, const rtArgsEx_t *argsInfo,
+        StarsArgLoaderResult &result);
     rtError_t UpdateDavidKernelTaskSubmit(TaskInfo * const updateTask, Stream * const stm, uint32_t sqeLen = 1U);
     rtError_t ConstructStreamLaunchKernelV2ExtendArgs(const rtArgsEx_t *argsInfo,
         const rtTaskCfgInfo_t * const cfgInfo, const LaunchTaskCfgInfo_t * const launchTaskCfg,
