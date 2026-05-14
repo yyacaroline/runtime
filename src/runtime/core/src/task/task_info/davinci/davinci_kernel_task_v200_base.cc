@@ -268,34 +268,6 @@ void StarsV2SetStarsResultForDavinciTask(TaskInfo* taskInfo, const rtLogicCqRepo
     }
 }
 
-void AicTaskInitV2(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, const uint16_t dimNum,
-    const uint32_t flag, const LaunchTaskCfgInfo_t * const launchTaskCfg)
-{
-    AicTaskInitCommon(taskInfo, kernelAttrType, dimNum, flag, false);
-    AicTaskInfo *aicTaskInfo = &(taskInfo->u.aicTaskInfo);
-
-    if (launchTaskCfg != nullptr) {
-        aicTaskInfo->qos = launchTaskCfg->qos;
-        aicTaskInfo->partId = launchTaskCfg->partId;
-        aicTaskInfo->schemMode = launchTaskCfg->schemMode;
-        aicTaskInfo->blockDimOffset = launchTaskCfg->blockDimOffset;
-        aicTaskInfo->dynamicShareMemSize = launchTaskCfg->dynamicShareMemSize;
-        if ((launchTaskCfg->dumpflag == RT_KERNEL_DUMPFLAG) || (launchTaskCfg->dumpflag == RT_FUSION_KERNEL_DUMPFLAG)) {
-            aicTaskInfo->comm.kernelFlag = static_cast<uint8_t>(launchTaskCfg->dumpflag & 0xFFU);
-            RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", launchTaskCfg->dumpflag);
-        }
-        aicTaskInfo->groupDim = launchTaskCfg->Group.groupDim;
-        aicTaskInfo->groupBlockDim = launchTaskCfg->Group.groupBlockDim;
-    }
-
-    RT_LOG(RT_LOG_INFO, "kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, groupDim=%u, groupBlockDim=%u.",
-           aicTaskInfo->comm.kernelFlag, aicTaskInfo->qos,
-           aicTaskInfo->partId, aicTaskInfo->schemMode,
-           aicTaskInfo->groupDim, aicTaskInfo->groupBlockDim);
-
-    return;
-}
-
 static void ConstructDavidCommonSqeForDavinciTask(TaskInfo *taskInfo, rtDavidSqe_t * const command,
     uint64_t sqBaseAddr)
 {

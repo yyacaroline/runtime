@@ -532,9 +532,6 @@ void DoCompleteSuccessForDavidEventWaitTask(TaskInfo * const taskInfo, const uin
 void DoCompleteSuccessForDavidEventResetTask(TaskInfo * const taskInfo, const uint32_t devId);
 void SetStarsResultForDavidEventRecordTask(TaskInfo * const taskInfo, const rtLogicCqReport_t &logicCq);
 void StarsV2SetStarsResultForDavinciTask(TaskInfo* taskInfo, const rtLogicCqReport_t &logicCq);
-void AicTaskInitV2(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType,
-    const uint16_t dimNum, const uint32_t flag,
-    const LaunchTaskCfgInfo_t * const launchTaskCfg);
 void ConstructDavidAicAivSqeForDavinciTask(TaskInfo * const taskInfo, rtDavidSqe_t * const command, uint64_t sqBaseAddr);
 void StarsV2DavinciTaskUnInit(TaskInfo *taskInfo);
 void StarsV2DoCompleteSuccessForDavinciTask(TaskInfo* taskInfo, const uint32_t devId);

@@ -5194,6 +5194,41 @@ TEST_F(UbStreamTest1, CallBakLaunch_SQE_ONLINE)
     delete rawDrv;
 }
 
+TEST_F(UbStreamTest1, AicTaskInitByExtendAgrs_LaunchTaskCfg)
+{
+    TaskInfo task = {};
+    InitByStream(&task, stream_);
+
+    LaunchTaskCfgInfo_t launchTaskCfg = {};
+    launchTaskCfg.blockDim = 1U;
+    launchTaskCfg.Group.groupDim = 2U;
+    launchTaskCfg.Group.groupBlockDim = 3U;
+    launchTaskCfg.qos = 1U;
+    launchTaskCfg.partId = 2U;
+    
+    cce::runtime::rtStreamLaunchKernelV2ExtendArgs_t extendArgs = {};
+    extendArgs.launchTaskCfg = &launchTaskCfg;
+    extendArgs.argsInfo = nullptr;
+    extendArgs.cfgInfo = nullptr;
+    extendArgs.taskCfg = nullptr;
+    extendArgs.argsArray = nullptr;
+
+    AicTaskInitByExtendAgrs(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, &extendArgs);
+
+    EXPECT_EQ(task.u.aicTaskInfo.groupDim, launchTaskCfg.Group.groupDim);
+    EXPECT_EQ(task.u.aicTaskInfo.groupBlockDim, launchTaskCfg.Group.groupBlockDim);
+    EXPECT_EQ(task.u.aicTaskInfo.qos, launchTaskCfg.qos);
+    EXPECT_EQ(task.u.aicTaskInfo.partId, launchTaskCfg.partId);
+
+    rtDavidSqe_t sqe = {};
+    uint64_t sqBaseAddr = 0U;
+    ToConstructDavidSqe(&task, &sqe, sqBaseAddr);
+    EXPECT_EQ(sqe.aicAivSqe.groupDim, launchTaskCfg.Group.groupDim);
+    EXPECT_EQ(sqe.aicAivSqe.groupBlockdim, launchTaskCfg.Group.groupBlockDim);
+
+    TaskUnInitProc(&task);
+}
+
 TEST_F(UbStreamTest1, DieFriendly_SQE)
 {
     TaskInfo task = {};
@@ -5203,7 +5238,17 @@ TEST_F(UbStreamTest1, DieFriendly_SQE)
     launchTaskCfg.blockDim = 1U;
     launchTaskCfg.Group.groupDim = 2U;
     launchTaskCfg.Group.groupBlockDim = 3U;
-    AicTaskInitV2(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &launchTaskCfg);
+    TaskCfg taskCfg = {};
+    taskCfg.isBaseValid = 1U;
+    taskCfg.base.qos = launchTaskCfg.qos;
+    taskCfg.base.partId = launchTaskCfg.partId;
+    taskCfg.base.schemMode = launchTaskCfg.schemMode;
+    taskCfg.base.blockDimOffset = launchTaskCfg.blockDimOffset;
+    taskCfg.base.dumpflag = launchTaskCfg.dumpflag;
+    taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &taskCfg, false);
+    task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
+    task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     rtDavidSqe_t sqe = {};
     uint64_t sqBaseAddr = 0U;
     ToConstructDavidSqe(&task, &sqe, sqBaseAddr);
@@ -5214,7 +5259,10 @@ TEST_F(UbStreamTest1, DieFriendly_SQE)
 
     launchTaskCfg.blockDim = 4U;
     launchTaskCfg.Group.groupDim = 0U;
-    AicTaskInitV2(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &launchTaskCfg);
+    taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &taskCfg, false);
+    task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
+    task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     ToConstructDavidSqe(&task, &sqe, sqBaseAddr);
     EXPECT_EQ(sqe.aicAivSqe.header.blockDim, 4);
     EXPECT_EQ(sqe.aicAivSqe.groupDim, 2);
@@ -5241,7 +5289,17 @@ TEST_F(UbStreamTest1, PiMix_SQE)
     launchTaskCfg.blockDim = 1U;
     launchTaskCfg.Group.groupDim = 2U;
     launchTaskCfg.Group.groupBlockDim = 3U;
-    AicTaskInitV2(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &launchTaskCfg);
+    TaskCfg taskCfg = {};
+    taskCfg.isBaseValid = 1U;
+    taskCfg.base.qos = launchTaskCfg.qos;
+    taskCfg.base.partId = launchTaskCfg.partId;
+    taskCfg.base.schemMode = launchTaskCfg.schemMode;
+    taskCfg.base.blockDimOffset = launchTaskCfg.blockDimOffset;
+    taskCfg.base.dumpflag = launchTaskCfg.dumpflag;
+    taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &taskCfg, false);
+    task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
+    task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     aicTaskInfo->kernel = kernel;
     aicTaskInfo->kernel->SetMixType(MIX_AIC_AIV_MAIN_AIC);
     aicTaskInfo->kernel->taskRation_ = 2;
@@ -5257,7 +5315,9 @@ TEST_F(UbStreamTest1, PiMix_SQE)
     EXPECT_EQ(sqe.aicAivSqe.loose, 1);
 
     aicTaskInfo->kernel->taskRation_ = 2;
-    AicTaskInitV2(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &launchTaskCfg);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, 1, &taskCfg, false);
+    task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
+    task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     aicTaskInfo->kernel->SetMixType(NO_MIX);
     ToConstructDavidSqe(&task, &sqe, sqBaseAddr);
     EXPECT_EQ(sqe.aicAivSqe.piMix, 0);

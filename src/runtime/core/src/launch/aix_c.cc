@@ -452,11 +452,24 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     return RT_ERROR_NONE;
 }
 
-static void AicTaskInitByExtendAgrs(TaskInfo *kernelTask, const rtKernelAttrType kernelAttrType, const uint32_t coreDim,
+void AicTaskInitByExtendAgrs(TaskInfo *kernelTask, const rtKernelAttrType kernelAttrType, const uint32_t coreDim,
     const rtStreamLaunchKernelV2ExtendArgs_t * const extendAgrs)
 {
+    AicTaskInfo *aicTaskInfo = &(kernelTask->u.aicTaskInfo);
+    
     if (extendAgrs->launchTaskCfg != nullptr) {
-        AicTaskInitV2(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, extendAgrs->launchTaskCfg);
+        TaskCfg taskCfg = {};
+        taskCfg.isBaseValid = 1U;
+        taskCfg.base.qos = extendAgrs->launchTaskCfg->qos;
+        taskCfg.base.partId = extendAgrs->launchTaskCfg->partId;
+        taskCfg.base.schemMode = extendAgrs->launchTaskCfg->schemMode;
+        taskCfg.base.blockDimOffset = extendAgrs->launchTaskCfg->blockDimOffset;
+        taskCfg.base.dumpflag = extendAgrs->launchTaskCfg->dumpflag;
+        taskCfg.base.localMemorySize = extendAgrs->launchTaskCfg->dynamicShareMemSize;
+        AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, &taskCfg, false);
+        
+        aicTaskInfo->groupDim = extendAgrs->launchTaskCfg->Group.groupDim;
+        aicTaskInfo->groupBlockDim = extendAgrs->launchTaskCfg->Group.groupBlockDim;
         return;
     }
     if (extendAgrs->taskCfg != nullptr) {
