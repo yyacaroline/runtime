@@ -21,3 +21,13 @@ target_include_directories(npu_runtime_headers INTERFACE
     $<INSTALL_INTERFACE:include/runtime/external>
     $<INSTALL_INTERFACE:include/runtime/external/runtime>
 )
+
+if(ENABLE_OPEN_SRC)
+    add_library(runtime_headers INTERFACE)
+    target_include_directories(runtime_headers INTERFACE
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/include/external>
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc>
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/profiling>
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/runtime>
+    )
+endif()
