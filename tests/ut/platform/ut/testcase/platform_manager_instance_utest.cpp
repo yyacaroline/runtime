@@ -27,6 +27,10 @@ protected:
     PlatformInfoManager::Instance().platform_info_map_.clear();
     PlatformInfoManager::Instance().device_platform_infos_map_.clear();
     PlatformInfoManager::Instance().runtime_device_platform_infos_map_.clear();
+    PlatformInfoManager::Instance().loaded_ini_files_.clear();
+    PlatformInfoManager::Instance().cfg_file_real_path_.clear();
+    PlatformInfoManager::Instance().opti_compilation_info_ = OptionalInfo();
+    PlatformInfoManager::Instance().opti_compilation_infos_ = OptionalInfos();
     PlatformInfoManager::Instance().init_flag_ = false;
     PlatformInfoManager::Instance().runtime_init_flag_ = false;
   }
@@ -244,4 +248,400 @@ TEST_F(PlatformManagerUTest, platform_instance_InitByInstance_already_initialize
   EXPECT_EQ(platform_infos.platform_infos_impl_, first_impl);
 }
 
+TEST_F(PlatformManagerUTest, platform_instance_lazy_load_success) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 0U);
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 1U);
+  EXPECT_EQ(instance.loaded_ini_files_.count(soc_version), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_lazy_load_no_repeat) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_EQ(ret, 0U);
+  size_t loaded_count = instance.loaded_ini_files_.size();
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.loaded_ini_files_.size(), loaded_count);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "NonExistentSoC";
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfo_lazy_load) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  ret = instance.GetPlatformInfo(soc_version, platform_info, optional_info);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.platform_info_map_.count(soc_version), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_lazy_load) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  OptionalInfo optional_info;
+  optional_info.soc_version = soc_version;
+  instance.SetOptionalCompilationInfo(optional_info);
+  PlatformInfo platform_info;
+  OptionalInfo out_optional_info;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_info, out_optional_info);
+  EXPECT_EQ(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInstanceByDevice_lazy_load) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion(soc_version);
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.device_platform_infos_map_.count(0), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_EnsureSocVersionLoaded_empty) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.EnsureSocVersionLoaded("");
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_Finalize_clears_loaded) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  (void)instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_FALSE(instance.loaded_ini_files_.empty());
+  EXPECT_FALSE(instance.cfg_file_real_path_.empty());
+  ret = instance.Finalize();
+  EXPECT_EQ(ret, 0U);
+  EXPECT_TRUE(instance.loaded_ini_files_.empty());
+  EXPECT_TRUE(instance.cfg_file_real_path_.empty());
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfo_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "NonExistentSoC";
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  ret = instance.GetPlatformInfo(soc_version, platform_info, optional_info);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_empty_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_info, optional_info);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfo optional_info;
+  optional_info.soc_version = "NonExistentSoC";
+  instance.SetOptionalCompilationInfo(optional_info);
+  PlatformInfo platform_info;
+  OptionalInfo out_optional_info;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_info, out_optional_info);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_PlatformInfos_empty_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_infos, optional_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_PlatformInfos_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("NonExistentSoC");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  OptionalInfos out_optional_infos;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_infos, out_optional_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInstanceByDevice_empty_soc_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos platform_infos;
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInstanceByDevice_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("NonExistentSoC");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInstanceByDevice_Ascend910_mapping) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("Ascend910");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.loaded_ini_files_.count("Ascend910A"), 1U);
+  EXPECT_EQ(instance.device_platform_infos_map_.count(0), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_InitializePlatformInfo_repeat) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_Trim_empty) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  std::string str = "";
+  instance.Trim(str);
+  EXPECT_EQ(str, "");
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_EnsureSocVersionLoaded_repeat) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  ret = instance.EnsureSocVersionLoaded("Ascend910B1");
+  EXPECT_EQ(ret, 0U);
+  ret = instance.EnsureSocVersionLoaded("Ascend910B1");
+  EXPECT_EQ(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfo_Ascend910_mapping) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  ret = instance.GetPlatformInfo("Ascend910", platform_info, optional_info);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.loaded_ini_files_.count("Ascend910A"), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_SetOptionalCompilationInfo_Ascend910_mapping) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  OptionalInfo optional_info;
+  optional_info.soc_version = "Ascend910";
+  instance.SetOptionalCompilationInfo(optional_info);
+  EXPECT_EQ(instance.opti_compilation_info_.soc_version, "Ascend910A");
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfos_Ascend910_mapping) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfos("Ascend910", platform_infos, optional_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.loaded_ini_files_.count("Ascend910A"), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfo_defensive) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  ret = instance.GetPlatformInfo(soc_version, platform_info, optional_info);
+  EXPECT_EQ(ret, 0U);
+  instance.platform_info_map_.erase(soc_version);
+  ret = instance.GetPlatformInfo(soc_version, platform_info, optional_info);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfos_defensive) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  PlatFormInfos platform_infos;
+  OptionalInfos optional_infos;
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_EQ(ret, 0U);
+  instance.platform_infos_map_.erase(soc_version);
+  ret = instance.GetPlatformInfos(soc_version, platform_infos, optional_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInfoWithOutSocVersion_PlatformInfos_defensive) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("Ascend910B1");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  OptionalInfos out_optional_infos;
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_infos, out_optional_infos);
+  EXPECT_EQ(ret, 0U);
+  instance.platform_infos_map_.erase("Ascend910B1");
+  ret = instance.GetPlatformInfoWithOutSocVersion(platform_infos, out_optional_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_GetPlatformInstanceByDevice_defensive) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("Ascend910B1");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos platform_infos;
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_EQ(ret, 0U);
+  instance.platform_infos_map_.erase("Ascend910B1");
+  instance.device_platform_infos_map_.clear();
+  ret = instance.GetPlatformInstanceByDevice(0, platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_with_soc_lazy_load_success) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 0U);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos(soc_version, new_platform_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 1U);
+  EXPECT_EQ(instance.loaded_ini_files_.count(soc_version), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_with_soc_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "NonExistentSoC";
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos(soc_version, new_platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_with_soc_Ascend910_mapping) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos("Ascend910", new_platform_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.loaded_ini_files_.count("Ascend910A"), 1U);
+  EXPECT_EQ(instance.platform_infos_map_.count("Ascend910A"), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_with_soc_empty_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos("", new_platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_no_soc_lazy_load_success) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  std::string soc_version = "Ascend910B1";
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion(soc_version);
+  instance.SetOptionalCompilationInfo(optional_infos);
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 0U);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos(new_platform_infos);
+  EXPECT_EQ(ret, 0U);
+  EXPECT_EQ(instance.platform_infos_map_.count(soc_version), 1U);
+  EXPECT_EQ(instance.loaded_ini_files_.count(soc_version), 1U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_no_soc_lazy_load_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  OptionalInfos optional_infos;
+  optional_infos.Init();
+  optional_infos.SetSocVersion("NonExistentSoC");
+  instance.SetOptionalCompilationInfo(optional_infos);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos(new_platform_infos);
+  EXPECT_NE(ret, 0U);
+}
+
+TEST_F(PlatformManagerUTest, platform_instance_UpdatePlatformInfos_no_soc_empty_fail) {
+  PlatformInfoManager &instance = PlatformInfoManager::Instance();
+  uint32_t ret = instance.InitializePlatformInfo();
+  EXPECT_EQ(ret, 0U);
+  PlatFormInfos new_platform_infos;
+  ret = instance.UpdatePlatformInfos(new_platform_infos);
+  EXPECT_NE(ret, 0U);
+}
 }

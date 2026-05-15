@@ -95,8 +95,8 @@ void PlatformInfoManager::Trim(std::string &str) {
   if (str.empty()) {
     return;
   }
-  size_t start_pos = str.find_first_not_of(" \t");
-  size_t end_pos = str.find_last_not_of(" \t");
+  size_t start_pos = str.find_first_not_of(" \t\r\n");
+  size_t end_pos = str.find_last_not_of(" \t\r\n");
   if (start_pos == std::string::npos || start_pos > end_pos) {
     str.clear();
     return;
@@ -165,49 +165,20 @@ uint32_t PlatformInfoManager::LoadIniFile(std::string ini_file_real_path) {
   return PLATFORM_SUCCESS;
 }
 
-uint32_t PlatformInfoManager::LoadConfigFile(std::string real_path) {
-  std::vector<std::string> ini_cfg_files;
-  DIR *dir;
-  struct dirent *dirp = nullptr;
-  char *file_suffix = const_cast<char *>(".ini");
-  dir = opendir(real_path.c_str());
-  if (dir == nullptr) {
-    PF_LOGE("Failed to open directory %s.", real_path.c_str());
+uint32_t PlatformInfoManager::EnsureSocVersionLoaded(const std::string &soc_version) {
+  if (soc_version.empty()) {
     return PLATFORM_FAILED;
   }
-
-  while ((dirp = readdir(dir)) != nullptr) {
-    if (dirp->d_name[0] == '.') {
-      continue;
-    }
-    std::string file_name = dirp->d_name;
-    if (strlen(dirp->d_name) <= strlen(file_suffix)) {
-      continue;
-    }
-    size_t pos = file_name.rfind('.');
-    if (pos == std::string::npos) {
-      continue;
-    }
-    if (file_name.substr(pos + 1) != INI_FILE_SUFFIX) {
-      continue;
-    }
-    if (strcmp(&(dirp->d_name)[strlen(dirp->d_name) - strlen(file_suffix)], file_suffix) == 0) {
-      ini_cfg_files.push_back(real_path + "/" + dirp->d_name);
-    }
+  if (loaded_ini_files_.count(soc_version) > 0) {
+    return PLATFORM_SUCCESS;
   }
-  closedir(dir);
-
-  if (ini_cfg_files.empty()) {
-    PF_LOGE("There is no ini file in path %s.", real_path.c_str());
+  std::string ini_file_path = cfg_file_real_path_ + "/" + soc_version + ".ini";
+  PF_LOGD("Begin to load ini file[%s].", ini_file_path.c_str());
+  if (LoadIniFile(ini_file_path) != PLATFORM_SUCCESS) {
+    PF_LOGE("Failed to load ini file[%s].", ini_file_path.c_str());
     return PLATFORM_FAILED;
   }
-
-  for (std::string ini_file_path : ini_cfg_files) {
-    if (LoadIniFile(ini_file_path) != PLATFORM_SUCCESS) {
-      PF_LOGE("Failed to load ini file[%s].", ini_file_path.c_str());
-      return PLATFORM_FAILED;
-    }
-  }
+  loaded_ini_files_.insert(soc_version);
   return PLATFORM_SUCCESS;
 }
 
@@ -932,17 +903,12 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::InitializeP
   if (init_flag_) {
     return PLATFORM_SUCCESS;
   }
-  std::string cfg_file_real_path = fe::GetConfigFilePath<PlatformInfoManager>();
-  if (cfg_file_real_path.empty()) {
-    PF_LOGE("File path[%s] is not valid.", cfg_file_real_path.c_str());
+  cfg_file_real_path_ = fe::GetConfigFilePath<PlatformInfoManager>();
+  if (cfg_file_real_path_.empty()) {
+    PF_LOGE("File path[%s] is not valid.", cfg_file_real_path_.c_str());
     return PLATFORM_FAILED;
   }
 
-  uint32_t ret = LoadConfigFile(cfg_file_real_path);
-  if (ret != PLATFORM_SUCCESS) {
-    PF_LOGE("Failed to load configuration file, path: %s.", cfg_file_real_path.c_str());
-    return PLATFORM_FAILED;
-  }
   if (!opti_compilation_infos_.Init()) {
     PF_LOGE("Failed to initialize optional information.");
     return PLATFORM_FAILED;
@@ -962,8 +928,15 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   auto iter = platform_info_map_.find(realSocVersion);
   if (iter == platform_info_map_.end()) {
-    PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
-    return PLATFORM_FAILED;
+    if (EnsureSocVersionLoaded(realSocVersion) != PLATFORM_SUCCESS) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_info_map_.find(realSocVersion);
+    if (iter == platform_info_map_.end()) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
+      return PLATFORM_FAILED;
+    }
   }
   platform_info = iter->second;
   opti_compilation_info = opti_compilation_info_;
@@ -979,8 +952,15 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
   }
   auto iter = platform_info_map_.find(opti_compilation_info_.soc_version);
   if (iter == platform_info_map_.end()) {
-    PF_LOGE("Cannot find platform_info by SoCVersion %s.", opti_compilation_info_.soc_version.c_str());
-    return PLATFORM_FAILED;
+    if (EnsureSocVersionLoaded(opti_compilation_info_.soc_version) != PLATFORM_SUCCESS) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", opti_compilation_info_.soc_version.c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_info_map_.find(opti_compilation_info_.soc_version);
+    if (iter == platform_info_map_.end()) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", opti_compilation_info_.soc_version.c_str());
+      return PLATFORM_FAILED;
+    }
   }
   platform_info = iter->second;
   opti_compilation_info = opti_compilation_info_;
@@ -1005,8 +985,15 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
   auto iter = platform_infos_map_.find(realSocVersion);
   if (iter == platform_infos_map_.end()) {
-    PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
-    return PLATFORM_FAILED;
+    if (EnsureSocVersionLoaded(realSocVersion) != PLATFORM_SUCCESS) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_infos_map_.find(realSocVersion);
+    if (iter == platform_infos_map_.end()) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", realSocVersion.c_str());
+      return PLATFORM_FAILED;
+    }
   }
   platform_info = iter->second;
   opti_compilation_info = opti_compilation_infos_;
@@ -1017,14 +1004,22 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
 __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatformInfoWithOutSocVersion(
     PlatFormInfos &platform_info, OptionalInfos &opti_compilation_info) {
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
-  if (opti_compilation_infos_.GetSocVersion().empty()) {
+  std::string real_soc = opti_compilation_infos_.GetSocVersion();
+  if (real_soc.empty()) {
     PF_LOGW("Cannot find platform_info.");
     return PLATFORM_FAILED;
   }
-  auto iter = platform_infos_map_.find(opti_compilation_infos_.GetSocVersion());
+  auto iter = platform_infos_map_.find(real_soc);
   if (iter == platform_infos_map_.end()) {
-    PF_LOGE("Cannot find platform_info by SoCVersion %s.", opti_compilation_infos_.GetSocVersion().c_str());
-    return PLATFORM_FAILED;
+    if (EnsureSocVersionLoaded(real_soc) != PLATFORM_SUCCESS) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", real_soc.c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_infos_map_.find(real_soc);
+    if (iter == platform_infos_map_.end()) {
+      PF_LOGE("Cannot find platform_info by SoCVersion %s.", real_soc.c_str());
+      return PLATFORM_FAILED;
+    }
   }
   platform_info = iter->second;
   if (!platform_info.GetFixPipeDtypeMap().empty()) {
@@ -1037,17 +1032,24 @@ __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatform
 __attribute__((visibility("default"))) uint32_t PlatformInfoManager::GetPlatformInstanceByDevice(
     const uint32_t &device_id, PlatFormInfos &platform_info) {
   std::lock_guard<std::mutex> lock_guard(pc_lock_);
+  std::string real_soc = opti_compilation_infos_.GetSocVersion();
   auto iter = device_platform_infos_map_.find(device_id);
   if (iter == device_platform_infos_map_.end()) {
-    if (opti_compilation_infos_.GetSocVersion().empty()) {
+    if (real_soc.empty()) {
       PF_LOGW("Not initialize soc_version of optional_infos.");
       return PLATFORM_FAILED;
     }
-    if (platform_infos_map_.find(opti_compilation_infos_.GetSocVersion()) == platform_infos_map_.end()) {
-      PF_LOGW("Failed to initialize platform info map.");
-      return PLATFORM_FAILED;
+    if (platform_infos_map_.find(real_soc) == platform_infos_map_.end()) {
+      if (EnsureSocVersionLoaded(real_soc) != PLATFORM_SUCCESS) {
+        PF_LOGW("Failed to initialize platform info map.");
+        return PLATFORM_FAILED;
+      }
+      if (platform_infos_map_.find(real_soc) == platform_infos_map_.end()) {
+        PF_LOGW("Failed to initialize platform info map.");
+        return PLATFORM_FAILED;
+      }
     }
-    device_platform_infos_map_[device_id] = platform_infos_map_[opti_compilation_infos_.GetSocVersion()];
+    device_platform_infos_map_[device_id] = platform_infos_map_[real_soc];
   }
   platform_info = device_platform_infos_map_[device_id];
   return PLATFORM_SUCCESS;
@@ -1069,9 +1071,17 @@ uint32_t PlatformInfoManager::UpdatePlatformInfos(fe::PlatFormInfos &platform_in
     PF_LOGE("Soc_version in the optional information is empty.");
     return PLATFORM_FAILED;
   }
-  if (platform_infos_map_.find(opti_compilation_infos_.GetSocVersion()) == platform_infos_map_.end()) {
-    PF_LOGE("Platform info for soc_version [%s] is not initialized.", opti_compilation_infos_.GetSocVersion().c_str());
-    return PLATFORM_FAILED;
+  auto iter = platform_infos_map_.find(opti_compilation_infos_.GetSocVersion());
+  if (iter == platform_infos_map_.end()) {
+    if (EnsureSocVersionLoaded(opti_compilation_infos_.GetSocVersion()) != PLATFORM_SUCCESS) {
+      PF_LOGE("Platform info for soc_version [%s] is not initialized.", opti_compilation_infos_.GetSocVersion().c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_infos_map_.find(opti_compilation_infos_.GetSocVersion());
+    if (iter == platform_infos_map_.end()) {
+      PF_LOGE("Platform info for soc_version [%s] is not initialized.", opti_compilation_infos_.GetSocVersion().c_str());
+      return PLATFORM_FAILED;
+    }
   }
   platform_infos_map_[opti_compilation_infos_.GetSocVersion()] = platform_info;
   return PLATFORM_SUCCESS;
@@ -1088,9 +1098,17 @@ uint32_t PlatformInfoManager::UpdatePlatformInfos(const std::string &soc_version
   if (real_soc == SOC_VERSION_ASCEND910) {
     real_soc = SOC_VERSION_ASCEND910A;
   }
-  if (platform_infos_map_.find(real_soc) == platform_infos_map_.end()) {
-    PF_LOGE("Platform info for soc_version [%s] is not initialized.", real_soc.c_str());
-    return PLATFORM_FAILED;
+  auto iter = platform_infos_map_.find(real_soc);
+  if (iter == platform_infos_map_.end()) {
+    if (EnsureSocVersionLoaded(real_soc) != PLATFORM_SUCCESS) {
+      PF_LOGE("Platform info for soc_version [%s] is not initialized.", real_soc.c_str());
+      return PLATFORM_FAILED;
+    }
+    iter = platform_infos_map_.find(real_soc);
+    if (iter == platform_infos_map_.end()) {
+      PF_LOGE("Platform info for soc_version [%s] is not initialized.", real_soc.c_str());
+      return PLATFORM_FAILED;
+    }
   }
   opti_compilation_infos_.SetSocVersionWithLock(real_soc);
   platform_infos_map_[real_soc] = platform_info;
@@ -1111,6 +1129,10 @@ uint32_t PlatformInfoManager::Finalize() {
   device_platform_infos_map_.clear();
 
   runtime_device_platform_infos_map_.clear();
+
+  loaded_ini_files_.clear();
+
+  cfg_file_real_path_.clear();
 
   init_flag_ = false;
 
@@ -1154,10 +1176,12 @@ uint32_t PlatformInfoManager::InitRuntimePlatformInfos(const std::string &SoCVer
     return PLATFORM_SUCCESS;
   }
 
-  std::string cfg_file_real_path = fe::GetConfigFilePath<PlatformInfoManager>();
-  if (cfg_file_real_path.empty()) {
-    PF_LOGE("File path[%s] is not valid.", cfg_file_real_path.c_str());
-    return PLATFORM_FAILED;
+  if (cfg_file_real_path_.empty()) {
+    cfg_file_real_path_ = fe::GetConfigFilePath<PlatformInfoManager>();
+    if (cfg_file_real_path_.empty()) {
+      PF_LOGE("File path[%s] is not valid.", cfg_file_real_path_.c_str());
+      return PLATFORM_FAILED;
+    }
   }
 
   std::string real_soc = SoCVersion;
@@ -1165,13 +1189,12 @@ uint32_t PlatformInfoManager::InitRuntimePlatformInfos(const std::string &SoCVer
     real_soc = SOC_VERSION_ASCEND910A;
   }
 
-  std::string ini_file_path = cfg_file_real_path + "/" + real_soc + ".ini";
-  if (LoadIniFile(ini_file_path) != PLATFORM_SUCCESS) {
-      PF_LOGE("Failed to load ini file[%s].", ini_file_path.c_str());
-      return PLATFORM_FAILED;
+  if (EnsureSocVersionLoaded(real_soc) != PLATFORM_SUCCESS) {
+    PF_LOGE("Failed to load ini file for soc[%s].", real_soc.c_str());
+    return PLATFORM_FAILED;
   }
 
-  const auto it = platform_infos_map_.find(SoCVersion);
+  const auto it = platform_infos_map_.find(real_soc);
   if (it == platform_infos_map_.end()) {
     std::string errLevel = "E20101";
     std::vector<const char*> args_keys;

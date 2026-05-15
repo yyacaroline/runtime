@@ -14,6 +14,7 @@
 #include <map>
 #include <string>
 #include <array>
+#include <unordered_set>
 #include "platform_info_def.h"
 #include "platform_infos_def.h"
 
@@ -70,8 +71,6 @@ class PlatformInfoManager {
   uint32_t LoadIniFile(std::string ini_file_real_path);
 
   void Trim(std::string &str);
-
-  uint32_t LoadConfigFile(std::string real_path);
 
   void ParseVersion(std::map<std::string, std::string> &version_map,
                     std::string &soc_version,
@@ -142,6 +141,8 @@ class PlatformInfoManager {
   uint32_t AssemblePlatformInfoVector(std::map<std::string, std::map<std::string, std::string>> &content_info_map);
   void FillupFixPipeInfo(PlatFormInfos &platform_infos);
 
+  uint32_t EnsureSocVersionLoaded(const std::string &soc_version);
+
   bool init_flag_;
   bool runtime_init_flag_;
   std::map<std::string, PlatformInfo> platform_info_map_;
@@ -151,6 +152,10 @@ class PlatformInfoManager {
   std::map<std::string, PlatFormInfos> platform_infos_map_;
 
   OptionalInfos opti_compilation_infos_;
+
+  std::string cfg_file_real_path_;
+
+  std::unordered_set<std::string> loaded_ini_files_;
 
   std::map<uint32_t, PlatFormInfos> device_platform_infos_map_;
 
