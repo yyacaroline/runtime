@@ -1,56 +1,46 @@
-# 样例目录
+# 样例使用指导
 
-`example/` 目录按学习阶段组织，可从快速入门逐步学习到基础能力、高级能力、性能分析和场景化主题。
+example目录下提供了一系列Runtime接口样例，包括Device管理、Stream管理、Event管理、内存管理、Kernel执行等，供开发者参考，帮助开发者快速入门，进而掌握Runtime关键特性。
+
 
 ## 目录总览
 
-- [0_quickstart](./0_quickstart/README.md)：快速入门，包含最基础的 Runtime Hello World、自定义 Kernel `<<<>>>` 调用、错误处理、系统信息和兼容性主题。
-- [1_basic_features](./1_basic_features/README.md)：基础特性，覆盖 Context、Device、Stream、Event、Memory。
-- [2_advanced_features](./2_advanced_features/README.md)：高级特性，覆盖 Kernel、Model RI、Callback、Notify、TDT、Label 和内建任务。
-- [3_memory_advanced](./3_memory_advanced/README.md)：高级内存管理，覆盖自定义分配器、Host 注册、托管内存、缓存维护与流序内存池主题。
-- [4_reliability](./4_reliability/README.md)：可靠性主题，覆盖溢出检测、错误恢复和容错执行。
-- [5_performance](./5_performance/README.md)：性能分析与精度调试，包含 Profiling 和 Adump。
-- [6_scenarios](./6_scenarios/README.md)：场景化主题，面向训练流水线、多设备推理和容错执行等典型用法。
+- [0_quickstart](0_quickstart/README.md)：快速入门样例，以 `aclnnAdd` 向量加法为入口，展示 初始化配置、Device/Stream 创建、Tensor 与 DataBuffer 管理、workspace 分配、算子执行、同步等待和资源释放流程。
+- [1_basic_features](1_basic_features/README.md)：基础特性样例，包含设备管理（包括单线程、多线程）、 内存管理（包括内存复制、进程间内存共享、虚拟内存管理等）、Stream管理（包括单流任务下发、多流任务下发等）等样例。
+- [2_advanced_features](2_advanced_features/README.md)：高级特性样例，包括算子Kernel加载与执行、ACL Graph、Reduce和随机数生成的内置系统任务执行、Host侧回调函数下发等样例。
+- [3_memory_advanced](3_memory_advanced/README.md)：高级内存管理样例，包括自定义内存分配器、Host内存注册、统一寻址、Stream内存操作、Stream有序内存分配等样例。
+- [4_reliability](4_reliability/README.md)：可靠性样例，包括溢出检测、错误恢复等样例。
+- [5_performance](5_performance/README.md)：性能分析与精度调试样例。
+- [6_scenarios](6_scenarios/README.md)：场景化样例，面向训练流水线、多设备推理和容错执行等典型场景。
 
-## 使用方式
+## 环境准备
+编译运行样例前，需获取固件、驱动及CANN软件包并安装，详细步骤请参见[《CANN软件安装指南》](https://www.hiascend.com/cann/download)。
 
-编译运行样例前，请先完成固件、驱动和 CANN 软件包安装，具体操作请参见仓库根目录的 [README](../README.md)。
+若对本仓src目录下的源码有定制，那么在安装CANN软件之后，还需编译源码并部署到环境上，具体操作请参见[README](../README.md)。
 
-典型运行步骤如下：
+## 运行样例
 
+1.下载样例代码并上传至安装CANN软件的环境，切换到样例目录。
+```bash
+# 此处以基础内存样例为例
+cd ${git_clone_path}/example/1_basic_features/memory/0_h2h_memory_copy
+```
+
+2.设置环境变量。
 ```bash
 # ${install_root} 替换为 CANN 安装根目录，默认安装在`/usr/local/Ascend`目录
 source ${install_root}/cann/set_env.sh
 export ASCEND_INSTALL_PATH=${install_root}/cann
+```
 
-# ${ascend_name} 替换为昇腾AI处理器的型号，可通过 npu-smi info 查看 Name 字段并去掉空格获得，例如 ascend910b3
-export SOC_VERSION=${ascend_name}
-
-# 部分样例中涉及调用AscendC算子，需配置AscendC编译器 ascendc.cmake 所在路径
-export ASCENDC_CMAKE_DIR=${cmake_path}
-
-# 以基础内存样例为例
-cd ${git_clone_path}/example/1_basic_features/memory/0_h2h_memory_copy
+3.执行以下命令运行样例。
+```bash
+# 请注意部分用例的运行命令不同，具体以各用例目录下的README.md中的编译运行命令为准
 bash run.sh
 ```
 
-请注意：
-
-- 具体运行方式以各样例子目录中的 `README.md` 为准。
-- 部分主题目录用于集中说明某类能力，便于按主题查找相关样例。
-- 部分样例依赖额外算子包或特定环境能力，请按样例说明准备环境。
-- 涉及 AscendC Kernel 的样例还需要提前设置 `SOC_VERSION` 和 `ASCENDC_CMAKE_DIR`。
-
-## 共享文件
-
-以下目录和文件供多个样例复用，一般无需单独运行：
-
-- `kernel_func/`：Kernel 与部分 Callback 样例复用的 AscendC 核函数源码。
-- `utils.h`：多个样例共享的日志与错误检查宏。
-
-## 示例代码说明
-
-所有示例演示了 CANN Runtime API 的典型使用模式。
+## 样例代码说明
+所有样例演示了CANN Runtime API 的典型使用方式。
 
 - 样例代码用于学习和接口理解。
 - 为了突出核心流程，部分示例会简化工程化处理。

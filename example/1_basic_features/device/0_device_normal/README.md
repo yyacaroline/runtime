@@ -1,7 +1,8 @@
 # 0_device_normal
 
 ## 描述
-本样例展示了从资源初始化、指定Device计算设备、在Device上执行Add算子、到最后销毁资源的全部流程，是一个基础的使用Device的样例。
+
+本样例展示 CANN Runtime Device 管理的基础使用流程，包括初始化、指定 Device、创建 Stream、执行 `aclnnAdd` 向量加法算子、同步等待任务完成以及释放资源。
 
 ## 产品支持情况
 
@@ -9,50 +10,70 @@
 
 | 产品 | 是否支持 |
 | --- | --- |
+| Ascend 950PR/Ascend 950DT | √ |
 | Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ## 编译运行
-环境安装详情以及运行详情请见example目录下的[README](../../../README.md)。
 
+1.下载样例代码至安装CANN软件的环境，切换到样例目录。
+```bash
+cd ${git_clone_path}/example/1_basic_features/device/0_device_normal
+```
 
-运行步骤如下：
-
+2.设置环境变量。
 ```bash
 # ${install_root} 替换为 CANN 安装根目录，默认安装在`/usr/local/Ascend`目录
 source ${install_root}/cann/set_env.sh
 export ASCEND_INSTALL_PATH=${install_root}/cann
 
-# ${ascend_name} 替换为昇腾AI处理器的型号，可通过 npu-smi info 查看 Name 字段并去掉空格获得，例如 ascend910b3
-export SOC_VERSION=${ascend_name}
+# 设置 SOC_VERSION 和 ASCENDC_CMAKE_DIR
+# -SOC_VERSION: 昇腾AI处理器的型号，如 Ascend910_9362，Ascend910B2等
+# -ASCENDC_CMAKE_DIR: 样例中涉及调用AscendC算子，需配置AscendC编译器 ascendc.cmake 路径，如 /usr/local/Ascend/cann/x86_64-linux/tikcpp/ascendc_kernel_cmake
+source ${git_clone_path}/example/set_sample_env.sh
+```
 
-# 部分样例中涉及调用AscendC算子，需配置AscendC编译器ascendc.cmake所在的路径，如 ${install_root}/cann/aarch64-linux/tikcpp/ascendc_kernel_cmake
-# 可在CANN包安装路径下查找ascendc_kernel_cmake，例如find ./ -name ascendc_kernel_cmake，并将${cmake_path}替换为ascendc_kernel_cmake所在路径
-export ASCENDC_CMAKE_DIR=${cmake_path}
-
-# 编译运行
+3.执行以下命令运行样例。
+```bash
 bash run.sh
 ```
 ## CANN RUNTIME API
 
-在该sample中，涉及的关键功能点及其关键接口，如下所示：
+在该Sample中，涉及的关键功能点及其关键接口，如下所示：
+
 - 初始化
-    - 调用aclInit接口初始化AscendCL配置。
-    - 调用aclFinalize接口实现AscendCL去初始化。
-- Device管理
-    - 调用aclrtSetDevice接口指定用于运算的Device。
-    - 调用aclrtSynchronizeDevice接口阻塞等待正在运算中的Device完成运算。
-    - 调用aclrtResetDeviceForce接口强制复位当前运算的Device，回收Device上的资源。
-- Stream管理
-    - 调用aclrtCreateStream接口创建Stream。
-    - 调用aclrtSynchronizeStream接口阻塞等待Stream上任务的完成。
-    - 调用aclrtDestroyStream接口销毁Stream。
+    - 调用 `aclInit` 接口进行初始化配置。
+    - 调用 `aclFinalize` 接口实现去初始化。
+- Device 管理
+    - 调用 `aclrtSetDevice` 接口指定用于运算的 Device。
+    - 调用 `aclrtSynchronizeDevice` 接口阻塞等待正在运算中的 Device 完成运算。
+    - 调用 `aclrtResetDeviceForce` 接口强制复位当前运算的 Device，回收 Device 上的资源。
+- Stream 管理
+    - 调用 `aclrtCreateStream` 接口创建 Stream。
+    - 调用 `aclrtSynchronizeStream` 接口阻塞等待 Stream 上任务完成。
+    - 调用 `aclrtDestroyStream` 接口销毁 Stream。
 - 内存管理
-    - 调用aclrtMalloc接口申请Device上的内存。
-    - 调用aclrtFree接口释放Device上的内存。
+    - 调用 `aclrtMalloc` 接口申请 Device 上的内存。
+    - 调用 `aclrtFree` 接口释放 Device 上的内存。
 - 数据传输
-    - 调用aclrtMemcpy接口通过内存复制的方式实现数据传输。
+    - 调用 `aclrtMemcpy` 接口通过内存复制的方式实现数据传输。
+- 算子执行
+    - 调用 `aclnnAddGetWorkspaceSize` 接口获取 `aclnnAdd` 算子执行所需的 workspace 信息。
+    - 调用 `aclnnAdd` 接口执行向量加法算子。
 
-## 已知issue
+## 示例输出
 
-  暂无
+```text
+[INFO]: Current compile soc version is ...
+...
+[INFO]  Start to run device_normal sample.
+[INFO]  result[0] is: 1.200000
+[INFO]  result[1] is: 2.200000
+[INFO]  result[2] is: 3.200000
+[INFO]  result[3] is: 5.400000
+[INFO]  result[4] is: 6.400000
+[INFO]  result[5] is: 7.400000
+[INFO]  result[6] is: 9.600000
+[INFO]  result[7] is: 10.600000
+[INFO]  Run the device_normal sample successfully.
+```

@@ -8,12 +8,20 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef EXAMPLE_0_QUICKSTART_4_CUSTOM_KERNEL_LAUNCH_VECTOR_ADD_KERNEL_H_
-#define EXAMPLE_0_QUICKSTART_4_CUSTOM_KERNEL_LAUNCH_VECTOR_ADD_KERNEL_H_
+#include <iostream>
 
-#include <cstdint>
+#include "acl/acl.h"
 
-int32_t VectorAddDo(
-    uint32_t blockDim, void* stream, float* srcA, float* srcB, float* dst, float alpha, uint32_t elementCount);
+int main()
+{
+    // aclrtGetSocName returns the same SOC_VERSION string required by sample builds.
+    // It does not require aclInit, so this helper stays small and fast for shell use.
+    const char *socName = aclrtGetSocName();
+    if ((socName == nullptr) || (socName[0] == '\0')) {
+        std::cerr << "[ERROR]: Failed to get SOC_VERSION by aclrtGetSocName." << std::endl;
+        return 1;
+    }
 
-#endif // EXAMPLE_0_QUICKSTART_4_CUSTOM_KERNEL_LAUNCH_VECTOR_ADD_KERNEL_H_
+    std::cout << socName << std::endl;
+    return 0;
+}

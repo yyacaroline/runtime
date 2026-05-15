@@ -43,6 +43,7 @@ aclError PrintCannVersionInfo()
 
 int main()
 {
+    // Initialize ACL before querying runtime and package information.
     CHECK_ERROR(aclInit(nullptr));
     INFO_LOG("ACL init successfully");
 
@@ -52,8 +53,10 @@ int main()
     CHECK_ERROR(aclrtGetVersion(&majorVersion, &minorVersion, &patchVersion));
     INFO_LOG("ACL Runtime API version: %d.%d.%d", majorVersion, minorVersion, patchVersion);
 
+    // Query CANN package metadata from the installed runtime package.
     CHECK_ERROR(PrintCannVersionInfo());
 
+    // Inspect run mode and basic data type helpers.
     aclrtRunMode runMode = ACL_HOST;
     CHECK_ERROR(aclrtGetRunMode(&runMode));
     INFO_LOG("Current run mode: %s", RunModeToString(runMode));
@@ -68,6 +71,7 @@ int main()
         aclDataTypeSize(aclDataType::ACL_FLOAT), aclDataTypeSize(aclDataType::ACL_FLOAT16),
         aclDataTypeSize(aclDataType::ACL_INT64));
 
+    // Finalize ACL after all queries finish.
     CHECK_ERROR(aclFinalize());
     INFO_LOG("ACL finalize successfully");
     return 0;

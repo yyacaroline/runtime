@@ -16,4 +16,4 @@
 - [9_multistream_sync_memory](./9_multistream_sync_memory/README.md)：演示多 Stream 场景下的内存同步。
 - [10_ipc_memory_withpid](./10_ipc_memory_withpid/README.md)：演示指定 PID 的 IPC 内存共享。
 - [11_ipc_memory_withoutpid](./11_ipc_memory_withoutpid/README.md)：演示不指定 PID 的 IPC 内存共享。
-- [12_cross_server_physical_memory_sharing_withoutpid](./12_cross_server_physical_memory_sharing_withoutpid/README.md)：演示跨服物理内存共享。
+- [12_cross_server_physical_memory_sharing_withoutpid](./12_cross_server_physical_memory_sharing_withoutpid/README.md)：演示跨服务器物理内存共享。

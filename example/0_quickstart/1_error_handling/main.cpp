@@ -53,14 +53,18 @@ void PrintVerboseErrorInfo(int32_t deviceId)
 int main()
 {
     const int32_t deviceId = 0;
+
+    // Initialize ACL and bind the current thread to a device.
     CHECK_ACL_RETURN(aclInit(nullptr));
     CHECK_ACL_RETURN(aclrtSetDevice(deviceId));
     INFO_LOG("ACL init and set device successfully");
 
+    // Query the run mode before triggering an expected API failure.
     aclrtRunMode runMode = ACL_HOST;
     CHECK_ACL_RETURN(aclrtGetRunMode(&runMode));
     INFO_LOG("Current run mode: %s", RunModeToString(runMode));
 
+    // Collect thread-level diagnostics after an invalid-parameter call.
     INFO_LOG("Triggering an expected invalid-parameter error with aclrtGetRunMode(nullptr)");
     aclError expectedRet = aclrtGetRunMode(nullptr);
     if (expectedRet == ACL_SUCCESS) {
@@ -76,6 +80,7 @@ int main()
             SafeString(recentErrMsg));
         PrintVerboseErrorInfo(deviceId);
 
+        // Read the diagnostics again to show the consumed state.
         aclError clearedPeek = aclrtPeekAtLastError(ACL_RT_THREAD_LEVEL);
         aclError clearedLast = aclrtGetLastError(ACL_RT_THREAD_LEVEL);
         const char *clearedErrMsg = aclGetRecentErrMsg();
@@ -85,6 +90,7 @@ int main()
             SafeString(clearedErrMsg));
     }
 
+    // Release ACL resources.
     CHECK_ACL_RETURN(aclrtResetDeviceForce(deviceId));
     CHECK_ACL_RETURN(aclFinalize());
     INFO_LOG("ACL finalize successfully");

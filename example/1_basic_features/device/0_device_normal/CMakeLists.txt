@@ -30,6 +30,6 @@ link_directories(${ASCEND_CANN_PACKAGE_PATH}/lib64)
 add_executable(main main.cpp)
 
 target_link_libraries(main PRIVATE
-                    ${ASCEND_CANN_PACKAGE_PATH}/lib64/libascendcl.so
+                    ${ASCEND_CANN_PACKAGE_PATH}/lib64/libacl_rt.so
                     ${ASCEND_CANN_PACKAGE_PATH}/lib64/libnnopbase.so
                     ${ASCEND_CANN_PACKAGE_PATH}/lib64/libopapi.so)

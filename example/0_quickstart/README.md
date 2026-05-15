@@ -1,13 +1,13 @@
 # 0_quickstart
 
-本章节用于帮助开发者快速建立对 Runtime 样例工程的整体认识，先从最小闭环跑通，再补充错误处理、系统信息和兼容性相关主题。
+本章节面向首次接触 Runtime 样例工程的开发者，先通过最小计算闭环跑通编译和执行流程，再补充错误处理、系统信息查询、跨版本兼容和自定义 Kernel 调用等入门主题。
 
 ## 样例列表
 
-- [0_hello_cann](./0_hello_cann/README.md)：最基础的 Runtime Hello World，展示初始化、建流、执行算子、同步、DataBuffer 包装和资源释放。
-- [1_error_handling](./1_error_handling/README.md)：展示统一错误检查宏、最近错误描述、Peek/GetLastError 以及详细错误信息的获取方式。
-- [2_system_info](./2_system_info/README.md)：展示版本查询、运行模式判断、数据类型大小与 float16/float32 转换。
-- [4_custom_kernel_launch](./4_custom_kernel_launch/README.md)：提供 CANN `<<<>>>` 自定义 Kernel 调用的最小可运行样例。
+- [0_hello_cann](./0_hello_cann/README.md)：展示初始化配置、Device/Stream 管理、Tensor 与 DataBuffer 准备、workspace 申请、`aclnnAdd` 向量加法执行、同步等待和资源释放。
+- [1_error_handling](./1_error_handling/README.md)：展示统一返回值检查、线程级 Runtime 错误码查询、最近错误描述获取和详细错误摘要查询。
+- [2_system_info](./2_system_info/README.md)：展示 Runtime API 版本、CANN 软件包版本、运行模式、float16/float32 转换和数据类型大小查询。
+- [4_custom_kernel_launch](./4_custom_kernel_launch/README.md)：展示使用 `<<<>>>` 内核调用符下发自定义 AscendC Kernel 的最小流程。
 
 ## 相关主题
 

@@ -16,7 +16,7 @@ project(aclnnAdd_Vector_Sample)
 
 # Include directories and libraries
 include_directories(${ASCEND_CANN_PACKAGE_PATH}/include
-                    ${ASCEND_CANN_PACKAGE_PATH}/aclnnop
+                    ${ASCEND_CANN_PACKAGE_PATH}/aclnn
                     ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 link_directories(${ASCEND_CANN_PACKAGE_PATH}/lib64)
 
@@ -27,7 +27,7 @@ target_compile_options(main PRIVATE
 )
 
 target_link_libraries(main PRIVATE
-    ${ASCEND_CANN_PACKAGE_PATH}/lib64/libascendcl.so
+    ${ASCEND_CANN_PACKAGE_PATH}/lib64/libacl_rt.so
     ${ASCEND_CANN_PACKAGE_PATH}/lib64/libnnopbase.so
     ${ASCEND_CANN_PACKAGE_PATH}/lib64/libopapi.so
 )

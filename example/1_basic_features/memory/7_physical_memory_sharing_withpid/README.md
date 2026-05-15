@@ -1,7 +1,7 @@
-## 7_physical_memory_sharing_withpid
+# 7_physical_memory_sharing_withpid
 
 ## 描述
-本样例展示了同一个Device、两个进程间的物理内存共享，但在共享内存时启用进程白名单校验。
+本样例展示同一个 Device、两个进程间的物理内存共享，并在共享内存时启用进程白名单校验。进程 A 申请物理内存并导出共享句柄，进程 B 将自身进程 ID 提供给进程 A，进程 A 将进程 B 加入白名单后再传递共享句柄。
 
 ## 产品支持情况
 
@@ -9,59 +9,89 @@
 
 | 产品 | 是否支持 |
 | --- | --- |
+| Ascend 950PR/Ascend 950DT | √ |
 | Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ## 编译运行
-环境安装详情以及运行详情请见example目录下的[README](../../../README.md)。
 
+本样例会由 `run.sh` 同时启动 `proc_a` 和 `proc_b` 两个进程，并通过 `file/` 目录下的临时文件交换进程 ID、共享句柄和完成标志。
 
-运行步骤如下：
+1.下载样例代码至安装CANN软件的环境，切换到样例目录。
+```bash
+cd ${git_clone_path}/example/1_basic_features/memory/7_physical_memory_sharing_withpid
+```
 
+2.设置环境变量。
 ```bash
 # ${install_root} 替换为 CANN 安装根目录，默认安装在`/usr/local/Ascend`目录
 source ${install_root}/cann/set_env.sh
 export ASCEND_INSTALL_PATH=${install_root}/cann
 
-# ${ascend_name} 替换为昇腾AI处理器的型号，可通过 npu-smi info 查看 Name 字段并去掉空格获得，例如 ascend910b3
-export SOC_VERSION=${ascend_name}
+# 设置 SOC_VERSION 和 ASCENDC_CMAKE_DIR
+# -SOC_VERSION: 昇腾AI处理器的型号，如 Ascend910_9362，Ascend910B2等
+# -ASCENDC_CMAKE_DIR: 样例中涉及调用AscendC算子，需配置AscendC编译器 ascendc.cmake 路径，如 /usr/local/Ascend/cann/x86_64-linux/tikcpp/ascendc_kernel_cmake
+source ${git_clone_path}/example/set_sample_env.sh
+```
 
-# 部分样例中涉及调用AscendC算子，需配置AscendC编译器ascendc.cmake所在的路径，如 ${install_root}/cann/aarch64-linux/tikcpp/ascendc_kernel_cmake
-# 可在CANN包安装路径下查找ascendc_kernel_cmake，例如find ./ -name ascendc_kernel_cmake，并将${cmake_path}替换为ascendc_kernel_cmake所在路径
-export ASCENDC_CMAKE_DIR=${cmake_path}
-
-# 编译运行
+3.执行以下命令运行样例。
+```bash
 bash run.sh
 ```
 ## CANN RUNTIME API
+
 在该Sample中，涉及的关键功能点及其关键接口，如下所示：
+
 - 初始化
-    - 调用aclInit接口初始化AscendCL配置。
-    - 调用aclFinalize接口实现AscendCL去初始化。
-- Device管理
-    - 调用aclrtSetDevice接口指定用于运算的Device。
-    - 调用aclrtResetDeviceForce接口强制复位当前运算的Device，回收Device上的资源。
-- Stream管理
-    - 调用aclrtCreateStream接口创建Stream。
-    - 调用aclrtDestroyStreamForce接口强制销毁Stream，丢弃所有任务。
+    - 调用 `aclInit` 接口进行初始化配置。
+    - 调用 `aclFinalize` 接口实现去初始化。
+- Device 管理
+    - 调用 `aclrtSetDevice` 接口指定用于运算的 Device。
+    - 调用 `aclrtResetDeviceForce` 接口强制复位当前运算的 Device，回收 Device 上的资源。
+- Stream 管理
+    - 调用 `aclrtCreateStream` 接口创建 Stream。
+    - 调用 `aclrtDestroyStreamForce` 接口强制销毁 Stream，丢弃所有任务。
 - 内存管理
-    - 调用aclrtMemGetAllocationGranularity查询内存申请粒度。
-    - 调用aclrtMallocPhysical申请Device物理内存，并返回一个物理内存handle。
-    - 调用aclrtReserveMemAddress预留虚拟内存。
-    - 调用aclrtMapMem将虚拟内存映射到物理内存。
-    - 调用aclrtMemSetAccess设置虚拟内存的访问权限。
-    - 调用aclrtMemExportToShareableHandle将通过aclrtMallocPhysical接口获取到的物理内存handle导出。
-    - 调用aclrtMemSetPidToShareableHandle设置共享内存的进程白名单。
-    - 调用aclrtUnmapMem取消虚拟内存与物理内存之间的映射关系。
-    - 调用aclrtReleaseMemAddress释放通过aclrtReserveMemAddress接口申请的虚拟内存。
-    - 调用aclrtFreePhysical释放通过aclrtMallocPhysical接口申请的物理内存。
-    - 调用aclrtDeviceGetBareTgid获取当前进程的进程ID。
-    - 调用aclrtMemImportFromShareableHandle在本进程中获取shareableHandle里的信息，并返回本进程中的handle。
-    - 调用aclrtMallocHost接口申请Host上的内存。
-    - 调用aclrtFreeHost接口释放Host上的内存。
+    - 调用 `aclrtMemGetAllocationGranularity` 接口查询内存申请粒度。
+    - 调用 `aclrtMallocPhysical` 接口申请 Device 物理内存，并返回物理内存 handle。
+    - 调用 `aclrtReserveMemAddress` 接口预留虚拟内存。
+    - 调用 `aclrtMapMem` 接口将虚拟内存映射到物理内存。
+    - 调用 `aclrtMemSetAccess` 接口设置虚拟内存访问权限。
+    - 调用 `aclrtMemExportToShareableHandle` 接口导出物理内存共享句柄。
+    - 调用 `aclrtMemSetPidToShareableHandle` 接口设置共享内存的进程白名单。
+    - 调用 `aclrtDeviceGetBareTgid` 接口获取当前进程 ID。
+    - 调用 `aclrtMemImportFromShareableHandle` 接口导入共享句柄并获取本进程可用的物理内存 handle。
+    - 调用 `aclrtUnmapMem` 接口取消虚拟内存与物理内存之间的映射关系。
+    - 调用 `aclrtReleaseMemAddress` 接口释放预留的虚拟内存。
+    - 调用 `aclrtFreePhysical` 接口释放物理内存。
+    - 调用 `aclrtMallocHost` 接口申请 Host 上的内存。
+    - 调用 `aclrtFreeHost` 接口释放 Host 上的内存。
 - 数据传输
-    - 调用aclrtMemcpy接口通过内存复制的方式实现数据传输。
+    - 调用 `aclrtMemcpy` 接口通过内存复制的方式实现数据传输。
 
-## 已知issue
+## 示例输出
 
-  暂无
+进程 A 典型输出如下：
+
+```text
+[INFO]  Process A: allocate physical memory successfully
+[INFO]  Process A: reserve virtual memory successfully
+[INFO]  Process A: export a shareable handle successfully, shareable handle = ...
+[INFO]  Process A: add Process B to the whitelist successfully
+CANN Version: 1.0.0, TimeStamp: ...
+Source data: 123
+[INFO]  Process A: receive the completion signal from Process B, completion signal = 1
+[INFO]  Process A: release the virtual and physical memory successfully
+```
+
+进程 B 典型输出如下：
+
+```text
+[INFO]  Process B: get Process B's pid successfully
+[INFO]  Process B: get a shareable handle successfully, shareable handle = ...
+[INFO]  Process B: map virtual memory address to physical memory handle
+[INFO]  Process B: copy memory from device address 0x... to host address 0x...
+[INFO]  Destination data: 123
+[INFO]  Process B: complete physical memory sharing
+[INFO]  Process B: release the virtual and physical memory successfully
+```

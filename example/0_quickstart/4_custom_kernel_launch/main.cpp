@@ -9,6 +9,7 @@
  */
 
 #include <cstdint>
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -17,18 +18,19 @@
 
 #define CHECK_ERROR(ret)                                       \
     if ((ret) != ACL_SUCCESS) {                                \
-        printf("Error at line %d, ret = %d\n", __LINE__, ret); \
+        printf("Error at line %d, ret = %d\n", __LINE__, static_cast<int32_t>(ret)); \
         return -1;                                             \
     }
 
 namespace {
 constexpr uint32_t kElementCount = 8;
+constexpr float kTolerance = 1e-5f;
 } // namespace
 
 int main()
 {
     const int32_t deviceId = 0;
-    const uint32_t blockDim = kElementCount;
+    const uint32_t blockDim = 1;
     const size_t bufferSize = kElementCount * sizeof(float);
     const float alpha = 1.0f;
 
@@ -41,6 +43,7 @@ int main()
     const std::vector<float> srcBHost = {0.5f, 1.0f, 1.5f, 2.0f, 2.5f, 3.0f, 3.5f, 4.0f};
     std::vector<float> dstHost(kElementCount, 0.0f);
 
+    // Initialize runtime resources.
     CHECK_ERROR(aclInit(nullptr));
     printf("ACL init successfully\n");
 
@@ -50,6 +53,7 @@ int main()
     CHECK_ERROR(aclrtCreateStream(&stream));
     printf("Create stream successfully\n");
 
+    // Allocate and populate device buffers.
     CHECK_ERROR(aclrtMalloc(reinterpret_cast<void**>(&srcADevice), bufferSize, ACL_MEM_MALLOC_HUGE_FIRST));
     CHECK_ERROR(aclrtMalloc(reinterpret_cast<void**>(&srcBDevice), bufferSize, ACL_MEM_MALLOC_HUGE_FIRST));
     CHECK_ERROR(aclrtMalloc(reinterpret_cast<void**>(&dstDevice), bufferSize, ACL_MEM_MALLOC_HUGE_FIRST));
@@ -68,17 +72,24 @@ int main()
         srcBHost[3], srcBHost[4], srcBHost[5], srcBHost[6], srcBHost[7]);
     printf("  alpha:  %.1f\n", alpha);
 
-    VectorAddDo(blockDim, stream, srcADevice, srcBDevice, dstDevice, alpha, kElementCount);
+    // Launch the custom AscendC kernel through the <<<>>> call path.
+    CHECK_ERROR(VectorAddDo(blockDim, stream, srcADevice, srcBDevice, dstDevice, alpha, kElementCount));
     printf("Custom AscendC kernel <<<>>> call successfully\n");
 
     CHECK_ERROR(aclrtSynchronizeStream(stream));
     printf("Synchronize stream successfully\n");
 
+    // Copy the result back for verification.
     CHECK_ERROR(aclrtMemcpy(dstHost.data(), bufferSize, dstDevice, bufferSize, ACL_MEMCPY_DEVICE_TO_HOST));
 
     printf("\nVector addition result:\n");
+    bool resultMatched = true;
     for (uint32_t i = 0; i < kElementCount; ++i) {
-        printf("  result[%u] = %.1f (expected: %.1f)\n", i, dstHost[i], srcAHost[i] + alpha * srcBHost[i]);
+        const float expected = srcAHost[i] + alpha * srcBHost[i];
+        printf("  result[%u] = %.1f (expected: %.1f)\n", i, dstHost[i], expected);
+        if (std::fabs(dstHost[i] - expected) > kTolerance) {
+            resultMatched = false;
+        }
     }
 
     CHECK_ERROR(aclrtFree(srcADevice));
@@ -86,6 +97,7 @@ int main()
     CHECK_ERROR(aclrtFree(dstDevice));
     printf("Free device memory successfully\n");
 
+    // Release runtime resources in reverse order.
     CHECK_ERROR(aclrtDestroyStream(stream));
     printf("Destroy stream successfully\n");
 
@@ -94,6 +106,11 @@ int main()
 
     CHECK_ERROR(aclFinalize());
     printf("ACL finalize successfully\n");
+
+    if (!resultMatched) {
+        printf("\nSample run failed: vector addition result mismatched!\n");
+        return -1;
+    }
 
     printf("\nSample run successfully with <<<>>> kernel call!\n");
     return 0;

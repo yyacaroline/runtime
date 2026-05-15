@@ -16,14 +16,13 @@
 extern "C" __global__ __aicore__ void VectorAddKernel(
     __gm__ float* srcA, __gm__ float* srcB, __gm__ float* dst, float alpha, uint32_t elementCount)
 {
-    uint32_t idx = block_idx;
-    if (idx < elementCount) {
+    for (uint32_t idx = 0; idx < elementCount; ++idx) {
         dst[idx] = srcA[idx] + alpha * srcB[idx];
     }
 }
 
-void VectorAddDo(
+int32_t VectorAddDo(
     uint32_t blockDim, void* stream, float* srcA, float* srcB, float* dst, float alpha, uint32_t elementCount)
 {
-    VectorAddKernel<<<blockDim, nullptr, stream>>>(srcA, srcB, dst, alpha, elementCount);
+    return static_cast<int32_t>(VectorAddKernel<<<blockDim, nullptr, stream>>>(srcA, srcB, dst, alpha, elementCount));
 }
