@@ -18,31 +18,24 @@ namespace runtime {
     struct StarsArgLoaderResult;
     struct rtStreamLaunchKernelV2ExtendArgs_t {
         const rtArgsEx_t *argsInfo;
-        const rtTaskCfgInfo_t *cfgInfo;
-        const LaunchTaskCfgInfo_t *launchTaskCfg;
         const TaskCfg *taskCfg;
         void **argsArray;
     };
 
     rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim,
         const rtArgsEx_t *argsInfo,
-        Stream *stm, const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo,
-        const TaskCfg * const taskCfg, const bool isLaunchVec);
+        Stream *stm, const TaskCfg * const taskCfg,
+        const bool isLaunchVec);
     rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
-        const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false);
+        const rtArgsEx_t *argsInfo, Stream *stm,
+        const TaskCfg * const taskCfg = nullptr, const bool isLaunchVec = false);
     rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *stm,
         const rtStreamLaunchKernelV2ExtendArgs_t *extendAgrs, const bool isLaunchVec = false);
     rtError_t UpdateTaskPrepare(const Context *ctx, TaskInfo *updateTask, const Kernel *kernel, const Stream *stm);
     rtError_t LaunchUpdateKernelSubmit(const Context *ctx, TaskInfo *updateTask, Stream *stm, const rtArgsEx_t *argsInfo,
         StarsArgLoaderResult &result);
     rtError_t UpdateDavidKernelTaskSubmit(TaskInfo * const updateTask, Stream * const stm, uint32_t sqeLen = 1U);
-    rtError_t ConstructStreamLaunchKernelV2ExtendArgs(const rtArgsEx_t *argsInfo,
-        const rtTaskCfgInfo_t * const cfgInfo, const LaunchTaskCfgInfo_t * const launchTaskCfg,
-        const TaskCfg * const taskCfg, rtStreamLaunchKernelV2ExtendArgs_t *extendArgs);
     rtError_t CheckAndGetTotalShareMemorySize(const Kernel * const kernel, uint32_t dynamicShareMemSize, uint32_t &simtDcuSmSize);
-    void AicTaskInitByExtendAgrs(TaskInfo *kernelTask, const rtKernelAttrType kernelAttrType, const uint32_t coreDim,
-        const rtStreamLaunchKernelV2ExtendArgs_t * const extendAgrs);
 
 }  // namespace runtime
 }  // namespace cce

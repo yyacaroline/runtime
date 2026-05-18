@@ -289,7 +289,7 @@ TEST_F(AicpuErrMsgTest, RecordErrMsg_test)
     rtError_t errCode = RT_ERROR_NONE;
     TaskInfo * const kernTask = device->GetTaskFactory()->Alloc(stm, TS_TASK_TYPE_KERNEL_AICORE, errCode);
     EXPECT_NE(kernTask, nullptr);
-    AicTaskInit(kernTask, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, (uint32_t)0, nullptr);
+    AicTaskInit(kernTask, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, nullptr);
     EXPECT_EQ(kernTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     uint8_t bufTmp[256 + 1] = {0};
@@ -332,7 +332,7 @@ TEST_F(AicpuErrMsgTest, FaultForAiCore1)
     rtError_t errCode = RT_ERROR_NONE;
     TaskInfo * const kernTask = device->GetTaskFactory()->Alloc(stm, TS_TASK_TYPE_KERNEL_AICORE, errCode);
 
-    AicTaskInit(kernTask, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, (uint32_t)0, nullptr);
+    AicTaskInit(kernTask, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, nullptr);
     EXPECT_EQ(kernTask->type, TS_TASK_TYPE_KERNEL_AICORE);
     Kernel *kernel = new (std::nothrow) Kernel("", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 0);
     kernel->SetStub_(stubFunc);

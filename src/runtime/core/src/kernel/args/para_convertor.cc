@@ -198,5 +198,19 @@ rtError_t ConvertLaunchCfgToTaskCfg(TaskCfg &taskCfg, const rtKernelLaunchCfg_t*
 
     return RT_ERROR_NONE;
 }
-}  // namespace runtime
-}  // namespace cce
+
+rtError_t ConvertTaskCfgInfoToTaskCfg(TaskCfg &taskCfg, const rtTaskCfgInfo_t* const cfgInfo)
+{
+    taskCfg.isBaseValid = 0U;
+    taskCfg.isExtendValid = 0U;
+    
+    if (cfgInfo != nullptr) {
+        taskCfg.isBaseValid = 1U;
+        taskCfg.base = *cfgInfo;
+    }
+    
+    return RT_ERROR_NONE;
+}
+
+} // namespace runtime
+} // namespace cce

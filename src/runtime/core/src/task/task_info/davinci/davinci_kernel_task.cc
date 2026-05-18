@@ -130,8 +130,15 @@ void AicpuTaskInit(TaskInfo *taskInfo, const uint16_t dimNum, const uint32_t fla
 }
 
 void AicTaskInit(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, const uint16_t dimNum,
-    const uint32_t flag, const TaskCfg * const taskcfg, const bool isNeedAllocSqeDevBuf)
+    const TaskCfg * const taskcfg, const bool isNeedAllocSqeDevBuf)
 {
+    uint32_t flag = RT_KERNEL_DEFAULT;
+    if ((taskcfg != nullptr) && (taskcfg->isBaseValid == 1U) &&
+        ((taskcfg->base.dumpflag == RT_KERNEL_DUMPFLAG) || (taskcfg->base.dumpflag == RT_FUSION_KERNEL_DUMPFLAG))) {
+        flag = static_cast<uint32_t>(taskcfg->base.dumpflag);
+        RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", taskcfg->base.dumpflag);
+    }
+    
     AicTaskInitCommon(taskInfo, kernelAttrType, dimNum, flag, isNeedAllocSqeDevBuf);
     AicTaskInfo *aicTaskInfo = &(taskInfo->u.aicTaskInfo);
 
@@ -145,11 +152,6 @@ void AicTaskInit(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, cons
         aicTaskInfo->schemMode = taskcfg->base.schemMode;
         aicTaskInfo->blockDimOffset = taskcfg->base.blockDimOffset;
         aicTaskInfo->dynamicShareMemSize = taskcfg->base.localMemorySize;
-
-        if ((taskcfg->base.dumpflag == RT_KERNEL_DUMPFLAG) || (taskcfg->base.dumpflag == RT_FUSION_KERNEL_DUMPFLAG)) {
-            aicTaskInfo->comm.kernelFlag = static_cast<uint8_t>(taskcfg->base.dumpflag & 0xFFU);
-            RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", taskcfg->base.dumpflag);
-        }
 
         if (taskcfg->base.neverTimeout == 1U) {
             RT_LOG(RT_LOG_INFO, "Set op never time out.");
@@ -188,6 +190,8 @@ uint32_t GetSchemMode(AicTaskInfo* const taskInfo)
     if (taskInfo->schemMode == static_cast<uint8_t>(RT_SCHEM_MODE_END)) {
         if (taskInfo->kernel != nullptr) {
             return taskInfo->kernel->GetSchedMode();
+        } else {
+            return RT_SCHEM_MODE_NORMAL;
         }
     }
     return taskInfo->schemMode;

@@ -91,17 +91,17 @@ rtError_t ApiProfileLogDecorator::BuffGetInfo(const rtBuffGetCmdType type, const
 }
 
 rtError_t ApiProfileLogDecorator::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
     if (profiler_->GetProfLogEnable()) {
         ProfileLogRecord record(PROFILE_RECORD_TYPE_RT_CALL_RT, RT_PROF_API_KERNEL_LAUNCH, profiler_);
         const rtError_t error = impl_->KernelLaunch(stubFunc, coreDim,
-            argsInfo, stm, flag, cfgInfo, isLaunchVec);
+            argsInfo, stm, cfgInfo, isLaunchVec);
         record.SaveRecord();
         return error;
     } else {
-        return impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, flag, cfgInfo, isLaunchVec);
+        return impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, cfgInfo, isLaunchVec);
     }
 }
 
@@ -225,15 +225,6 @@ rtError_t ApiProfileLogDecorator::LaunchKernelV2(Kernel * const kernel, uint32_t
 {
     ProfileLogRecord record(PROFILE_RECORD_TYPE_RT_CALL_RT, RT_PROF_API_LAUNCH_KERNEL, profiler_);
     const rtError_t error = impl_->LaunchKernelV2(kernel, blockDim, argsWithType, stm, cfg);
-    record.SaveRecord();
-    return error;
-}
-
-rtError_t ApiProfileLogDecorator::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-    Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    ProfileLogRecord record(PROFILE_RECORD_TYPE_RT_CALL_RT, RT_PROF_API_LAUNCH_KERNEL, profiler_);
-    const rtError_t error = impl_->LaunchKernelV3(kernel, argsInfo, stm, launchConfig);
     record.SaveRecord();
     return error;
 }

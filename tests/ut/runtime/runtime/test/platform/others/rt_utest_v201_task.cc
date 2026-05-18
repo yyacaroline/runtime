@@ -1602,7 +1602,7 @@ TEST_F(TaskTestV201, Test_Construct_Simt_Sqe)
     stream_->SetSqBaseAddr(newSqAddr);
     sqeAddr = reinterpret_cast<rtDavidSqe_t *>(stream_->GetSqBaseAddr() + (pos << SHIFT_SIX_SIZE));
 
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     task.id = 0;
     task.u.aicTaskInfo.kernel = kernel;

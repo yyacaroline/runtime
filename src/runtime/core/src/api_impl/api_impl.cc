@@ -495,7 +495,7 @@ rtError_t ApiImpl::QueryFunctionRegistered(const char_t * const stubName)
 }
 
 rtError_t ApiImpl::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
     Context * const curCtx = CurrentContext();
@@ -509,20 +509,14 @@ rtError_t ApiImpl::KernelLaunch(const void * const stubFunc, const uint32_t core
     COND_RETURN_AND_MSG_INVALID_CONTEXT(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT, 
         "stream " + std::to_string(curStm->Id_()));
 
-    if ((flag & RT_KERNEL_DUMPFLAG) != 0U) {
-        // adc: kernel dump depend on aicpu sd
+    if ((cfgInfo != nullptr) && ((cfgInfo->dumpflag & RT_KERNEL_DUMPFLAG) != 0U)) {
         ERROR_RETURN_MSG_INNER(Runtime::Instance()->StartAicpuSd(curCtx->Device_()),
             "kernel launch with kernel dump flag failed, check and start tsd open aicpu sd error.");
     }
 
     TaskCfg taskCfg = {};
-
-    if (cfgInfo != nullptr) {
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base = *cfgInfo;
-    }
-
-    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, flag, cfgInfo, &taskCfg, isLaunchVec);
+    (void)ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
+    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, &taskCfg, isLaunchVec);
 }
 
 rtError_t ApiImpl::KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
@@ -540,13 +534,9 @@ rtError_t ApiImpl::KernelLaunchWithHandle(void * const hdl, const uint64_t tilin
     COND_RETURN_AND_MSG_INVALID_CONTEXT(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT, 
         "stream " + std::to_string(curStm->Id_()));
 
-    uint32_t flag = RT_KERNEL_DEFAULT;
-    if ((cfgInfo != nullptr) &&
-        ((cfgInfo->dumpflag == RT_KERNEL_DUMPFLAG) || (cfgInfo->dumpflag == RT_FUSION_KERNEL_DUMPFLAG))) {
-        flag = static_cast<uint32_t>(cfgInfo->dumpflag);
-        RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", flag);
-    }
-    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo, isLaunchVec);
+    TaskCfg taskCfg = {};
+    (void)ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
+    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, &taskCfg, isLaunchVec);
 }
 
 rtError_t ApiImpl::KernelLaunchEx(const char_t * const opName, const void * const args, const uint32_t argsSize,
@@ -1295,24 +1285,11 @@ rtError_t ApiImpl::LaunchKernel(Kernel * const kernel, uint32_t blockDim, const 
         return RT_ERROR_KERNEL_INVALID;
     }
     TaskCfg taskCfg = {};
-    if (cfgInfo != nullptr) {
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base = *cfgInfo;
-    }
+    (void)ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
     rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
     launchKernelExtendArgs.argsInfo = argsInfo;
     launchKernelExtendArgs.taskCfg = &taskCfg;
     return StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs);
-}
-
-rtError_t ApiImpl::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-    Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    UNUSED(kernel);
-    UNUSED(argsInfo);
-    UNUSED(stm);
-    UNUSED(launchConfig);
-    return RT_ERROR_NONE;
 }
 
 rtError_t ApiImpl::DatadumpInfoLoad(const void * const dumpInfo, const uint32_t length, const uint32_t flag)

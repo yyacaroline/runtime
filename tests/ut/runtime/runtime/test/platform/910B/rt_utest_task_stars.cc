@@ -576,7 +576,7 @@ TEST_F(StarsTaskTest, DoCompleteStarsError)
 
     TaskInfo *errTask = dev_->GetTaskFactory()->Alloc(stream_, TS_TASK_TYPE_KERNEL_AICORE, ret);
     dev_->GetTaskFactory()->SetSerialId(stream_, errTask);
-    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(errTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtStarsCqeSwStatus_t sw_status;
@@ -1641,7 +1641,7 @@ TEST_F(StarsTaskTest, DoCompleteStarsError_1)
 
     TaskInfo *errTask = dev_->GetTaskFactory()->Alloc(stream_, TS_TASK_TYPE_KERNEL_AICORE, ret);
     dev_->GetTaskFactory()->SetSerialId(stream_, errTask);
-    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(errTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtStarsCqeSwStatus_t sw_status;

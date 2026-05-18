@@ -311,7 +311,7 @@ rtError_t rtKernelLaunch(const void *stubFunc, uint32_t numBlocks, void *args, u
 
     // 0 : need h2d copy  1: no need h2d copy
     argsInfo.isNoNeedH2DCopy = (curStm->NonSupportModelCompile()) || (curStm->GetModelNum() == 0U) ? 0U : 1U;
-    const rtError_t ret = apiInstance->KernelLaunch(stubFunc, numBlocks, &argsInfo,exeStream, 0U, nullptr);
+    const rtError_t ret = apiInstance->KernelLaunch(stubFunc, numBlocks, &argsInfo, exeStream, nullptr);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
@@ -389,7 +389,10 @@ rtError_t rtKernelLaunchWithFlag(const void *stubFunc, uint32_t numBlocks, rtArg
 
     TIMESTAMP_BEGIN(rtKernelLaunch);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
-    const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, flags, nullptr);
+    rtTaskCfgInfo_t cfgInfo = {};
+    cfgInfo.schemMode = RT_SCHEM_MODE_END;
+    cfgInfo.dumpflag = static_cast<uint8_t>(flags);
+    const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, &cfgInfo);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;
     ERROR_RETURN_WITH_EXT_ERRCODE(err);
@@ -414,7 +417,13 @@ rtError_t rtKernelLaunchWithFlagV2(const void *stubFunc, uint32_t numBlocks, rtA
 
     TIMESTAMP_BEGIN(rtKernelLaunchWithFlagV2);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
-    const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, flags, cfgInfo);
+    rtTaskCfgInfo_t mergedCfg = {};
+    mergedCfg.schemMode = RT_SCHEM_MODE_END;
+    if (cfgInfo != nullptr) {
+        mergedCfg = *cfgInfo;
+    }
+    mergedCfg.dumpflag = static_cast<uint8_t>(flags); // 优先使用flags作为dumpflag
+    const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, &mergedCfg);
     TIMESTAMP_END(rtKernelLaunchWithFlagV2);
     launchArg.argCount = 0U;
     ERROR_RETURN_WITH_EXT_ERRCODE(err);
@@ -3916,10 +3925,16 @@ rtError_t rtVectorCoreKernelLaunch(const void *stubFunc, uint32_t numBlocks, rtA
 
     TIMESTAMP_BEGIN(rtKernelLaunch);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
+    rtTaskCfgInfo_t mergedCfg = {};
+    mergedCfg.schemMode = RT_SCHEM_MODE_END;
+    if (cfgInfo != nullptr) {
+        mergedCfg = *cfgInfo;
+    }
+    mergedCfg.dumpflag = static_cast<uint8_t>(flags); // 优先使用flags作为dumpflag
     const auto watchDogHandle = ThreadLocalContainer::GetOrCreateWatchDogHandle();
     (void)AwdStartThreadWatchdog(watchDogHandle);
     const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks,
-        argsInfo, exeStream, flags, cfgInfo, true);
+        argsInfo, exeStream, &mergedCfg, true);
     (void)AwdStopThreadWatchdog(watchDogHandle);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;

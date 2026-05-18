@@ -367,7 +367,7 @@ rtError_t ApiErrorDecorator::QueryFunctionRegistered(const char_t * const stubNa
 
 rtError_t ApiErrorDecorator::CheckCfg(const rtTaskCfgInfo_t * const cfgInfo) const
 {
-    if ((cfgInfo != nullptr) && (cfgInfo->schemMode >= RT_SCHEM_MODE_END)) {
+    if ((cfgInfo != nullptr) && (cfgInfo->schemMode > RT_SCHEM_MODE_END)) {
         RT_LOG_OUTER_MSG_INVALID_PARAM(
            cfgInfo->schemMode,
            "[" + std::to_string(RT_SCHEM_MODE_NORMAL) + ", " + std::to_string(RT_SCHEM_MODE_END) + ")");
@@ -723,19 +723,8 @@ rtError_t ApiErrorDecorator::LaunchKernelV2(Kernel * const kernel, uint32_t bloc
     return error;
 }
 
-rtError_t ApiErrorDecorator::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-                                            Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    NULL_PTR_RETURN_MSG_OUTER(kernel, RT_ERROR_INVALID_VALUE);
-    NULL_PTR_RETURN_MSG_OUTER(launchConfig, RT_ERROR_INVALID_VALUE);
-    NULL_PTR_RETURN_MSG_OUTER(launchConfig->attrs, RT_ERROR_INVALID_VALUE);
-    const rtError_t error = CheckArgs(argsInfo);
-    ERROR_RETURN(error, "check argsInfo failed, retCode=%#x.", error);
-    return impl_->LaunchKernelV3(kernel, argsInfo, stm, launchConfig);
-}
-
 rtError_t ApiErrorDecorator::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
     NULL_PTR_RETURN_MSG_OUTER(stubFunc, RT_ERROR_INVALID_VALUE);
@@ -747,7 +736,7 @@ rtError_t ApiErrorDecorator::KernelLaunch(const void * const stubFunc, const uin
     ERROR_RETURN(error, "check argsInfo failed, retCode=%#x.", error);
     error = CheckCfg(cfgInfo);
     ERROR_RETURN(error, "check cfgInfo failed, retCode=%#x.", error);
-    error = impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, flag, cfgInfo, isLaunchVec);
+    error = impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, cfgInfo, isLaunchVec);
     ERROR_RETURN(error, "Launch kernel failed, dim=%u.", coreDim);
     return error;
 }

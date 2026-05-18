@@ -8716,7 +8716,7 @@ TEST_F(ApiDavidTest, StreamLaunchKernel_aclgraph_update)
     MOCKER(MemcpyAsyncTaskCommonInit).stubs().will(returnValue(RT_ERROR_NONE));
 
     ApiImplDavid impl;
-    error = impl.KernelLaunch(&function_, 1 /* coredim */, &wwargsInfo, stream, 0, nullptr, 0);
+    error = impl.KernelLaunch(&function_, 1 /* coredim */, &wwargsInfo, stream, nullptr, false);
     EXPECT_EQ(error, RT_ERROR_NONE);
 
     error = rtDevBinaryUnRegister(binHandle_);
@@ -10193,17 +10193,7 @@ TEST_F(ApiDavidTest, MemWriteValue_ContextMismatch)
     stream_->context_ = origCtx;
 }
 
-TEST_F(ApiDavidTest, LaunchKernelV3_ContextMismatch)
-{
-    ApiImplDavid apiImpl;
-    Context *origCtx = stream_->context_;
-    stream_->context_ = nullptr;
-    rtError_t error = apiImpl.LaunchKernelV3(nullptr, nullptr, stream_, nullptr);
-    EXPECT_EQ(error, RT_ERROR_STREAM_CONTEXT);
-    stream_->context_ = origCtx;
-}
-
-TEST_F(ApiDavidTest, SetStreamOverflowSwitch_ContextMismatch)
+TEST_F(ApiDavidTest, NextTest_ContextMismatch)
 {
     ApiImplDavid apiImpl;
     Runtime::Instance()->SetSatMode(RT_OVERFLOW_MODE_SATURATION);

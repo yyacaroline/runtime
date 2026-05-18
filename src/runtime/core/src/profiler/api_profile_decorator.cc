@@ -220,7 +220,7 @@ rtError_t ApiProfileDecorator::BuffGetInfo(const rtBuffGetCmdType type, const vo
 }
 
 rtError_t ApiProfileDecorator::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
     const uint32_t argSize = argsInfo->argsSize;
@@ -240,7 +240,7 @@ rtError_t ApiProfileDecorator::KernelLaunch(const void * const stubFunc, const u
         CallApiBegin(RT_PROF_API_KERNEL_LAUNCH_FLOW_CTRL);
     }
 
-    const rtError_t error = impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, flag, cfgInfo, isLaunchVec);
+    const rtError_t error = impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, cfgInfo, isLaunchVec);
     CallApiEnd(error);
     return error;
 }
@@ -427,25 +427,6 @@ rtError_t ApiProfileDecorator::LaunchKernelV2(Kernel * const kernel, uint32_t bl
 {
     CallApiBegin(RT_PROF_API_LAUNCH_KERNEL_V2);
     const rtError_t error = impl_->LaunchKernelV2(kernel, blockDim, argsWithType, stm, cfg);
-    CallApiEnd(error);
-    return error;
-}
-
-rtError_t ApiProfileDecorator::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-                                              Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    const uint32_t argSize = argsInfo->argsSize;
-    if (argSize > 32768U) { // 32768 is large
-        CallApiBegin(RT_PROF_API_LAUNCH_KERNEL_LARGE);
-    } else if (argSize > 4096U) { // big then 4096 is huge
-        CallApiBegin(RT_PROF_API_LAUNCH_KERNEL_HUGE);
-    } else if (argSize > 1024U) { // 1024 is the big
-        CallApiBegin(RT_PROF_API_LAUNCH_KERNEL_BIG);
-    } else {
-        CallApiBegin(RT_PROF_API_LAUNCH_KERNEL);
-    }
-
-    const rtError_t error = impl_->LaunchKernelV3(kernel, argsInfo, stm, launchConfig);
     CallApiEnd(error);
     return error;
 }

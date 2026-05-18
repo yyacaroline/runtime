@@ -114,10 +114,10 @@ rtError_t ApiDecorator::QueryFunctionRegistered(const char_t * const stubName)
 }
 
 rtError_t ApiDecorator::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
-    return impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, flag, cfgInfo, isLaunchVec);
+    return impl_->KernelLaunch(stubFunc, coreDim, argsInfo, stm, cfgInfo, isLaunchVec);
 }
 
 rtError_t ApiDecorator::KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey,
@@ -278,12 +278,6 @@ rtError_t ApiDecorator::LaunchKernelV2(Kernel * const kernel, uint32_t blockDim,
                                        Stream * const stm, const rtKernelLaunchCfg_t * const cfg)
 {
     return impl_->LaunchKernelV2(kernel, blockDim, argsWithType, stm, cfg);
-}
-
-rtError_t ApiDecorator::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-    Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    return impl_->LaunchKernelV3(kernel, argsInfo, stm, launchConfig);
 }
 
 rtError_t ApiDecorator::DatadumpInfoLoad(const void * const dumpInfo, const uint32_t length, const uint32_t flag)

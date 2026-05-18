@@ -247,10 +247,8 @@ static rtError_t CheckUpdateDavidTaskInfo(const TaskInfo * const updateTask, con
 }
 
 rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
-    const rtTaskCfgInfo_t * const cfgInfo, const TaskCfg * const taskCfg, const bool isLaunchVec)
+    const rtArgsEx_t *argsInfo, Stream *stm, const TaskCfg * const taskCfg, const bool isLaunchVec)
 {
-    UNUSED(taskCfg);
     UNUSED(isLaunchVec);
 
     rtKernelAttrType kernelAttrType = RT_KERNEL_ATTR_TYPE_AICORE;
@@ -264,7 +262,6 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
     Runtime * const rt = Runtime::Instance();
     TaskInfo *kernelTask = nullptr;
     rtError_t error = CheckTaskCanSend(stm);
-    TaskCfg localTaskCfg = {};
     ERROR_RETURN_MSG_INNER(error, "Failed to check task send status, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     error = StreamLaunchKernelPrepare(stm, registeredKernel, prog, kernelAttrType, launchMdl, stubFunc,
                                       addr1, addr2, nullptr, 0);
@@ -299,11 +296,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
 
-    if (cfgInfo != nullptr) {
-        localTaskCfg.isBaseValid = 1U;
-        localTaskCfg.base = *cfgInfo;
-    }
-    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, &localTaskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, false);
     // for simt
     error = CheckDynSizeValid(kernelTask, registeredKernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
@@ -319,11 +312,11 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
     aicTask->progHandle = prog;
     RT_LOG(RT_LOG_INFO, "stream_id=%d, kernel_name=%s, kernelAttrType=%d, funcType=%u, arg_size=%u, taskRation=%u, "
         "mixType=%hhu, kernelVfType=%u, dynamicSmSize=%u, addr1=0x%llx, addr2=0x%llx, "
-        "flag=%u, kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u.",
+        "kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u.",
         stm->Id_(), registeredKernel->Name_().c_str(), kernelAttrType, registeredKernel->GetFuncType(),
         argsInfo->argsSize, registeredKernel->GetTaskRation(), mixType,
         registeredKernel->KernelVfType_(), aicTask->dynamicShareMemSize, addr1, addr2,
-        flag, aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
+        aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
         aicTask->inputArgsSize.infoAddr, aicTask->inputArgsSize.atomicIndex);
 
     if (kernelTask->isUpdateSinkSqe == 1U) {
@@ -350,8 +343,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
 }
 
 rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-        const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
-        const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
+        const rtArgsEx_t *argsInfo, Stream *stm, const TaskCfg * const taskCfg, const bool isLaunchVec)
 {
     UNUSED(isLaunchVec);
     NULL_PTR_RETURN_MSG_OUTER(progHandle, RT_ERROR_PROGRAM_NULL);
@@ -371,7 +363,6 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     Runtime * const rt = Runtime::Instance();
     TaskInfo *kernelTask = nullptr;
     rtError_t error = CheckTaskCanSend(stm);
-    TaskCfg taskCfg = {};
     ERROR_RETURN_MSG_INNER(error, "Failed to check task send status, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     error = StreamLaunchKernelPrepare(stm, registeredKernel, prog, kernelAttrType, launchMdl, nullptr,
                                     addr1, addr2, progHandle, tilingKey);
@@ -412,11 +403,7 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
 
-    if (cfgInfo != nullptr) {
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base = *cfgInfo;
-    }
-    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, &taskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, false);
     error = CheckDynSizeValid(kernelTask, registeredKernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
         stm->Id_(), name.c_str(), static_cast<uint32_t>(error));
@@ -432,9 +419,9 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     aicTask->funcAddr1 = addr2;
     RT_LOG(RT_LOG_INFO, "stream_id=%d, kernel_name=%s, kernelAttrType=%d, funcType=%u, "
            "arg_size=%u, mixType=%hhu, taskRation=%u, kernelVfType=%u, dynamicSmSize=%u, addr1=0x%llx, addr2=0x%llx, "
-           "flag=%u, kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u.",
+           "kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u.",
            stm->Id_(), name.c_str(), kernelAttrType, funcType, argsInfo->argsSize, mixType, taskRation,
-           kernelVfType, aicTask->dynamicShareMemSize, addr1, addr2, flag, aicTask->comm.kernelFlag, aicTask->qos,
+           kernelVfType, aicTask->dynamicShareMemSize, addr1, addr2, aicTask->comm.kernelFlag, aicTask->qos,
            aicTask->partId, aicTask->schemMode, aicTask->inputArgsSize.infoAddr, aicTask->inputArgsSize.atomicIndex);
     if (kernelTask->isUpdateSinkSqe == 1U) {
         error = UpdateDavidKernelTaskSubmit(kernelTask, stm);
@@ -459,37 +446,7 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     return RT_ERROR_NONE;
 }
 
-void AicTaskInitByExtendAgrs(TaskInfo *kernelTask, const rtKernelAttrType kernelAttrType, const uint32_t coreDim,
-    const rtStreamLaunchKernelV2ExtendArgs_t * const extendAgrs)
-{
-    AicTaskInfo *aicTaskInfo = &(kernelTask->u.aicTaskInfo);
-    
-    if (extendAgrs->launchTaskCfg != nullptr) {
-        TaskCfg taskCfg = {};
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base.qos = extendAgrs->launchTaskCfg->qos;
-        taskCfg.base.partId = extendAgrs->launchTaskCfg->partId;
-        taskCfg.base.schemMode = extendAgrs->launchTaskCfg->schemMode;
-        taskCfg.base.blockDimOffset = extendAgrs->launchTaskCfg->blockDimOffset;
-        taskCfg.base.dumpflag = extendAgrs->launchTaskCfg->dumpflag;
-        taskCfg.base.localMemorySize = extendAgrs->launchTaskCfg->dynamicShareMemSize;
-        AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, &taskCfg, false);
-        
-        aicTaskInfo->groupDim = extendAgrs->launchTaskCfg->Group.groupDim;
-        aicTaskInfo->groupBlockDim = extendAgrs->launchTaskCfg->Group.groupBlockDim;
-        return;
-    }
-    if (extendAgrs->taskCfg != nullptr) {
-        AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, extendAgrs->taskCfg, false);
-        return;
-    }
-    TaskCfg taskCfg_ = {};
-    if (extendAgrs->cfgInfo != nullptr) {
-        taskCfg_.isBaseValid = 1U;
-        taskCfg_.base = *(extendAgrs->cfgInfo);
-    }
-    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, &taskCfg_, false);
-}
+
 
 rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *stm,
     const rtStreamLaunchKernelV2ExtendArgs_t *extendAgrs, const bool isLaunchVec)
@@ -541,7 +498,7 @@ rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *s
     } else {
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
-    AicTaskInitByExtendAgrs(kernelTask, kernelAttrType, coreDim, extendAgrs);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg, false);
 
     error = CheckDynSizeValid(kernelTask, kernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
@@ -596,16 +553,5 @@ rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *s
     return RT_ERROR_NONE;
 }
 
-rtError_t ConstructStreamLaunchKernelV2ExtendArgs(const rtArgsEx_t *argsInfo,
-    const rtTaskCfgInfo_t * const cfgInfo, const LaunchTaskCfgInfo_t * const launchTaskCfg,
-    const TaskCfg * const taskCfg, rtStreamLaunchKernelV2ExtendArgs_t *extendArgs)
-{
-    NULL_PTR_RETURN_MSG_OUTER(extendArgs, RT_ERROR_INVALID_VALUE);
-    extendArgs->argsInfo = argsInfo;
-    extendArgs->cfgInfo = cfgInfo;
-    extendArgs->launchTaskCfg = launchTaskCfg;
-    extendArgs->taskCfg = taskCfg;
-    return RT_ERROR_NONE;
-}
 }  // namespace runtime
 }  // namespace cce

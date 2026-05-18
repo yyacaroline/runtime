@@ -192,14 +192,14 @@ TEST_F(CloudV2TaskTest, stars_timeout_sqe)
     Complete(&task, 0);
 
     InitByStream(&task1, stream_);
-    AicTaskInit(&task1, RT_KERNEL_ATTR_TYPE_VECTOR, 1, 1, nullptr);
+    AicTaskInit(&task1, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     task1.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task1, &sqe2);
 
     TaskCfg taskcfg = {};
     taskcfg.isBaseValid = 1U;
     taskcfg.base.dumpflag = RT_KERNEL_DUMPFLAG;
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, &taskcfg);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, &taskcfg);
     EXPECT_EQ(task.u.aicTaskInfo.comm.kernelFlag, RT_KERNEL_DUMPFLAG);
 
     delete kernel;
@@ -222,7 +222,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_1)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -249,7 +249,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_2)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -275,7 +275,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_3)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -301,7 +301,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_4)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -325,7 +325,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_biu)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, stream_);
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     Driver *driver_ = ((Runtime *)Runtime::Instance())->driverFactory_.GetDriver(NPU_DRIVER);
     MOCKER_CPP_VIRTUAL(driver_, &Driver::DevMemAlloc)
@@ -357,7 +357,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_l2_cache)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);

@@ -54,7 +54,7 @@ namespace cce {
 namespace runtime {
 
 rtError_t ApiImplDavid::KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t * const argsInfo, Stream * const stm, const uint32_t flag,
+    const rtArgsEx_t * const argsInfo, Stream * const stm,
     const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
 {
     COND_RETURN_WARN(isLaunchVec, RT_ERROR_FEATURE_NOT_SUPPORT, "chip type(%d) does not support.",
@@ -71,7 +71,10 @@ rtError_t ApiImplDavid::KernelLaunch(const void * const stubFunc, const uint32_t
     }
     COND_RETURN_AND_MSG_OUTER(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT,
         ErrorCode::EE1010, __func__, "stream");
-    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, flag, cfgInfo, nullptr, isLaunchVec);
+
+    TaskCfg taskCfg = {};
+    (void)ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
+    return StreamLaunchKernelV1(stubFunc, coreDim, argsInfo, curStm, &taskCfg, isLaunchVec);
 }
 
 rtError_t ApiImplDavid::KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
@@ -93,14 +96,9 @@ rtError_t ApiImplDavid::KernelLaunchWithHandle(void * const hdl, const uint64_t 
     COND_RETURN_AND_MSG_OUTER(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT,
         ErrorCode::EE1010, __func__, "stream");
 
-    uint32_t flag = RT_KERNEL_DEFAULT;
-    if ((cfgInfo != nullptr) &&
-        ((cfgInfo->dumpflag == RT_KERNEL_DUMPFLAG) || (cfgInfo->dumpflag == RT_FUSION_KERNEL_DUMPFLAG))) {
-        flag = static_cast<uint32_t>(cfgInfo->dumpflag);
-        RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", flag);
-    }
-
-    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, flag, cfgInfo, isLaunchVec);
+    TaskCfg taskCfg = {};
+    (void)ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
+    return StreamLaunchKernelWithHandle(hdl, tilingKey, coreDim, argsInfo, curStm, &taskCfg, isLaunchVec);
 }
 
 rtError_t ApiImplDavid::LaunchKernel(Kernel * const kernel, uint32_t blockDim, const rtArgsEx_t * const argsInfo,
@@ -121,8 +119,12 @@ rtError_t ApiImplDavid::LaunchKernel(Kernel * const kernel, uint32_t blockDim, c
         RT_LOG(RT_LOG_WARNING, "kernel is invalid, device_id=%d", curCtx->Device_()->Id_());
         return RT_ERROR_KERNEL_INVALID;
     }
+    TaskCfg taskCfg = {};
+    ConvertTaskCfgInfoToTaskCfg(taskCfg, cfgInfo);
+    
     rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-    ConstructStreamLaunchKernelV2ExtendArgs(argsInfo, cfgInfo, nullptr, nullptr, &launchKernelExtendArgs);
+    launchKernelExtendArgs.argsInfo = argsInfo;
+    launchKernelExtendArgs.taskCfg = &taskCfg;
     return StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs);
 }
 
@@ -190,7 +192,8 @@ rtError_t ApiImplDavid::LaunchKernelByHandle(Kernel * const kernel, uint32_t blo
         error = ConvertArgsByArgsHandle(argsInfo, argHandle, specialArgsInfos, SPECIAL_ARGS_MAX_CNT);
         ERROR_RETURN_MSG_INNER(error, "convert args failed, error=%#x", error);
         rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-        ConstructStreamLaunchKernelV2ExtendArgs(&argsInfo, nullptr, nullptr, &taskCfg, &launchKernelExtendArgs);
+        launchKernelExtendArgs.argsInfo = &argsInfo;
+        launchKernelExtendArgs.taskCfg = &taskCfg;
         return StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs);
     }
 
@@ -200,40 +203,13 @@ rtError_t ApiImplDavid::LaunchKernelByHandle(Kernel * const kernel, uint32_t blo
     error = ConvertArgsByArgsHandle(argsInfo, argHandle, hostArgsInfos, phNum);
     COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, DELETE_A(hostArgsInfos), "convert args failed.");
     rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-    ConstructStreamLaunchKernelV2ExtendArgs(&argsInfo, nullptr, nullptr, &taskCfg, &launchKernelExtendArgs);
+    launchKernelExtendArgs.argsInfo = &argsInfo;
+    launchKernelExtendArgs.taskCfg = &taskCfg;
     error = StreamLaunchKernelV2(kernel, blockDim, curStm, &launchKernelExtendArgs);
     DELETE_A(hostArgsInfos);
     ERROR_RETURN_MSG_INNER(error, "launch kernel failed, error=%#x", error);
 
     return RT_ERROR_NONE;
-}
-
-rtError_t ApiImplDavid::LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-    Stream * const stm, const rtLaunchConfig_t * const launchConfig)
-{
-    rtError_t error = RT_ERROR_NONE;
-    Context * const curCtx = CurrentContext();
-    CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
-
-    Stream *curStm = stm;
-    if (curStm == nullptr) {
-        curStm = curCtx->DefaultStream_();
-        NULL_PTR_RETURN_MSG(curStm, RT_ERROR_STREAM_NULL);
-    }
-    COND_RETURN_AND_MSG_OUTER(curStm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT,
-        ErrorCode::EE1010, __func__, "stream");
-    if (!kernel->Program_()->IsDeviceSoAndNameValid(curCtx->Device_()->Id_())) {
-        RT_LOG(RT_LOG_WARNING, "kernel is invalid, device_id=%d", curCtx->Device_()->Id_());
-        return RT_ERROR_KERNEL_INVALID;
-    }
-    LaunchTaskCfgInfo_t launchTaskCfg;
-    (void)memset_s(&launchTaskCfg, sizeof(LaunchTaskCfgInfo_t), 0, sizeof(LaunchTaskCfgInfo_t));
-    error = GetLaunchConfigInfo(launchConfig, &launchTaskCfg);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Kernel launch GetLaunchConfigInfo failed, stream_id=%d.", curStm->Id_());
-    rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-    ConstructStreamLaunchKernelV2ExtendArgs(argsInfo, nullptr, &launchTaskCfg, nullptr, &launchKernelExtendArgs);
-    return StreamLaunchKernelV2(kernel, launchTaskCfg.blockDim, curStm, &launchKernelExtendArgs);
 }
 
 rtError_t ApiImplDavid::KernelLaunchEx(const char_t * const opName, const void * const args, const uint32_t argsSize,
@@ -555,8 +531,8 @@ rtError_t ApiImplDavid::LaunchKernelByArgsWithType(Kernel * const kernel, const 
     switch (argsWithType->type) {
         case RT_ARGS_NON_CPU_EX: {
             rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-            ConstructStreamLaunchKernelV2ExtendArgs(argsWithType->args.nonCpuArgsInfo, nullptr, nullptr, &taskCfg,
-                &launchKernelExtendArgs);
+            launchKernelExtendArgs.argsInfo = argsWithType->args.nonCpuArgsInfo;
+            launchKernelExtendArgs.taskCfg = &taskCfg;
             error = StreamLaunchKernelV2(kernel, coreDim, stm, &launchKernelExtendArgs);
             break;
         }
@@ -571,7 +547,8 @@ rtError_t ApiImplDavid::LaunchKernelByArgsWithType(Kernel * const kernel, const 
         case RT_ARGS_ARRAY: {
             rtArgsEx_t nonCpuArgsInfo = {};
             rtStreamLaunchKernelV2ExtendArgs_t launchKernelExtendArgs = {};
-            ConstructStreamLaunchKernelV2ExtendArgs(&nonCpuArgsInfo, nullptr, nullptr, &taskCfg, &launchKernelExtendArgs);
+            launchKernelExtendArgs.argsInfo = &nonCpuArgsInfo;
+            launchKernelExtendArgs.taskCfg = &taskCfg;
             launchKernelExtendArgs.argsArray = argsWithType->args.argsArrayInfo;
             error = StreamLaunchKernelV2(kernel, coreDim, stm, &launchKernelExtendArgs);
             break;

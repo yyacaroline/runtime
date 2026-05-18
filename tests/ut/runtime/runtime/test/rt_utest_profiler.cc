@@ -790,55 +790,6 @@ TEST_F(ProfilerTest, Stars_Launch)
     delete apiImpl_;
 }
 
-TEST_F(ProfilerTest, LaunchKernelV3)
-{
-    rtError_t error;
-    rtArgsEx_t argsInfo = {};
-    argsInfo.args = nullptr;
-    argsInfo.argsSize = 1025;
-    argsInfo.hostInputInfoNum = 4;
-
-    Api *oldApi_ = const_cast<Api *>(Runtime::runtime_->api_);
-    ApiDecorator *apiDecorator_ = new ApiDecorator(oldApi_);
-    error = apiDecorator_->LaunchKernelV3(nullptr, &argsInfo, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-
-    Profiler *profiler = new Profiler(oldApi_);
-    profiler->Init();
-
-    ApiImpl *apiImpl_ = new ApiImpl();
-    MOCKER_CPP_VIRTUAL(apiImpl_, &ApiImpl::LaunchKernelV3).stubs().will(returnValue(RT_ERROR_NONE));
-
-    error = profiler->apiProfileDecorator_->LaunchKernelV3(nullptr, &argsInfo, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-
-    rtArgsEx_t argsInfo1 = {};
-    argsInfo1.args = nullptr;
-    argsInfo1.argsSize = 16;
-    argsInfo1.hostInputInfoNum = 4;
-    error = profiler->apiProfileDecorator_->LaunchKernelV3(nullptr, &argsInfo1, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-
-    rtArgsEx_t argsInfo2 = {};
-    argsInfo2.args = nullptr;
-    argsInfo2.argsSize = 4097;
-    argsInfo2.hostInputInfoNum = 4;
-    error = profiler->apiProfileDecorator_->LaunchKernelV3(nullptr, &argsInfo2, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-
-    profiler->SetProfLogEnable(true);
-    error = profiler->apiProfileLogDecorator_->LaunchKernelV3(nullptr, &argsInfo, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-
-    profiler->SetProfLogEnable(false);
-    error = profiler->apiProfileLogDecorator_->LaunchKernelV3(nullptr, &argsInfo, nullptr, nullptr);
-    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
-    
-    delete profiler;
-    delete apiDecorator_;
-    delete apiImpl_;
-}
-
 class ProfilerLogTest : public testing::Test
 {
 protected:

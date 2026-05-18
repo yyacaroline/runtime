@@ -573,7 +573,7 @@ rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *s
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
 
-    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), 0, extendAgrs->taskCfg,
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg,
         isNeedAllocSqeDevBuf);
     ERROR_GOTO_MSG_INNER(error, ERROR_FREE,
         "Init kernel task failed, stream_id=%d, task_id=%hu, kernelAttrType=%d, retCode=%#x.",
@@ -626,11 +626,8 @@ rtError_t LaunchUpdateKernelSubmit(const Context *ctx, TaskInfo *updateTask, Str
 }
 
 rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreDim,
-    const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
-    const rtTaskCfgInfo_t * const cfgInfo, const TaskCfg * const taskCfg, const bool isLaunchVec)
+    const rtArgsEx_t *argsInfo, Stream *stm, const TaskCfg * const taskCfg, const bool isLaunchVec)
 {
-    UNUSED(cfgInfo);
-
     Context * const ctx = stm->Context_();
     rtError_t error = RT_ERROR_NONE;
     rtKernelAttrType kernelAttrType = RT_KERNEL_ATTR_TYPE_AICORE;
@@ -708,7 +705,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
 
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
-    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, taskCfg, isNeedAllocSqeDevBuf);
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
 
     aicTask = &kernTask->u.aicTaskInfo;
     if (copyFlag) {
@@ -726,12 +723,12 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
     registeredKernel->SetPrefetchCnt2_(prefetchCnt2);
 
     RT_LOG(RT_LOG_INFO, "device_id=%lu, stream_id=%d, task_id=%hu, kernelAttrType=%d, kernel_name=%s, arg_size=%u, "
-        "taskRation=%u, funcType=%u, coreDim=%u, mixType=%hhu, addr1=0x%llx, addr2=0x%llx, stubFunc=%p, flag=%lu, "
+        "taskRation=%u, funcType=%u, coreDim=%u, mixType=%hhu, addr1=0x%llx, addr2=0x%llx, stubFunc=%p, "
         "kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%lu, isNoNeedH2DCopy=%u, "
         "isUpdateSinkSqe=%u.",
         device->Id_(), stm->Id_(), kernTask->id, kernelAttrType, registeredKernel->Name_().c_str(), argsInfo->argsSize,
         registeredKernel->GetTaskRation(), registeredKernel->GetFuncType(), coreDim, mixType, addr1, addr2, stubFunc,
-        flag, aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
+        aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
         aicTask->inputArgsSize.infoAddr, aicTask->inputArgsSize.atomicIndex, argsInfo->isNoNeedH2DCopy,
         kernTask->isUpdateSinkSqe);
 
@@ -745,8 +742,7 @@ ERROR_RECYCLE:
 }
 
 rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t tilingKey, const uint32_t coreDim,
-    const rtArgsEx_t *argsInfo, Stream *stm, const uint32_t flag,
-    const rtTaskCfgInfo_t * const cfgInfo, const bool isLaunchVec)
+    const rtArgsEx_t *argsInfo, Stream *stm, const TaskCfg * const taskCfg, const bool isLaunchVec)
 {
     Context * const ctx = stm->Context_();
     Device * const device = ctx->Device_();
@@ -771,7 +767,6 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     rtError_t errorReason;
     uint32_t taskRation = 0U;
     uint32_t funcType = 0U;
-    TaskCfg taskCfg = {};
     bool isNeedAllocSqeDevBuf = false;
     const bool noMixFlag = device->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_KERNEL_LAUNCH_CANNOT_MIX);
 
@@ -833,14 +828,10 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
         "Mix kernel check failed, stream_id=%d, task_id=%hu, kernelAttrType=%d, retCode=%#x.",
         stm->Id_(), kernTask->id, kernelAttrType, error);
 
-    if (cfgInfo != nullptr) {
-        taskCfg.isBaseValid = 1U;
-        taskCfg.base = *cfgInfo;
-    }
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
 
-    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), flag, &taskCfg, isNeedAllocSqeDevBuf);
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
 
     aicTask = &kernTask->u.aicTaskInfo;
     if (copyFlag) {
@@ -867,12 +858,12 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
 
     RT_LOG(RT_LOG_INFO, "kernel info : device_id=%lu, stream_id=%d, task_id=%hu, kernelAttrType=%d, kernel_name=%s, "
            "arg_size=%u, coreDim=%u, mixType=%u, taskRation=%u, funcType=%u, addr1=0x%llx, addr2=0x%llx, "
-           "flag=%lu, kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u, "
+           "kernelFlag=0x%x, qos=%u, partId=%u, schemMode=%u, infoAddr=%p, atomicIndex=%u, "
            "isNoNeedH2DCopy=%u, isUpdateSinkSqe=%u.",
            device->Id_(), stm->Id_(), kernTask->id, kernelAttrType,
            (tilingKey == DEFAULT_TILING_KEY) ? "" : registeredKernel->Name_().c_str(),
            argsInfo->argsSize, coreDim, mixType, taskRation, funcType, addr1, addr2,
-           flag, aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
+           aicTask->comm.kernelFlag, aicTask->qos, aicTask->partId, aicTask->schemMode,
            aicTask->inputArgsSize.infoAddr, aicTask->inputArgsSize.atomicIndex,
            argsInfo->isNoNeedH2DCopy, kernTask->isUpdateSinkSqe);
 

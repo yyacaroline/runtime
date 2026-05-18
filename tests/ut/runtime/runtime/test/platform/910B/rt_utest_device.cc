@@ -1552,7 +1552,7 @@ TEST_F(CloudV2DeviceTest, STARS_AicoreTimeoutDfx)
     stm->streamId_ = 1;
     rtError_t errCode = RT_ERROR_NONE;
     TaskInfo * const tsk = device->GetTaskFactory()->Alloc(stm, TS_TASK_TYPE_KERNEL_AICORE, errCode);
-    AicTaskInit(tsk, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0U, nullptr);
+    AicTaskInit(tsk, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
 
     const void *stubFunc = (void *)0x03;
     const char *stubName = "efgexample";

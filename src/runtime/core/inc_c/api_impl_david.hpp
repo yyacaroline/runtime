@@ -20,15 +20,12 @@ class ApiImplDavid : public ApiImpl {
 public:
     rtError_t KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
         const rtArgsEx_t * const argsInfo, Stream * const stm,
-        const uint32_t flag, const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) override;
+        const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) override;
     rtError_t KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
         const rtArgsEx_t * const argsInfo, Stream * const stm,
         const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) override;
     rtError_t LaunchKernel(Kernel * const kernel, uint32_t blockDim, const rtArgsEx_t * const argsInfo,
-        Stream * const stm, const rtTaskCfgInfo_t * const cfgInfo = nullptr) override;
-    rtError_t LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-        Stream * const stm, const rtLaunchConfig_t * const launchConfig) override;
-
+        Stream * const stm, const rtTaskCfgInfo_t * const cfgInfo) override;
     rtError_t KernelLaunchEx(const char_t * const opName, const void * const args, const uint32_t argsSize,
         const uint32_t flags, Stream * const stm) override;
     rtError_t CpuKernelLaunch(const rtKernelLaunchNames_t * const launchNames, const uint32_t coreDim,

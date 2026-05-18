@@ -163,7 +163,7 @@ static rtError_t UpdateKernelTaskInfoWithArgsAndCfg(
         stm->Id_(), taskInfo->id);
 
     bool isNeedAllocSqeDevBuf = false;
-    AicTaskInit(taskInfo, kernelAttrType, static_cast<uint16_t>(blockDim), 0, taskCfg, isNeedAllocSqeDevBuf);
+    AicTaskInit(taskInfo, kernelAttrType, static_cast<uint16_t>(blockDim), taskCfg, isNeedAllocSqeDevBuf);
     AicTaskInfo* aicTask = &(taskInfo->u.aicTaskInfo);
     aicTask->kernel = kernel;
     aicTask->progHandle = prog;

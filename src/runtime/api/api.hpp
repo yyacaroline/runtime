@@ -149,8 +149,6 @@ public:
                                    Stream * const stm, const rtTaskCfgInfo_t * const cfgInfo = nullptr) = 0;
     virtual rtError_t LaunchKernelV2(Kernel * const kernel, uint32_t blockDim, const RtArgsWithType * const argsWithType,
                                      Stream * const stm, const rtKernelLaunchCfg_t * const cfg = nullptr) = 0;
-    virtual rtError_t LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-                                     Stream * const stm, const rtLaunchConfig_t * const launchConfig) = 0;
     virtual rtError_t BinaryUnLoad(Program * const binHandle) = 0;
     virtual rtError_t BinaryLoadFromFile(const char * const binPath, const rtLoadBinaryConfig_t * const optionalCfg,
                                          Program **handle) = 0;
@@ -173,7 +171,7 @@ public:
         const void * const stubFunc, const uint32_t flag, rtKernelDetailInfo_t * const kernelInfo) = 0;
     virtual rtError_t QueryFunctionRegistered(const char_t * const stubName) = 0;
     virtual rtError_t KernelLaunch(const void * const stubFunc, uint32_t coreDim,
-        const rtArgsEx_t * const argsInfo, Stream * const stm, uint32_t flag,
+        const rtArgsEx_t * const argsInfo, Stream * const stm,
         const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) = 0;
     virtual rtError_t KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
         const rtArgsEx_t * const argsInfo, Stream * const stm,

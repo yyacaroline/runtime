@@ -55,9 +55,7 @@ public:
     rtError_t LaunchKernel(Kernel * const kernel, const uint32_t blockDim, const rtArgsEx_t * const argsInfo,
                            Stream * const stm, const rtTaskCfgInfo_t *const cfgInfo = nullptr) override;
     rtError_t LaunchKernelV2(Kernel * const kernel, uint32_t blockDim, const RtArgsWithType * const argsWithType,
-                         Stream * const stm, const rtKernelLaunchCfg_t * const cfg  = nullptr) override;
-    rtError_t LaunchKernelV3(Kernel * const kernel, const rtArgsEx_t * const argsInfo,
-                             Stream * const stm, const rtLaunchConfig_t * const launchConfig) override; 
+        Stream * const stm, const rtKernelLaunchCfg_t * const cfg = nullptr) override;
     rtError_t MetadataRegister(Program * const prog, const char_t * const metadata) override;
     rtError_t DependencyRegister(Program * const mProgram, Program * const sProgram) override;
     rtError_t FunctionRegister(Program * const prog, const void * const stubFunc, const char_t * const stubName,
@@ -73,7 +71,7 @@ public:
     rtError_t QueryFunctionRegistered(const char_t * const stubName) override;
     rtError_t KernelLaunch(const void * const stubFunc, const uint32_t coreDim,
         const rtArgsEx_t * const argsInfo, Stream * const stm,
-        const uint32_t flag, const rtTaskCfgInfo_t *const cfgInfo = nullptr, const bool isLaunchVec = false) override;
+        const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) override;
     rtError_t KernelLaunchWithHandle(void * const hdl, const uint64_t tilingKey, const uint32_t coreDim,
         const rtArgsEx_t * const argsInfo, Stream * const stm,
         const rtTaskCfgInfo_t * const cfgInfo = nullptr, const bool isLaunchVec = false) override;

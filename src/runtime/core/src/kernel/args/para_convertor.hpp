@@ -23,6 +23,8 @@ constexpr uint8_t BLOCK_PREFETCH_DISABLE = 0U;
 
 // Launch kernel接口新老参数信息适配
 rtError_t ConvertLaunchCfgToTaskCfg(TaskCfg &taskCfg, const rtKernelLaunchCfg_t* const cfg);
+// rtTaskCfgInfo_t 转换成 TaskCfg
+rtError_t ConvertTaskCfgInfoToTaskCfg(TaskCfg &taskCfg, const rtTaskCfgInfo_t* const cfgInfo);
 // RtArgsHandle 转化成 rtArgsEx_t
 rtError_t ConvertArgsByArgsHandle(rtArgsEx_t &oldArgs, const RtArgsHandle * const argsHandle,
     rtHostInputInfo_t specialArgsInfos[], const uint8_t arrayArgsNum);

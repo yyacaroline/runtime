@@ -155,7 +155,7 @@ TEST_F(CloudV2StarsEngineTest, StateDown)
     Program *program = &stubProg;
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
-    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task0.u.aicTaskInfo.kernel = kernel;
     EXPECT_EQ(task0.type, TS_TASK_TYPE_KERNEL_AICORE);
     Runtime *rtInstance = (Runtime *)Runtime::Instance();
@@ -180,7 +180,7 @@ TEST_F(CloudV2StarsEngineTest, SubmitNormalTask_01)
     Program *program = &stubProg;
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
-    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task0.u.aicTaskInfo.kernel = kernel;
     EXPECT_EQ(task0.type, TS_TASK_TYPE_KERNEL_AICORE);
 
@@ -1637,7 +1637,7 @@ TEST_F(CloudV2StarsEngineTest, WaitTask3)
     Program *program = &stubProg;
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
-    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task0.u.aicTaskInfo.kernel = kernel;
     ret = engine_->SubmitTask(&task0);
 
@@ -1659,7 +1659,7 @@ TEST_F(CloudV2StarsEngineTest, WaitTask4)
     Program *program = &stubProg;
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
-    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task0.u.aicTaskInfo.kernel = kernel;
     ret = engine_->SubmitTask(&task0);
 
@@ -1680,7 +1680,7 @@ TEST_F(CloudV2StarsEngineTest, WaitTask5)
     PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
     Program *program = &stubProg;
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
-    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, 0, nullptr);
+    AicTaskInit(&task0, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task0.u.aicTaskInfo.kernel = kernel;
     ret = engine_->SubmitTask(&task0);
 

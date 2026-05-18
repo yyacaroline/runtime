@@ -37,7 +37,7 @@ bool CheckErrPrint(const uint32_t errorCode);
 
 void AicpuTaskInit(TaskInfo *taskInfo, const uint16_t dimNum, const uint32_t flag);
 void AicTaskInit(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType,
-    const uint16_t dimNum, const uint32_t flag, const TaskCfg * const taskcfg,
+    const uint16_t dimNum, const TaskCfg * const taskcfg,
     const bool isNeedAllocSqeDevBuf = false);
 
 void TransDavinciTaskToVectorCore(const uint32_t flags, uint64_t addr2, uint64_t &addr1,
