@@ -12,7 +12,6 @@
 #define TSD_PUB_FACILITY_TSDLOG_LOG_H
 
 #include <mutex>
-#include <queue>
 #include <string>
 #include "inc/weak_log.h"
 #include "tsd/status.h"
