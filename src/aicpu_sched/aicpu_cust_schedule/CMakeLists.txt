@@ -116,7 +116,7 @@ target_compile_definitions(aicpu_custom_scheduler_so PRIVATE
 )
 
 target_compile_options(aicpu_custom_scheduler PRIVATE
-   -fstack-protector
+   -fstack-protector-strong
    -fno-common
    -fno-strict-aliasing
    -Werror -Wall
@@ -127,7 +127,7 @@ target_compile_options(aicpu_custom_scheduler_so PRIVATE
     -O2
     -Werror -Wall
     -Wno-error=array-bounds    # For controlling the compiler's warnings and errors regarding array out-of-bounds access.
-    -fstack-protector
+    -fstack-protector-strong
     -fno-common
     -fno-strict-aliasing
     -fvisibility=hidden

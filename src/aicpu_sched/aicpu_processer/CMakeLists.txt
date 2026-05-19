@@ -54,7 +54,7 @@ target_link_libraries(aicpu_processer PRIVATE
 target_compile_options(aicpu_processer PRIVATE
     $<$<NOT:$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},x86_64>>:-march=armv8-a>
     -O2
-    -fstack-protector
+    -fstack-protector-strong
     -fvisibility=hidden
     -fvisibility-inlines-hidden
     -Werror -Wall
