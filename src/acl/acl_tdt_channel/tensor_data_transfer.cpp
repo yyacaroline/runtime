@@ -100,7 +100,7 @@ namespace {
 #else
         static void *handler = GetHandler();
         if (handler == nullptr) {
-            ACL_LOG_ERROR("Get handler failed when get %s function.", func_name);
+            ACL_LOG_ERROR("Get handler failed when get %s function.", func_name.c_str());
             return nullptr;
         }
         void *func_ptr = mmDlsym(handler, func_name.c_str());
