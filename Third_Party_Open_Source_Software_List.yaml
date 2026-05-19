@@ -10,9 +10,6 @@ libboundscheck:
 eigen:
     version: 5.0.0
     type: run
-openssl:
-    version: 3.0.9
-    type: run
 protobuf:
     version: 25.1
     type: run
