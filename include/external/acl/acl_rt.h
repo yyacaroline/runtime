@@ -830,6 +830,16 @@ typedef enum {
 
 typedef uint32_t (*aclrtSnapShotCallBack)(int32_t deviceId, void* args);
 
+typedef struct aclrtSnapShotBackupArgs {
+    uint32_t backupFlags;
+    char reserved[60];
+} aclrtSnapShotBackupArgs;
+
+typedef struct aclrtSnapShotRestoreArgs {
+    uint32_t restoreFlags;
+    char reserved[60];
+} aclrtSnapShotRestoreArgs;
+
 typedef struct aclrtUuid {
     char bytes[16];
 } aclrtUuid;
@@ -5250,7 +5260,7 @@ typedef enum aclrtProcessState {
  * @retval ACL_SUCCESS The function is successfully executed.
  * @retval OtherValues Failure
  */
-ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessLock();
+ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessLock(int pid, void* reserve);
 
 /**
  * @ingroup AscendCL
@@ -5259,7 +5269,7 @@ ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessLock();
  * @retval ACL_SUCCESS The function is successfully executed.
  * @retval OtherValues Failure
  */
-ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessUnlock();
+ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessUnlock(int pid, void* reserve);
 
 /**
  * @ingroup AscendCL
@@ -5268,7 +5278,7 @@ ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessUnlock();
  * @retval ACL_SUCCESS The function is successfully executed.
  * @retval OtherValues Failure
  */
-ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessBackup();
+ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessBackup(int pid, aclrtSnapShotBackupArgs *args);
 
 /**
  * @ingroup AscendCL
@@ -5277,7 +5287,7 @@ ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessBackup();
  * @retval ACL_SUCCESS The function is successfully executed.
  * @retval OtherValues Failure
 */
-ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessRestore();
+ACL_FUNC_VISIBILITY aclError aclrtSnapShotProcessRestore(int pid, aclrtSnapShotRestoreArgs *args);
 
 /**
  * @ingroup AscendCL

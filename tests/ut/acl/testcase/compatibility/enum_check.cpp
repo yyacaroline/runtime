@@ -1189,6 +1189,24 @@ TEST_F(UTEST_ACL_compatibility_enum_check, aclrtSnapShotStage)
   EXPECT_EQ(sizeof(aclrtSnapShotStage), 4);
 }
 
+TEST_F(UTEST_ACL_compatibility_enum_check, aclrtSnapShotBackupArgs)
+{
+  aclrtSnapShotBackupArgs args;
+  EXPECT_EQ(sizeof(aclrtSnapShotBackupArgs), 64);
+  args.backupFlags = 0U;
+  args.backupFlags = static_cast<uint32_t>(1);
+  (void)args;
+}
+
+TEST_F(UTEST_ACL_compatibility_enum_check, aclrtSnapShotRestoreArgs)
+{
+  aclrtSnapShotRestoreArgs args;
+  EXPECT_EQ(sizeof(aclrtSnapShotRestoreArgs), 64);
+  args.restoreFlags = 0U;
+  args.restoreFlags = static_cast<uint32_t>(1);
+  (void)args;
+}
+
 TEST_F(UTEST_ACL_compatibility_enum_check, aclrtKernelType)
 {
   aclrtKernelType value;

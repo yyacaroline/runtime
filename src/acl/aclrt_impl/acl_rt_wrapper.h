@@ -291,10 +291,10 @@
     _(aclError, aclrtGetErrorVerbose, (int32_t deviceId, aclrtErrorInfo * errorInfo), (deviceId, errorInfo)) \
     _(aclError, aclrtRepairError, (int32_t deviceId, const aclrtErrorInfo * errorInfo), (deviceId, errorInfo)) \
     _(aclError, aclrtMemSetAccess, (void * virPtr, size_t size, aclrtMemAccessDesc * desc, size_t count), (virPtr, size, desc, count)) \
-    _(aclError, aclrtSnapShotProcessLock, (), ()) \
-    _(aclError, aclrtSnapShotProcessUnlock, (), ()) \
-    _(aclError, aclrtSnapShotProcessBackup, (), ()) \
-    _(aclError, aclrtSnapShotProcessRestore, (), ()) \
+    _(aclError, aclrtSnapShotProcessLock, (int pid, void* reserve), (pid, reserve)) \
+    _(aclError, aclrtSnapShotProcessUnlock, (int pid, void* reserve), (pid, reserve)) \
+    _(aclError, aclrtSnapShotProcessBackup, (int pid, aclrtSnapShotBackupArgs *args), (pid, args)) \
+    _(aclError, aclrtSnapShotProcessRestore, (int pid, aclrtSnapShotRestoreArgs *args), (pid, args)) \
     _(aclError, aclrtSnapShotCallbackRegister, (aclrtSnapShotStage stage, aclrtSnapShotCallBack callback, void * args), (stage, callback, args)) \
     _(aclError, aclrtSnapShotCallbackUnregister, (aclrtSnapShotStage stage, aclrtSnapShotCallBack callback), (stage, callback)) \
     _(aclError, aclrtCacheLastTaskOpInfo, (const void * const infoPtr, const size_t infoSize), (infoPtr, infoSize)) \

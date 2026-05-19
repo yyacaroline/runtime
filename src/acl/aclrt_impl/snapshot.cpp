@@ -13,11 +13,20 @@
 #include "common/log_inner.h"
 #include "common/error_codes_inner.h"
 #include "common/prof_reporter.h"
+#include "mmpa/mmpa_api.h"
 
-aclError aclrtSnapShotProcessLockImpl()
+aclError aclrtSnapShotProcessLockImpl(int pid, void* reserve)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtSnapShotProcessLock);
-    ACL_LOG_INFO("start to execute aclrtSnapShotProcessLock");
+    ACL_LOG_INFO("start to execute aclrtSnapShotProcessLock, pid=%d, reserve=%p", pid, reserve);
+
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(
+        pid != static_cast<int>(mmGetPid()), pid,
+        "pid must be current process pid, cross-process operation is not supported");
+
+    ACL_CHECK_INVALID_PARAM_NO_VALUE(
+        reserve == nullptr, "reserve", "reserve is a reserved parameter and must be nullptr");
+
     const rtError_t rtErr = rtSnapShotProcessLock();
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("execute SnapShotProcessLock failed, runtime result = %d", static_cast<int32_t>(rtErr));
@@ -28,10 +37,18 @@ aclError aclrtSnapShotProcessLockImpl()
     return ACL_SUCCESS;
 }
 
-aclError aclrtSnapShotProcessUnlockImpl()
+aclError aclrtSnapShotProcessUnlockImpl(int pid, void* reserve)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtSnapShotProcessUnlock);
-    ACL_LOG_INFO("start to execute aclrtSnapShotProcessUnlock");
+    ACL_LOG_INFO("start to execute aclrtSnapShotProcessUnlock, pid=%d, reserve=%p", pid, reserve);
+
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(
+        pid != static_cast<int>(mmGetPid()), pid,
+        "pid must be current process pid, cross-process operation is not supported");
+
+    ACL_CHECK_INVALID_PARAM_NO_VALUE(
+        reserve == nullptr, "reserve", "reserve is a reserved parameter and must be nullptr");
+
     const rtError_t rtErr = rtSnapShotProcessUnlock();
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("execute SnapShotProcessUnLock failed, runtime result = %d", static_cast<int32_t>(rtErr));
@@ -42,10 +59,17 @@ aclError aclrtSnapShotProcessUnlockImpl()
     return ACL_SUCCESS;
 }
 
-aclError aclrtSnapShotProcessBackupImpl()
+aclError aclrtSnapShotProcessBackupImpl(int pid, aclrtSnapShotBackupArgs* args)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtSnapShotProcessBackup);
-    ACL_LOG_INFO("start to execute aclrtSnapShotProcessBackup");
+    ACL_LOG_INFO("start to execute aclrtSnapShotProcessBackup, pid=%d, args=%p", pid, args);
+
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(
+        pid != static_cast<int>(mmGetPid()), pid,
+        "pid must be current process pid, cross-process operation is not supported");
+
+    ACL_CHECK_INVALID_PARAM_NO_VALUE(args == nullptr, "args", "args is a reserved parameter and must be nullptr");
+
     const rtError_t rtErr = rtSnapShotProcessBackup();
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("execute SnapShotProcessBackup failed, runtime result = %d", static_cast<int32_t>(rtErr));
@@ -56,10 +80,17 @@ aclError aclrtSnapShotProcessBackupImpl()
     return ACL_SUCCESS;
 }
 
-aclError aclrtSnapShotProcessRestoreImpl()
+aclError aclrtSnapShotProcessRestoreImpl(int pid, aclrtSnapShotRestoreArgs* args)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtSnapShotProcessRestore);
-    ACL_LOG_INFO("start to execute aclrtSnapShotProcessRestore");
+    ACL_LOG_INFO("start to execute aclrtSnapShotProcessRestore, pid=%d, args=%p", pid, args);
+
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(
+        pid != static_cast<int>(mmGetPid()), pid,
+        "pid must be current process pid, cross-process operation is not supported");
+
+    ACL_CHECK_INVALID_PARAM_NO_VALUE(args == nullptr, "args", "args is a reserved parameter and must be nullptr");
+
     const rtError_t rtErr = rtSnapShotProcessRestore();
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("execute SnapShotProcessRestore failed, runtime result = %d", static_cast<int32_t>(rtErr));
