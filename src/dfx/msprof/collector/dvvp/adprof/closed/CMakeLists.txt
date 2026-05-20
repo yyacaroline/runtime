@@ -87,7 +87,6 @@ if ((PRODUCT IN_LIST ASCEND950_PRODUCT_LIST) OR (PRODUCT IN_LIST ASCEND910_96_PR
     target_link_directories(adprof PRIVATE
         ${CMAKE_INSTALL_PREFIX}/lib
     )
-    add_dependencies(adprof URMA)
 endif()
  
 set_target_properties(adprof
