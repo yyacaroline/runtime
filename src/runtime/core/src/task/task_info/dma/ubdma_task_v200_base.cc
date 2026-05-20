@@ -39,6 +39,7 @@ rtError_t UbDbSendTaskInit(TaskInfo* taskInfo, const rtUbDbInfo_t *dbInfo, const
     UbSendTaskInfo *ubSend = &taskInfo->u.ubSendTask;
     taskInfo->type = TS_TASK_TYPE_UB_DB_SEND;
     taskInfo->typeName = const_cast<char_t*>("UB_DB_SEND");
+    taskInfo->isNoRingbuffer = 1U;
     ubSend->wrCqe = dbInfo->wrCqe;
     ubSend->dbNum = dbInfo->dbNum;
     ubSend->source = source;
@@ -145,6 +146,7 @@ void UbDirectSendTaskInit(TaskInfo* taskInfo, rtUbWqeInfo_t *wqeInfo)
     DirectSendTaskInfo *directSend = &taskInfo->u.directSendTask;
     taskInfo->type = TS_TASK_TYPE_DIRECT_SEND;
     taskInfo->typeName = const_cast<char_t*>("UB_DIRECT_SEND");
+    taskInfo->isNoRingbuffer = 1U;
     directSend->wrCqe = wqeInfo->wrCqe;
     directSend->wqeSize = wqeInfo->wqeSize;
     directSend->dieId = wqeInfo->dieId;
