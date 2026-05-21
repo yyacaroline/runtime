@@ -1452,4 +1452,14 @@ struct hal_fault_event_resume {
     unsigned char resv[9];  /* Confirmed with the driver, this field needs to be reserved due to alignment requirements. */
 };
 
+typedef enum {
+    HANDLE_ATTR_MEM_MAP_ROUTE = 0,
+    HANDLE_ATTR_TYPE_MAX
+} HandleAttrType;
+
+typedef struct {
+    unsigned int mem_map_route; /* 1:hccs  0:sio */
+    unsigned int rev[4];
+} HandleAttr;
+
 #endif
