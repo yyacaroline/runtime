@@ -9,6 +9,8 @@
  */
 
 #include "stars_david.hpp"
+#include "task_manager.h"
+#include "davinci_kernel_task.h"
 
 namespace cce {
 namespace runtime {
@@ -46,6 +48,46 @@ void UpdateDavidAICpuKernelSqeForDavinciTask(RtDavidStarsAicpuKernelSqe * const 
  	sqe->topicType = TOPIC_TYPE_DEVICE_AICPU_SRC_PID;
  	return;
 }
+
+static bool DavinciKernelTaskRegister()
+{
+    TaskFuncSingle aicAivFuncs = {
+        .toCommandFunc = &ToCommandBodyForAicAivTask,
+        .toSqeFunc = nullptr,
+        .doCompleteSuccFunc = &StarsV2DoCompleteSuccessForDavinciTask,
+        .taskUnInitFunc = &StarsV2DavinciTaskUnInit,
+        .waitAsyncCpCompleteFunc = nullptr,
+        .printErrorInfoFunc = &PrintErrorInfoForDavinciTask,
+        .setResultFunc = nullptr,
+        .setStarsResultFunc = &StarsV2SetStarsResultForDavinciTask,
+    };
+
+    TaskFuncSingle aicpuFuncs = {
+        .toCommandFunc = &ToCommandBodyForAicpuTask,
+        .toSqeFunc = nullptr,
+        .doCompleteSuccFunc = &StarsV2DoCompleteSuccessForDavinciTask,
+        .taskUnInitFunc = &StarsV2DavinciTaskUnInit,
+        .waitAsyncCpCompleteFunc = nullptr,
+        .printErrorInfoFunc = &PrintErrorInfoForDavinciTask,
+        .setResultFunc = nullptr,
+        .setStarsResultFunc = &StarsV2SetStarsResultForDavinciTask,
+    };
+
+    const auto& chips = GetV201Chips();
+    for (auto chip : chips) {
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AICPU, aicpuFuncs);
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AICORE, aicAivFuncs);
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AIVEC, aicAivFuncs);
+    }
+
+    RegDavidSqeFunc(TS_TASK_TYPE_KERNEL_AICPU, &ConstructDavidAICpuSqeForDavinciTask);
+    RegDavidSqeFunc(TS_TASK_TYPE_KERNEL_AICORE, &ConstructDavidAicAivSqeForDavinciTask);
+    RegDavidSqeFunc(TS_TASK_TYPE_KERNEL_AIVEC, &ConstructDavidAicAivSqeForDavinciTask);
+
+    return true;
+}
+
+static bool g_davinciKernelTaskRegister = DavinciKernelTaskRegister();
 
 #endif
 

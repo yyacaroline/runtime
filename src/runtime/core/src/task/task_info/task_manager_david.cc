@@ -16,7 +16,6 @@
 #include "driver.hpp"
 #include "stars.hpp"
 #include "task_fail_callback_manager.hpp"
-#include "davinci_kernel_task.h"
 #include "event_task.h"
 #include "memory_task.h"
 #include "rdma_task.h"
@@ -37,7 +36,6 @@
 #include "model_update_task.h"
 #include "model_to_aicpu_task.h"
 #include "maintenance_task.h"
-#include "davinci_kernel_task.h"
 #include "ccu_task.hpp"
 #include "error_code.h"
 #include "task_manager.h"
@@ -55,13 +53,11 @@ static void DavidRegDoCompleteSuccFunc(const std::vector<rtChipType_t> &chipType
     for (auto chipType : chipTypes) {
         auto &doCompleteSuccFunc = g_taskFuncArrays[chipType].doCompleteSuccFunc;
         for (auto &item : doCompleteSuccFunc) {
-            item = &DoCompleteSuccess;
+            if (item == nullptr) {
+                item = &DoCompleteSuccess;
+            }
         }
 
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &StarsV2DoCompleteSuccessForDavinciTask;
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AICORE] = &StarsV2DoCompleteSuccessForDavinciTask;
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AICPU] = &StarsV2DoCompleteSuccessForDavinciTask;
-        
         doCompleteSuccFunc[TS_TASK_TYPE_MEMCPY] = &StarsV2DoCompleteSuccessForMemcpyAsyncTask;
         
         doCompleteSuccFunc[TS_TASK_TYPE_EVENT_RECORD] = &DoCompleteSuccessForEventRecordTask;
@@ -90,14 +86,7 @@ static void DavidRegTaskUnInitFunc(const std::vector<rtChipType_t> &chipTypes)
     PfnTaskUnInit *taskUnInitFunc = nullptr;
     for (auto chipType : chipTypes) {
         taskUnInitFunc = g_taskFuncArrays[chipType].taskUnInitFunc;
-        for (uint32_t i = 0U; i < TS_TASK_TYPE_RESERVED; i++) {
-            taskUnInitFunc[i] = nullptr;
-        }
 
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AICORE] = &StarsV2DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &StarsV2DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AICPU] = &StarsV2DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &StarsV2DavinciMultipleTaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_MEMCPY] = &StarsV2MemcpyAsyncTaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_EVENT_RECORD] = &EventRecordTaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_EVENT_RESET] = &EventResetTaskUnInit;
@@ -121,12 +110,11 @@ static void DavidRegPrintErrorInfoFunc(const std::vector<rtChipType_t> &chipType
     for (auto chipType : chipTypes) {
         auto &printErrorInfoFunc = g_taskFuncArrays[chipType].printErrorInfoFunc;
         for (auto &item : printErrorInfoFunc) {
-            item = &PrintErrorInfoCommon;
+            if (item == nullptr) {
+                item = &PrintErrorInfoCommon;
+            }
         }
 
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AICPU] = &PrintErrorInfoForDavinciTask;
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &PrintErrorInfoForDavinciTask;
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AICORE] = &PrintErrorInfoForDavinciTask;
         printErrorInfoFunc[TS_TASK_TYPE_MEMCPY] = &PrintErrorInfoForMemcpyAsyncTask;
         printErrorInfoFunc[TS_TASK_TYPE_MODEL_MAINTAINCE] = &PrintErrorInfoForModelMaintainceTask;
         printErrorInfoFunc[TS_TASK_TYPE_MODEL_EXECUTE] = &PrintErrorInfoForModelExecuteTask;
@@ -151,12 +139,11 @@ static void DavidRegSetStarsResultFunc(const std::vector<rtChipType_t> &chipType
     for (auto chipType : chipTypes) {
         auto &setStarsResultFunc = g_taskFuncArrays[chipType].setStarsResultFunc;
         for (auto &item : setStarsResultFunc) {
-            item = &SetStarsResultCommonForDavid;
+            if (item == nullptr) {
+                item = &SetStarsResultCommonForDavid;
+            }
         }
 
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AICPU] = &StarsV2SetStarsResultForDavinciTask;
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &StarsV2SetStarsResultForDavinciTask;
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AICORE] = &StarsV2SetStarsResultForDavinciTask;
         setStarsResultFunc[TS_TASK_TYPE_MEMCPY] = &SetStarsResultForMemcpyAsyncTask;
         setStarsResultFunc[TS_TASK_TYPE_EVENT_RECORD] = &SetStarsResultForEventRecordTask;
         setStarsResultFunc[TS_TASK_TYPE_DAVID_EVENT_RECORD] = &SetStarsResultForDavidEventRecordTask;
@@ -175,9 +162,7 @@ static void DavidRegSetStarsResultFunc(const std::vector<rtChipType_t> &chipType
 
 void RegDavidTaskFunc(void)
 {
-    static const std::vector<rtChipType_t> chipTypes = {
-        CHIP_DAVID, CHIP_CLOUD_V5, CHIP_MC62CM12A, CHIP_XPU, CHIP_ASCEND_350
-    };
+    const auto& chipTypes = GetDavidChips();
     RegTaskToCommandFunc(chipTypes);
     RegTaskToDavidSqefunc();
     DavidRegTaskUnInitFunc(chipTypes);

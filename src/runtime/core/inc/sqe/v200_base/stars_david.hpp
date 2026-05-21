@@ -483,6 +483,7 @@ union rtDavidSqe_t {
 using PfnTaskToDavidSqe = void (*)(TaskInfo *taskInfo, rtDavidSqe_t * const davidSqe, uint64_t sqBaseAddr);
 
 PfnTaskToDavidSqe *GetDavidSqeFuncAddr();
+rtError_t RegDavidSqeFunc(tsTaskType_t taskType, PfnTaskToDavidSqe func);
 
 void ToConstructDavidSqe(TaskInfo *taskInfo, rtDavidSqe_t * const davidSqe, uint64_t sqBaseAddr);
 uint32_t GetSendDavidSqeNum(const TaskInfo* const taskInfo);

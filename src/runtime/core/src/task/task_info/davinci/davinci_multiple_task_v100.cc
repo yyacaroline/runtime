@@ -14,6 +14,7 @@
 #include "davinci_multiple_task.h"
 #include "task_info_v100.h"
 #include "task_execute_time.h"
+#include "task_manager.h"
 
 namespace cce {
 namespace runtime {
@@ -267,6 +268,29 @@ rtError_t WaitAsyncCopyCompleteForDavinciMultipleTask(TaskInfo *taskInfo)
     RT_LOG(RT_LOG_INFO, "AsyncCopy Complete.");
     return RT_ERROR_NONE;
 }
+
+static bool DavinciMultipleTaskRegister()
+{
+    TaskFuncSingle funcs = {
+        .toCommandFunc = nullptr,
+        .toSqeFunc = &ConstructSqeForDavinciMultipleTask,
+        .doCompleteSuccFunc = &DoCompleteSuccess,
+        .taskUnInitFunc = &DavinciMultipleTaskUnInit,
+        .waitAsyncCpCompleteFunc = &WaitAsyncCopyCompleteForDavinciMultipleTask,
+        .printErrorInfoFunc = &PrintErrorInfoCommon,
+        .setResultFunc = &SetResultCommon,
+        .setStarsResultFunc = &SetStarsResultCommon,
+    };
+
+    const auto& chips = GetV100Chips();
+    for (auto chip : chips) {
+        RegTaskFunc(chip, TS_TASK_TYPE_MULTIPLE_TASK, funcs);
+    }
+
+    return true;
+}
+
+static bool g_davinciMultipleTaskRegister = DavinciMultipleTaskRegister();
 
 #endif
 

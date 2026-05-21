@@ -72,9 +72,7 @@ void SetResultForNotifyRecordTask(TaskInfo *const taskInfo, const void *const da
 void ConstructSqeForNotifyWaitTask(TaskInfo *taskInfo, rtStarsSqe_t *const command);
 
 void SetStarsResultForDavinciTask(TaskInfo* taskInfo, const rtLogicCqReport_t &logicCq);
-void SetResultForDavinciTask(TaskInfo* taskInfo, const void *const data, const uint32_t dataSize);
 void DoCompleteSuccessForDavinciTask(TaskInfo* taskInfo, const uint32_t devId);
-rtError_t WaitAsyncCopyCompleteForDavinciTask(TaskInfo* taskInfo);
 void DavinciTaskUnInit(TaskInfo *taskInfo);
 void FillFftsMixSqeForDavinciTask(
     TaskInfo *taskInfo, rtStarsSqe_t *const command, uint32_t minStackSize, rtError_t copyRet);
@@ -93,7 +91,6 @@ void PrintErrorInfoForReduceAsyncV2Task(TaskInfo * const taskInfo, const uint32_
 void ConstructSqeForRingBufferMaintainTask(TaskInfo* taskInfo, rtStarsSqe_t *const command);
 
 void ConstructSqeForDavinciMultipleTask(TaskInfo * const taskInfo, rtStarsSqe_t *const command);
-rtError_t WaitAsyncCopyCompleteForDavinciMultipleTask(TaskInfo *taskInfo);
 
 void ConstructSqeForRdmaDbSendTask(TaskInfo* taskInfo, rtStarsSqe_t * const command);
 

@@ -19,7 +19,6 @@
 #include "driver.hpp"
 #include "stars.hpp"
 #include "task_fail_callback_manager.hpp"
-#include "davinci_kernel_task.h"
 #include "event_task.h"
 #include "memory_task.h"
 #include "rdma_task.h"
@@ -42,7 +41,6 @@
 #include "model_to_aicpu_task.h"
 #include "maintenance_task.h"
 #include "kernel_fusion_task.h"
-#include "davinci_kernel_task.h"
 #include "error_code.h"
 #include "stub_task.hpp"
 #include <mutex>
@@ -881,16 +879,42 @@ bool IsNeedFreeStreamRes(const TaskInfo *task)
 #endif
 
 #if F_DESC("钩子注册框架")
+const std::vector<rtChipType_t>& GetV100Chips()
+{
+    static const std::vector<rtChipType_t> chips = {
+        CHIP_MINI, CHIP_CLOUD, CHIP_ADC, CHIP_LHISI, CHIP_DC, CHIP_910_B_93,
+        CHIP_NO_DEVICE, CHIP_MINI_V3, CHIP_ASCEND_031, CHIP_NANO, CHIP_RESERVED,
+        CHIP_AS31XM1, CHIP_610LITE, CHIP_CLOUD_V3, CHIP_BS9SX1A
+    };
+    return chips;
+}
+
+const std::vector<rtChipType_t>& GetDavidChips()
+{
+    static const std::vector<rtChipType_t> chips = {
+        CHIP_DAVID, CHIP_CLOUD_V5, CHIP_MC62CM12A, CHIP_ASCEND_350
+    };
+    return chips;
+}
+
+const std::vector<rtChipType_t>& GetV200Chips()
+{
+    static const std::vector<rtChipType_t> chips = { CHIP_DAVID, CHIP_CLOUD_V5, CHIP_ASCEND_350 };
+    return chips;
+}
+
+const std::vector<rtChipType_t>& GetV201Chips()
+{
+    static const std::vector<rtChipType_t> chips = { CHIP_MC62CM12A };
+    return chips;
+}
+
 void RegTaskToCommandFunc(const std::vector<rtChipType_t> &chipTypes)
 {
     PfnTaskToCmd *toCommandFunc = nullptr;
     for (auto chipType : chipTypes) {
         toCommandFunc = g_taskFuncArrays[chipType].toCommandFunc;
 
-        toCommandFunc[TS_TASK_TYPE_KERNEL_AICPU] = &ToCommandBodyForAicpuTask;
-        toCommandFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &ToCommandBodyForAicAivTask;
-        toCommandFunc[TS_TASK_TYPE_KERNEL_AICORE] = &ToCommandBodyForAicAivTask;
-        toCommandFunc[TS_TASK_TYPE_MULTIPLE_TASK] = nullptr;
         toCommandFunc[TS_TASK_TYPE_MEMCPY] = &ToCommandBodyForMemcpyAsyncTask;
         toCommandFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &ToCommandBodyForReduceAsyncV2Task;
         toCommandFunc[TS_TASK_TYPE_EVENT_RECORD] = &ToCommandBodyForEventRecordTask;
@@ -967,10 +991,6 @@ static void RegTaskToSqefunc(const std::vector<rtChipType_t> &chipTypes)
     PfnTaskToSqe *toSqeFunc = nullptr;
     for (auto chipType : chipTypes) {
         toSqeFunc = g_taskFuncArrays[chipType].toSqeFunc;
-        toSqeFunc[TS_TASK_TYPE_KERNEL_AICPU] = &ConstructAICpuSqeForDavinciTask;
-        toSqeFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &ConstructAicAivSqeForDavinciTask;
-        toSqeFunc[TS_TASK_TYPE_KERNEL_AICORE] = &ConstructAicAivSqeForDavinciTask;
-        toSqeFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &ConstructSqeForDavinciMultipleTask;
         toSqeFunc[TS_TASK_TYPE_MEMCPY] = &ConstructSqeForMemcpyAsyncTask;
         toSqeFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &ConstructSqeBase;
         toSqeFunc[TS_TASK_TYPE_EVENT_RECORD] = &ConstructSqeForEventRecordTask;
@@ -1050,14 +1070,7 @@ static void RegTaskUnInitFunc(const std::vector<rtChipType_t> &chipTypes)
 {
     for (auto chipType : chipTypes) {
         auto &taskUnInitFunc = g_taskFuncArrays[chipType].taskUnInitFunc;
-        for (auto &item: taskUnInitFunc) {
-            item = nullptr;
-        }
 
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AICPU] = &DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_KERNEL_AICORE] = &DavinciTaskUnInit;
-        taskUnInitFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &DavinciMultipleTaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_MEMCPY] = &MemcpyAsyncTaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &ReduceAsyncV2TaskUnInit;
         taskUnInitFunc[TS_TASK_TYPE_EVENT_RECORD] = &EventRecordTaskUnInit;
@@ -1081,14 +1094,7 @@ static void RegWaitAsyncCpCompleteFunc(const std::vector<rtChipType_t> &chipType
     PfnWaitAsyncCpCompleteFunc *waitAsyncCpCompleteFunc = nullptr;
     for (auto chipType : chipTypes) {
         waitAsyncCpCompleteFunc = g_taskFuncArrays[chipType].waitAsyncCpCompleteFunc;
-        for (uint32_t i = 0U; i < TS_TASK_TYPE_RESERVED; i++) {
-            waitAsyncCpCompleteFunc[i] = nullptr;
-        }
 
-        waitAsyncCpCompleteFunc[TS_TASK_TYPE_KERNEL_AICPU] = &WaitAsyncCopyCompleteForDavinciTask;
-        waitAsyncCpCompleteFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &WaitAsyncCopyCompleteForDavinciTask;
-        waitAsyncCpCompleteFunc[TS_TASK_TYPE_KERNEL_AICORE] = &WaitAsyncCopyCompleteForDavinciTask;
-        waitAsyncCpCompleteFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &WaitAsyncCopyCompleteForDavinciMultipleTask;
         waitAsyncCpCompleteFunc[TS_TASK_TYPE_MEMCPY] = &WaitAsyncCopyCompleteForMemcpyTask;
         waitAsyncCpCompleteFunc[TS_TASK_TYPE_TASK_SQE_UPDATE] = &WaitAsyncCopyCompleteForUpdateTask;
     }
@@ -1101,10 +1107,6 @@ static void RegDoCompleteSuccFunc(const std::vector<rtChipType_t> &chipTypes)
     for (auto chipType : chipTypes) {
         doCompleteSuccFunc = g_taskFuncArrays[chipType].doCompleteSuccFunc;
 
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AICPU] = &DoCompleteSuccessForDavinciTask;
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &DoCompleteSuccessForDavinciTask;
-        doCompleteSuccFunc[TS_TASK_TYPE_KERNEL_AICORE] = &DoCompleteSuccessForDavinciTask;
-        doCompleteSuccFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &DoCompleteSuccess;
         doCompleteSuccFunc[TS_TASK_TYPE_MEMCPY] = &DoCompleteSuccessForMemcpyAsyncTask;
         doCompleteSuccFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &DoCompleteSuccessForReduceAsyncV2Task;
         doCompleteSuccFunc[TS_TASK_TYPE_EVENT_RECORD] = &DoCompleteSuccessForEventRecordTask;
@@ -1190,12 +1192,11 @@ static void RegSetResultFunc(const std::vector<rtChipType_t> &chipTypes)
     for (auto chipType : chipTypes) {
         auto &setResultFunc = g_taskFuncArrays[chipType].setResultFunc;
         for (auto &item : setResultFunc) {
-            item = &SetResultCommon;
+            if (item == nullptr) {
+                item = &SetResultCommon;
+            }
         }
 
-        setResultFunc[TS_TASK_TYPE_KERNEL_AICPU] = &SetResultForDavinciTask;
-        setResultFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &SetResultForDavinciTask;
-        setResultFunc[TS_TASK_TYPE_KERNEL_AICORE] = &SetResultForDavinciTask;
         setResultFunc[TS_TASK_TYPE_EVENT_RECORD] = &SetResultForEventRecordTask;
         setResultFunc[TS_TASK_TYPE_CREATE_STREAM] = &SetResultForCreateStreamTask;
         setResultFunc[TS_TASK_TYPE_MODEL_EXECUTE] = &SetResultForModelExecuteTask;
@@ -1208,11 +1209,10 @@ static void RegPrintErrorInfoFunc(const std::vector<rtChipType_t> &chipTypes)
     for (auto chipType : chipTypes) {
         auto &printErrorInfoFunc = g_taskFuncArrays[chipType].printErrorInfoFunc;
         for (auto &item : printErrorInfoFunc) {
-            item = &PrintErrorInfoCommon;
+            if (item == nullptr) {
+                item = &PrintErrorInfoCommon;
+            }
         }
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AICPU] = &PrintErrorInfoForDavinciTask;
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &PrintErrorInfoForDavinciTask;
-        printErrorInfoFunc[TS_TASK_TYPE_KERNEL_AICORE] = &PrintErrorInfoForDavinciTask;
         printErrorInfoFunc[TS_TASK_TYPE_MEMCPY] = &PrintErrorInfoForMemcpyAsyncTask;
         printErrorInfoFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &PrintErrorInfoForReduceAsyncV2Task;
         printErrorInfoFunc[TS_TASK_TYPE_MODEL_MAINTAINCE] = &PrintErrorInfoForModelMaintainceTask;
@@ -1235,12 +1235,11 @@ static void RegSetStarsResultFunc(const std::vector<rtChipType_t> &chipTypes)
     for (auto chipType : chipTypes) {
         auto &setStarsResultFunc = g_taskFuncArrays[chipType].setStarsResultFunc;
         for (auto &item : setStarsResultFunc) {
-            item = &SetStarsResultCommon;
+            if (item == nullptr) {
+                item = &SetStarsResultCommon;
+            }
         }
 
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AICPU] = &SetStarsResultForDavinciTask;
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &SetStarsResultForDavinciTask;
-        setStarsResultFunc[TS_TASK_TYPE_KERNEL_AICORE] = &SetStarsResultForDavinciTask;
         setStarsResultFunc[TS_TASK_TYPE_MEMCPY] = &SetStarsResultForMemcpyAsyncTask;
         setStarsResultFunc[TS_TASK_TYPE_EVENT_RECORD] = &SetStarsResultForEventRecordTask;
         setStarsResultFunc[TS_TASK_TYPE_MODEL_EXECUTE] = &SetStarsResultForModelExecuteTask;
@@ -1255,11 +1254,7 @@ static void RegSetStarsResultFunc(const std::vector<rtChipType_t> &chipTypes)
 
 void TaskFuncReg(void)
 {
-    static const std::vector<rtChipType_t> chipTypes = {
-        CHIP_MINI, CHIP_CLOUD, CHIP_ADC, CHIP_LHISI, CHIP_DC, CHIP_910_B_93,
-        CHIP_NO_DEVICE, CHIP_MINI_V3, CHIP_ASCEND_031, CHIP_NANO, CHIP_RESERVED,
-        CHIP_AS31XM1, CHIP_610LITE, CHIP_CLOUD_V3, CHIP_BS9SX1A, CHIP_XPU
-    };
+    const auto& chipTypes = GetV100Chips();
 
     RegTaskToCommandFunc(chipTypes);
     RegTaskToSqefunc(chipTypes);
@@ -1300,7 +1295,7 @@ void RefreshTaskFuncPointer(rtChipType_t chipType)
     RT_LOG(RT_LOG_INFO, "Task func pointer refreshed to chip type: %d", chipType);
 }
 
-rtError_t RegTaskFunc(rtChipType_t chipType, tsTaskType_t taskType, TaskFuncOpType opType, void* func)
+rtError_t RegTaskFunc(rtChipType_t chipType, tsTaskType_t taskType, const TaskFuncSingle& funcs)
 {
     if (chipType < CHIP_BEGIN || chipType >= CHIP_END) {
         RT_LOG(RT_LOG_ERROR, "chip type is invalid: %d", chipType);
@@ -1312,42 +1307,15 @@ rtError_t RegTaskFunc(rtChipType_t chipType, tsTaskType_t taskType, TaskFuncOpTy
         return RT_ERROR_TASK_BASE;
     }
     
-    if (opType >= TaskFuncOpType::MAX_OP_TYPE) {
-        RT_LOG(RT_LOG_ERROR, "operation type is invalid: %d", static_cast<int>(opType));
-        return RT_ERROR_TASK_BASE;
-    }
-    
-    TaskFuncArrays &arrays = g_taskFuncArrays[chipType];
-    
-    switch (opType) {
-        case TaskFuncOpType::TO_COMMAND:
-            arrays.toCommandFunc[taskType] = RtPtrToPtr<PfnTaskToCmd>(func);
-            break;
-        case TaskFuncOpType::TO_SQE:
-            arrays.toSqeFunc[taskType] = RtPtrToPtr<PfnTaskToSqe>(func);
-            break;
-        case TaskFuncOpType::DO_COMPLETE_SUCC:
-            arrays.doCompleteSuccFunc[taskType] = RtPtrToPtr<PfnDoCompleteSucc>(func);
-            break;
-        case TaskFuncOpType::TASK_UNINIT:
-            arrays.taskUnInitFunc[taskType] = RtPtrToPtr<PfnTaskUnInit>(func);
-            break;
-        case TaskFuncOpType::WAIT_ASYNC_COMPLETE:
-            arrays.waitAsyncCpCompleteFunc[taskType] = RtPtrToPtr<PfnWaitAsyncCpCompleteFunc>(func);
-            break;
-        case TaskFuncOpType::PRINT_ERROR_INFO:
-            arrays.printErrorInfoFunc[taskType] = RtPtrToPtr<PfnPrintErrorInfo>(func);
-            break;
-        case TaskFuncOpType::SET_RESULT:
-            arrays.setResultFunc[taskType] = RtPtrToPtr<PfnTaskSetResult>(func);
-            break;
-        case TaskFuncOpType::SET_STARS_RESULT:
-            arrays.setStarsResultFunc[taskType] = RtPtrToPtr<PfnTaskSetStarsResult>(func);
-            break;
-        default:
-            RT_LOG(RT_LOG_ERROR, "unknown operation type: %d", static_cast<int>(opType));
-            return RT_ERROR_TASK_BASE;
-    }
+    TaskFuncArrays& arrays = g_taskFuncArrays[chipType];
+    arrays.toCommandFunc[taskType] = funcs.toCommandFunc;
+    arrays.toSqeFunc[taskType] = funcs.toSqeFunc;
+    arrays.doCompleteSuccFunc[taskType] = funcs.doCompleteSuccFunc;
+    arrays.taskUnInitFunc[taskType] = funcs.taskUnInitFunc;
+    arrays.waitAsyncCpCompleteFunc[taskType] = funcs.waitAsyncCpCompleteFunc;
+    arrays.printErrorInfoFunc[taskType] = funcs.printErrorInfoFunc;
+    arrays.setResultFunc[taskType] = funcs.setResultFunc;
+    arrays.setStarsResultFunc[taskType] = funcs.setStarsResultFunc;
     
     return RT_ERROR_NONE;
 }

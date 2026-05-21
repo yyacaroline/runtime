@@ -15,7 +15,6 @@
 namespace cce {
 namespace runtime {
 rtError_t DavinciMultipleTaskInit(TaskInfo* taskInfo, const void *const multipleTaskInfo, const uint32_t flag);
-void DavinciMultipleTaskUnInit(TaskInfo* taskInfo);
 void ResetCmdList(TaskInfo* taskInfo);
 void IncMultipleTaskCqeNum(TaskInfo *taskInfo);
 void DecMultipleTaskCqeNum(TaskInfo *taskInfo);

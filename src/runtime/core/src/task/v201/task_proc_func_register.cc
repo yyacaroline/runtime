@@ -91,9 +91,7 @@ static void UpdateTaskUninitFunc(const std::vector<rtChipType_t> &chipTypes)
 
 void RegTaskFunc(void)
 {
-    static const std::vector<rtChipType_t> chipTypes = {
-        CHIP_MC62CM12A
-    };
+    const auto& chipTypes = GetV201Chips();
     
     RegDavidTaskFunc();
 

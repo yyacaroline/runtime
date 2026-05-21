@@ -588,5 +588,41 @@ void SetStarsResultForDavinciTask(TaskInfo* taskInfo, const rtLogicCqReport_t &l
 
 #endif
 
+static bool DavinciKernelTaskRegister()
+{
+    TaskFuncSingle aicAivFuncs = {
+        .toCommandFunc = &ToCommandBodyForAicAivTask,
+        .toSqeFunc = &ConstructAicAivSqeForDavinciTask,
+        .doCompleteSuccFunc = &DoCompleteSuccessForDavinciTask,
+        .taskUnInitFunc = &DavinciTaskUnInit,
+        .waitAsyncCpCompleteFunc = &WaitAsyncCopyCompleteForDavinciTask,
+        .printErrorInfoFunc = &PrintErrorInfoForDavinciTask,
+        .setResultFunc = &SetResultForDavinciTask,
+        .setStarsResultFunc = &SetStarsResultForDavinciTask,
+    };
+
+    TaskFuncSingle aicpuFuncs = {
+        .toCommandFunc = &ToCommandBodyForAicpuTask,
+        .toSqeFunc = &ConstructAICpuSqeForDavinciTask,
+        .doCompleteSuccFunc = &DoCompleteSuccessForDavinciTask,
+        .taskUnInitFunc = &DavinciTaskUnInit,
+        .waitAsyncCpCompleteFunc = &WaitAsyncCopyCompleteForDavinciTask,
+        .printErrorInfoFunc = &PrintErrorInfoForDavinciTask,
+        .setResultFunc = &SetResultForDavinciTask,
+        .setStarsResultFunc = &SetStarsResultForDavinciTask,
+    };
+
+    const auto& chips = GetV100Chips();
+    for (auto chip : chips) {
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AICPU, aicpuFuncs);
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AICORE, aicAivFuncs);
+        RegTaskFunc(chip, TS_TASK_TYPE_KERNEL_AIVEC, aicAivFuncs);
+    }
+
+    return true;
+}
+
+static bool g_davinciKernelTaskRegister = DavinciKernelTaskRegister();
+
 }  // namespace runtime
 }  // namespace cce

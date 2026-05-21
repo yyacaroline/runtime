@@ -39,6 +39,16 @@ PfnTaskToDavidSqe *GetDavidSqeFuncAddr()
     return g_toDavidSqeFunc;
 }
 
+rtError_t RegDavidSqeFunc(tsTaskType_t taskType, PfnTaskToDavidSqe func)
+{
+    if (taskType >= TS_TASK_TYPE_RESERVED) {
+        RT_LOG(RT_LOG_ERROR, "task type is invalid: %d", taskType);
+        return RT_ERROR_TASK_BASE;
+    }
+    g_toDavidSqeFunc[taskType] = func;
+    return RT_ERROR_NONE;
+}
+
 static uint32_t GetSendSqeNumForFusionKernelTask(const TaskInfo *const taskInfo)
 {
     return taskInfo->u.fusionKernelTask.sqeLen;
@@ -153,10 +163,6 @@ static void ConstructDavidSqeBase(TaskInfo *taskInfo, rtDavidSqe_t * const david
 
 void RegTaskToDavidSqefunc(void)
 {
-    g_toDavidSqeFunc[TS_TASK_TYPE_KERNEL_AICPU] = &ConstructDavidAICpuSqeForDavinciTask;
-    g_toDavidSqeFunc[TS_TASK_TYPE_KERNEL_AIVEC] = &ConstructDavidAicAivSqeForDavinciTask;
-    g_toDavidSqeFunc[TS_TASK_TYPE_KERNEL_AICORE] = &ConstructDavidAicAivSqeForDavinciTask;
-    g_toDavidSqeFunc[TS_TASK_TYPE_MULTIPLE_TASK] = &ConstructDavidSqeForDavinciMultipleTask;
     g_toDavidSqeFunc[TS_TASK_TYPE_MEMCPY] = &ConstructDavidSqeForMemcpyAsyncTask;
     g_toDavidSqeFunc[TS_TASK_TYPE_REDUCE_ASYNC_V2] = &ConstructDavidSqeBase;
     g_toDavidSqeFunc[TS_TASK_TYPE_REMOTE_EVENT_WAIT] = &ConstructDavidSqeBase;

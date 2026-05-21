@@ -31,8 +31,11 @@ Stream* GetReportStream(Stream *stream);
 void PrintErrorSqe(const rtStarsSqe_t * const sqe, const char_t *desc);
 uint64_t CombineTo64Bit(uint32_t high, uint32_t low);
 void SetStarsResultCommon(TaskInfo *taskInfo, const rtLogicCqReport_t &logicCq);
+void SetResultCommon(TaskInfo *taskInfo, const void *const data, const uint32_t dataSize);
+void DoCompleteSuccess(TaskInfo *taskInfo, const uint32_t devId);
 void TaskFuncReg(void);
 void RegTaskToCommandFunc(const std::vector<rtChipType_t> &chipTypes);
+void PrintErrorInfoCommon(TaskInfo *taskInfo, const uint32_t devId);
 
 using PfnTaskToCmd = void (*)(TaskInfo *const taskInfo, rtCommand_t *const command);
 using PfnTaskToSqe = void (*)(TaskInfo* taskInfo, rtStarsSqe_t *const command);
@@ -42,18 +45,6 @@ using PfnDoCompleteSucc = void (*)(TaskInfo *taskInfo, const uint32_t devId);
 using PfnTaskUnInit = void (*)(TaskInfo *taskInfo);
 using PfnPrintErrorInfo = void (*)(TaskInfo *taskInfo, const uint32_t devId);
 using PfnTaskSetStarsResult = void (*)(TaskInfo *taskInfo, const rtLogicCqReport_t &logicCq);
-
-enum class TaskFuncOpType : uint8_t {
-    TO_COMMAND = 0,
-    TO_SQE = 1,
-    DO_COMPLETE_SUCC = 2,
-    TASK_UNINIT = 3,
-    WAIT_ASYNC_COMPLETE = 4,
-    PRINT_ERROR_INFO = 5,
-    SET_RESULT = 6,
-    SET_STARS_RESULT = 7,
-    MAX_OP_TYPE
-};
 
 struct TaskFuncArrays {
     PfnTaskToCmd toCommandFunc[TS_TASK_TYPE_RESERVED];
@@ -66,12 +57,27 @@ struct TaskFuncArrays {
     PfnTaskSetStarsResult setStarsResultFunc[TS_TASK_TYPE_RESERVED];
 };
 
+struct TaskFuncSingle {
+    PfnTaskToCmd toCommandFunc;
+    PfnTaskToSqe toSqeFunc;
+    PfnDoCompleteSucc doCompleteSuccFunc;
+    PfnTaskUnInit taskUnInitFunc;
+    PfnWaitAsyncCpCompleteFunc waitAsyncCpCompleteFunc;
+    PfnPrintErrorInfo printErrorInfoFunc;
+    PfnTaskSetResult setResultFunc;
+    PfnTaskSetStarsResult setStarsResultFunc;
+};
+
 extern TaskFuncArrays g_taskFuncArrays[CHIP_END];
 extern PfnTaskUnInit *g_taskUnInitFunc;
 
 void RefreshTaskFuncPointer(rtChipType_t chipType);
-rtError_t RegTaskFunc(rtChipType_t chipType, tsTaskType_t taskType, TaskFuncOpType opType, void* func);
-void PrintErrorInfoCommon(TaskInfo *taskInfo, const uint32_t devId);
+rtError_t RegTaskFunc(rtChipType_t chipType, tsTaskType_t taskType, const TaskFuncSingle& funcs);
+
+const std::vector<rtChipType_t>& GetV100Chips();
+const std::vector<rtChipType_t>& GetDavidChips();
+const std::vector<rtChipType_t>& GetV200Chips();
+const std::vector<rtChipType_t>& GetV201Chips();
 
 }  // namespace runtime
 }  // namespace cce

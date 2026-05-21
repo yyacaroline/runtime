@@ -13,6 +13,7 @@
 #include "stream_david.hpp"
 #include "stars_david.hpp"
 #include "task_execute_time.h"
+#include "task_manager.h"
 
 namespace cce {
 namespace runtime {
@@ -263,6 +264,31 @@ void ConstructDavidSqeForDavinciMultipleTask(TaskInfo * const taskInfo, rtDavidS
         }
     }
 }
+
+static bool DavinciMultipleTaskRegister()
+{
+    TaskFuncSingle funcs = {
+        .toCommandFunc = nullptr,
+        .toSqeFunc = nullptr,
+        .doCompleteSuccFunc = &DoCompleteSuccess,
+        .taskUnInitFunc = &StarsV2DavinciMultipleTaskUnInit,
+        .waitAsyncCpCompleteFunc = nullptr,
+        .printErrorInfoFunc = &PrintErrorInfoCommon,
+        .setResultFunc = nullptr,
+        .setStarsResultFunc = &SetStarsResultCommonForDavid,
+    };
+
+    const auto& chips = GetDavidChips();
+    for (auto chip : chips) {
+        RegTaskFunc(chip, TS_TASK_TYPE_MULTIPLE_TASK, funcs);
+    }
+
+    RegDavidSqeFunc(TS_TASK_TYPE_MULTIPLE_TASK, &ConstructDavidSqeForDavinciMultipleTask);
+
+    return true;
+}
+
+static bool g_davinciMultipleTaskRegister = DavinciMultipleTaskRegister();
 
 #endif
 
