@@ -17,6 +17,18 @@
 namespace cce {
 namespace runtime {
 
+inline uint16_t GetSchemMode(const Kernel * const kernel, uint8_t schemMode)
+{
+    if (schemMode == RT_SCHEM_MODE_END) {
+        if (kernel != nullptr) {
+            return static_cast<uint16_t>(kernel->GetSchedMode());
+        } else {
+            return static_cast<uint16_t>(RT_SCHEM_MODE_NORMAL);
+        }
+    }
+    return static_cast<uint16_t>(schemMode);
+}
+
 inline void CheckBlockDim(const Stream *const stm, const uint16_t sqeType, const uint16_t blockDim)
 {
     rtDevResLimitType_t coreType = RT_DEV_RES_TYPE_MAX;
@@ -113,8 +125,9 @@ inline void ConstructAivSqePart(const T * const kernelInfo, RtDavidStarsAicAivKe
     sqe->aivQos = kernelInfo->qos;
     sqe->aivWrrRd = RT_DAVID_AIV_WRR_RD;
     sqe->aivWrrWr = RT_DAVID_AIV_WRR_WR;
-    sqe->schem = schemMode;
-    if (schemMode == RT_SCHEM_MODE_BATCH) {
+    uint16_t curSchemMode = GetSchemMode(kernel, schemMode);
+    sqe->schem = curSchemMode;
+    if (curSchemMode == RT_SCHEM_MODE_BATCH) {
         const uint16_t sqeType = sqe->header.type;
         const uint16_t blockDim = sqe->header.blockDim;
         CheckBlockDim(stm, sqeType, blockDim);
@@ -309,8 +322,9 @@ inline void ConstructAicSqePart(T * const kernelInfo, RtDavidStarsAicAivKernelSq
     sqe->aivQos = 0U;
     sqe->aivWrrRd = 0U;
     sqe->aivWrrWr = 0U;
-    sqe->schem = schemMode;
-    if (schemMode == RT_SCHEM_MODE_BATCH) {
+    uint16_t curSchemMode = GetSchemMode(kernel, schemMode);
+    sqe->schem = curSchemMode;
+    if (curSchemMode == RT_SCHEM_MODE_BATCH) {
         const uint16_t sqeType = sqe->header.type;
         const uint16_t blockDim = sqe->header.blockDim;
         CheckBlockDim(stm, sqeType, blockDim);

@@ -47,7 +47,6 @@
 #include "task_res.hpp"
 #include "davinci_kernel_task.h"
 #include "dvpp_c.hpp"
-#include "../../task_test_helper.h"
 using namespace testing;
 using namespace cce::runtime;
 
@@ -577,9 +576,7 @@ TEST_F(StarsTaskTest, DoCompleteStarsError)
 
     TaskInfo *errTask = dev_->GetTaskFactory()->Alloc(stream_, TS_TASK_TYPE_KERNEL_AICORE, ret);
     dev_->GetTaskFactory()->SetSerialId(stream_, errTask);
-    Kernel *kernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(errTask, kernel, 1, nullptr);
-    delete kernel;
+    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(errTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtStarsCqeSwStatus_t sw_status;
@@ -1644,9 +1641,7 @@ TEST_F(StarsTaskTest, DoCompleteStarsError_1)
 
     TaskInfo *errTask = dev_->GetTaskFactory()->Alloc(stream_, TS_TASK_TYPE_KERNEL_AICORE, ret);
     dev_->GetTaskFactory()->SetSerialId(stream_, errTask);
-    Kernel *kernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(errTask, kernel2, 1, nullptr);
-    delete kernel2;
+    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(errTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtStarsCqeSwStatus_t sw_status;
@@ -1680,7 +1675,7 @@ TEST_F(StarsTaskTest, SQE_SET_SchedMode)
     Program *program = &stubProg;
     int32_t fun1;
     Kernel * k1 = new Kernel("f1", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICPU, 10);
-    TaskCfg taskcfg = {};
+
     k1->SetMixType(NO_MIX);
 
     taskInfo.u.aicTaskInfo = aicTaskInfo;
@@ -1697,16 +1692,14 @@ TEST_F(StarsTaskTest, SQE_SET_SchedMode)
     taskInfo.stream = rt_ut::UnwrapOrNull<Stream>(stream);
 
     // 优先级配置校验1
+    taskInfo.u.aicTaskInfo.schemMode = RT_SCHEM_MODE_NORMAL;
     k1->SetSchedMode(RT_SCHEM_MODE_BATCH);
-    taskcfg.isBaseValid = 1;
-    taskcfg.base.schemMode = RT_SCHEM_MODE_NORMAL;
-    AicTaskInit(&taskInfo, k1, 1, &taskcfg, false);
     ConstructAicAivSqeForDavinciTask(&taskInfo, &sqe);
     EXPECT_EQ(sqe.fftsPlusKernelSqe.schem, RT_SCHEM_MODE_NORMAL);
 
     // 优先级配置校验2
+    taskInfo.u.aicTaskInfo.schemMode = RT_SCHEM_MODE_END;
     k1->SetSchedMode(RT_SCHEM_MODE_BATCH);
-    AicTaskInit(&taskInfo, k1, 1, nullptr, false);   
     ConstructAicAivSqeForDavinciTask(&taskInfo, &sqe);
     EXPECT_EQ(sqe.fftsPlusKernelSqe.schem, RT_SCHEM_MODE_BATCH);
 

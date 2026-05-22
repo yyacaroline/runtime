@@ -296,7 +296,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
 
-    AicTaskInit(kernelTask, registeredKernel, static_cast<uint16_t>(coreDim), taskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, false);
     // for simt
     error = CheckDynSizeValid(kernelTask, registeredKernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
@@ -403,7 +403,7 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
 
-    AicTaskInit(kernelTask, registeredKernel, static_cast<uint16_t>(coreDim), taskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, false);
     error = CheckDynSizeValid(kernelTask, registeredKernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",
         stm->Id_(), name.c_str(), static_cast<uint32_t>(error));
@@ -498,7 +498,7 @@ rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *s
     } else {
         SaveTaskCommonInfo(kernelTask, dstStm, pos);
     }
-    AicTaskInit(kernelTask, kernel, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg, false);
+    AicTaskInit(kernelTask, kernelAttrType, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg, false);
 
     error = CheckDynSizeValid(kernelTask, kernel);
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check SIMT shared memory size, stream_id=%d, kernel_name=%s, retCode=%#x.",

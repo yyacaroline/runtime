@@ -20,6 +20,8 @@ void PrintErrorInfoForDavinciTask(TaskInfo* taskInfo, const uint32_t devId);
 
 void FillFftsAicAivCtxForDavinciTask(
     TaskInfo *const taskInfo, rtFftsPlusMixAicAivCtx_t *fftsCtx, uint32_t& minStackSize);
+void AicTaskInitCommon(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, const uint16_t dimNum, const uint32_t flag,
+    const bool isNeedAllocSqeDevBuf);
 void ConstructAICoreSqeForDavinciTask(TaskInfo* const taskInfo, rtStarsSqe_t *const command);
 
 void ToCommandBodyForAicpuTask(TaskInfo* taskInfo, rtCommand_t *const command);
@@ -29,11 +31,12 @@ void ShowDavinciTaskMixDebug(const rtFftsPlusMixAicAivCtx_t * const fftsCtx);
 void GetKernelNameForAiCpu(TaskInfo* taskInfo, std::string &nameInfo);
 void GetSoNameForAiCpu(TaskInfo* taskInfo, std::string &nameInfo);
 void GetFirstExtendInfoForAicpuTask(TaskInfo* taskInfo, const uint32_t devId, std::string &extendInfo);
+uint32_t GetSchemMode(AicTaskInfo* const taskInfo);
 
 bool CheckErrPrint(const uint32_t errorCode);
 
 void AicpuTaskInit(TaskInfo *taskInfo, const uint16_t dimNum, const uint32_t flag);
-void AicTaskInit(TaskInfo *taskInfo, const Kernel *kernel,
+void AicTaskInit(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType,
     const uint16_t dimNum, const TaskCfg * const taskcfg,
     const bool isNeedAllocSqeDevBuf = false);
 

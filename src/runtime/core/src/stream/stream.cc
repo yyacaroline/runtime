@@ -4875,7 +4875,7 @@ void Stream::ConstructTraceEventFromTask(TaskInfo *const task, const uint32_t fl
         record.args.numBlocks = static_cast<int>(aicTaskInfo->comm.dim);
         const Kernel *kernel = aicTaskInfo->kernel;
         record.args.taskRation = kernel->GetTaskRation();
-        record.args.schemMode = aicTaskInfo->schemMode;
+        record.args.schemMode = static_cast<int>(GetSchemMode(aicTaskInfo));
         taskType = GetTaskTypeForMixKernel(kernel->GetMixType(), taskType);
         taskName = kernel->Name_();
         if ((flags & DEBUG_JSON_PRINT_VERBOSE) != 0U) {

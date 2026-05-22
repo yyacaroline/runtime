@@ -43,7 +43,6 @@
 #include "thread_local_container.hpp"
 #include "model_execute_task.h"
 #include "rt_unwrap.h"
-#include "../task_test_helper.h"
 
 using namespace testing;
 using namespace cce::runtime;
@@ -331,9 +330,7 @@ TEST_F(EngineTest, engine_report_last_error1)
 
     TaskFactory *taskFactory = const_cast<TaskFactory *>(device_->GetTaskFactory());
     TaskInfo *task = taskFactory->Alloc(stream, TS_TASK_TYPE_KERNEL_AICORE, res);
-    Kernel *kernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(task, kernel, (uint16_t)1, nullptr);
-    delete kernel;
+    AicTaskInit(task, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, nullptr);
     EXPECT_EQ(task->type, TS_TASK_TYPE_KERNEL_AICORE);
     task->tid = 256;
     task->stream = stream;
@@ -469,9 +466,7 @@ TEST_F(EngineTest, engine_GetKernelNameForAiCoreorAiv)
     rtError_t errCode = RT_ERROR_NONE;
     TaskInfo * const kernTask = device->GetTaskFactory()->Alloc(stm, TS_TASK_TYPE_KERNEL_AICORE, errCode);
 
-    Kernel *aicKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(kernTask, aicKernel, (uint16_t)1, nullptr);
-    delete aicKernel;
+    AicTaskInit(kernTask, RT_KERNEL_ATTR_TYPE_AICORE, (uint16_t)1, nullptr);
     EXPECT_EQ(kernTask->type, TS_TASK_TYPE_KERNEL_AICORE);
     kernTask->u.aicTaskInfo.kernel = kernel;
     std::string kernelNameStr = aicpuErrObj->GetKernelNameForAiCoreorAiv(stm->Id_(), kernTask->id);

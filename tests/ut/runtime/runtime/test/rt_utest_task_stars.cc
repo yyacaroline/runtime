@@ -38,7 +38,6 @@
 #include "context.hpp"
 #include "runtime.hpp"
 #include "uma_arg_loader.hpp"
-#include "task_test_helper.h"
 #include "stars_cond_isa_define.hpp"
 #include "thread_local_container.hpp"
 #include "raw_device.hpp"
@@ -659,9 +658,7 @@ TEST_F(StarsTaskTest, DoCompleteStarsError)
 
     TaskInfo *errTask = dev_->GetTaskFactory()->Alloc(stream_, TS_TASK_TYPE_KERNEL_AICORE, ret);
     dev_->GetTaskFactory()->SetSerialId(stream_, errTask);
-    Kernel *kernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(errTask, kernel, 1, nullptr);
-    delete kernel;
+    AicTaskInit(errTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(errTask->type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtStarsCqeSwStatus_t sw_status;

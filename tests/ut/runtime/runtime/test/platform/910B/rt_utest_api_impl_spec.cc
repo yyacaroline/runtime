@@ -48,7 +48,6 @@
 #include "../../rt_utest_api.hpp"
 #include "cond_op_stream_task.h"
 #include "stream_task.h"
-#include "../../task_test_helper.h"
 #include "memcpy_c.hpp"
 #include "model_execute_task.h"
 using namespace testing;
@@ -825,9 +824,7 @@ TEST_F(CloudV2ApiImplSpecTest, MODEL_SNAPSHOT_001)
     dev->GetDeviceSnapShot()->RecordArgsAddrAndSize(&task1);
     TaskInfo task2 = {};
     InitByStream(&task2, rt_ut::UnwrapOrNull<Stream>(sinkStm));
-    Kernel *aicKernel1 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task2, aicKernel1, 1, nullptr);
-    delete aicKernel1;
+    AicTaskInit(&task2, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task2.u.aicTaskInfo.comm.args = &args[1];
     task2.u.aicTaskInfo.comm.argsSize = 8;
     (rt_ut::UnwrapOrNull<Stream>(sinkStm))->AddTaskToStream(&task2);
@@ -836,9 +833,7 @@ TEST_F(CloudV2ApiImplSpecTest, MODEL_SNAPSHOT_001)
     const char *stubName = "abc";
     TaskInfo task3 = {};
     InitByStream(&task3, rt_ut::UnwrapOrNull<Stream>(sinkStm));
-    Kernel *aicKernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task3, aicKernel2, 1, nullptr);
-    delete aicKernel2;
+    AicTaskInit(&task3, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
     Program *program = &stubProg;
     program->kernelNames_ = {'a', 'b', 'c', 'd', '\0'};

@@ -48,7 +48,6 @@
 #include "api_impl.hpp"
 #include "raw_device.hpp"
 #include "device/device_error_proc.hpp"
-#include "../../task_test_helper.h"
 #include "stars_engine.hpp"
 #include "../../rt_utest_config_define.hpp"
 #include "api_impl_david.hpp"
@@ -1285,23 +1284,17 @@ TEST_F(DavidTaskTest, construct_davidsqe_for_davinci)
     stream_->SetSqBaseAddr(newSqAddr);
     sqeAddr = reinterpret_cast<rtDavidSqe_t *>(stream_->GetSqBaseAddr() + (pos << SHIFT_SIX_SIZE));
 
-    Kernel *aicKernel1 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel1, 1, nullptr);
-    delete aicKernel1;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     task.id = 0;
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructDavidSqe(&task, sqeAddr, stream_->GetSqBaseAddr());
     EXPECT_EQ(sqe->aicpuControlSqe.header.type, RT_DAVID_SQE_TYPE_AIC);
-    Kernel *vecKernel1 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel1, 1, nullptr);
-    delete vecKernel1;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     ToConstructDavidSqe(&task, sqeAddr, stream_->GetSqBaseAddr());
     EXPECT_EQ(sqe->aicpuControlSqe.header.type, RT_DAVID_SQE_TYPE_AIV);
-    Kernel *aicKernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel2, 1, nullptr);
-    delete aicKernel2;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     TaskUnInitProc(&task);
     stream_->SetSqBaseAddr(oldSqAddr);
@@ -1328,9 +1321,7 @@ TEST_F(DavidTaskTest, check_prefetch_cnt_on_construct_davidsqe_for_aic_mix_task)
     kernel->SetPrefetchCnt1_(0x2);
     kernel->SetPrefetchCnt2_(0x4);
 
-    Kernel *aicKernel3 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel3, 1, nullptr);
-    delete aicKernel3;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     task.id = 0;
     task.u.aicTaskInfo.kernel = kernel;
@@ -1340,18 +1331,14 @@ TEST_F(DavidTaskTest, check_prefetch_cnt_on_construct_davidsqe_for_aic_mix_task)
     EXPECT_EQ(sqe.aicAivSqe.header.type, RT_DAVID_SQE_TYPE_AIC);
     EXPECT_EQ(sqe.aicAivSqe.aicIcachePrefetchCnt, 0x2);
 
-    Kernel *vecKernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel2, 1, nullptr);
-    delete vecKernel2;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     kernel->SetMixType(MIX_AIV);
     ToConstructDavidSqe(&task, &sqe, 0U);
     EXPECT_EQ(sqe.aicAivSqe.header.type, RT_DAVID_SQE_TYPE_AIV);
     EXPECT_EQ(sqe.aicAivSqe.aivIcachePrefetchCnt, 0x2);
 
-    Kernel *aicKernel4 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel4, 1, nullptr);
-    delete aicKernel4;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     kernel->SetMixType(MIX_AIC_AIV_MAIN_AIC);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     ToConstructDavidSqe(&task, &sqe, 0U);
@@ -1380,9 +1367,7 @@ TEST_F(DavidTaskTest, check_prefetch_cnt_on_construct_davidsqe_for_aicaiv_nomix_
     kernel->SetPrefetchCnt1_(0x2);
     kernel->SetPrefetchCnt2_(0x4);
 
-    Kernel *aicKernel5 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel5, 1, nullptr);
-    delete aicKernel5;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     task.id = 0;
     task.u.aicTaskInfo.kernel = kernel;
@@ -1390,18 +1375,14 @@ TEST_F(DavidTaskTest, check_prefetch_cnt_on_construct_davidsqe_for_aicaiv_nomix_
     EXPECT_EQ(sqe.aicAivSqe.header.type, RT_DAVID_SQE_TYPE_AIC);
     EXPECT_EQ(sqe.aicAivSqe.aicIcachePrefetchCnt, 0x2);
 
-    Kernel *vecKernel3 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel3, 1, nullptr);
-    delete vecKernel3;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     ToConstructDavidSqe(&task, &sqe, 0U);
     EXPECT_EQ(sqe.aicAivSqe.header.type, RT_DAVID_SQE_TYPE_AIV);
     EXPECT_EQ(sqe.aicAivSqe.aivIcachePrefetchCnt, 0x2);
     ((Runtime *)Runtime::Instance())->SetBiuperfProfFlag(true);
     ((Runtime *)Runtime::Instance())->SetL2CacheProfFlag(true);
-    Kernel *vecKernel4 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel4, 1, nullptr);
-    delete vecKernel4;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     ToConstructDavidSqe(&task, &sqe, 0U);
     TaskUnInitProc(&task);
@@ -1411,7 +1392,6 @@ TEST_F(DavidTaskTest, check_prefetch_cnt_on_construct_davidsqe_for_aicaiv_nomix_
 TEST_F(DavidTaskTest, config_schem_mode_on_construct_davidsqe_for_aic_mix_task)
 {
     TaskInfo task = {};
-    TaskCfg taskcfg = {};
     rtDavidSqe_t sqe;
     InitByStream(&task, stream_);
 
@@ -1425,37 +1405,32 @@ TEST_F(DavidTaskTest, config_schem_mode_on_construct_davidsqe_for_aic_mix_task)
     kernel->SetStub_(stubFunc);
     ((Runtime *)Runtime::Instance())->kernelTable_.Add(kernel);
 
-    Kernel *aicKernel6 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel6, 1, nullptr);
-    delete aicKernel6;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     task.id = 0;
     task.u.aicTaskInfo.kernel = kernel;
     kernel->SetMixType(MIX_AIC);
     stubProg.SetIsDcacheLockOp(true);
 
+    task.u.aicTaskInfo.comm.dim = 10;
     // 优先级配置校验1:cfg schemMode>算子.o
+    task.u.aicTaskInfo.schemMode = RT_SCHEM_MODE_NORMAL;
     kernel->SetSchedMode(RT_SCHEM_MODE_BATCH);
-    taskcfg.isBaseValid = 1;
-    taskcfg.base.schemMode = RT_SCHEM_MODE_NORMAL;
-    AicTaskInit(&task, kernel, 10, &taskcfg, false); 
     ToConstructDavidSqe(&task, &sqe, 0U);
     EXPECT_EQ(sqe.aicAivSqe.schem, RT_SCHEM_MODE_NORMAL);
     // 优先级配置校验2
+    task.u.aicTaskInfo.schemMode = RT_SCHEM_MODE_END;
     kernel->SetSchedMode(RT_SCHEM_MODE_BATCH);
-    AicTaskInit(&task, kernel, 10, nullptr, false); 
     ToConstructDavidSqe(&task, &sqe, 0U);
     EXPECT_EQ(sqe.aicAivSqe.schem, RT_SCHEM_MODE_BATCH);
     // AIV场景优先级配置
-    kernel->SetKernelAttrType(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, kernel, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     kernel->SetMixType(MIX_AIV);
     ToConstructDavidSqe(&task, &sqe, 0U);
     EXPECT_EQ(sqe.aicAivSqe.schem, RT_SCHEM_MODE_BATCH);
     // MIX_MAIN_AIC场景优先级配置
-    kernel->SetKernelAttrType(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, kernel, 1, nullptr);
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     kernel->SetMixType(MIX_AIC_AIV_MAIN_AIC);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     ToConstructDavidSqe(&task, &sqe, 0U);
@@ -3886,9 +3861,7 @@ TEST_F(DavidTaskTest1, load_args_for_aicore_task)
     argsInfo.isNoNeedH2DCopy = 1U;
     argsInfo.args = &arg;
     argsInfo.argsSize = sizeof(arg);
-    Kernel *aicKernel8 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&kernTask, aicKernel8, 1, nullptr);
-    delete aicKernel8;
+    AicTaskInit(&kernTask, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(kernTask.type, TS_TASK_TYPE_KERNEL_AICORE);
     kernTask.u.aicTaskInfo.argsInfo = &argsInfo;
     stream_->isHasPcieBar_ = true;

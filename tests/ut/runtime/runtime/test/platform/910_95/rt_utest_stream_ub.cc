@@ -60,7 +60,6 @@
 #include "rt_unwrap.h"
 #include "../../data/elf.h"
 #include "stream_task.h"
-#include "../../task_test_helper.h"
 
 using namespace testing;
 using namespace cce::runtime;
@@ -5030,9 +5029,7 @@ TEST_F(UbStreamTest1, AIC_SQE)
     argsInfo.args = &args;
     argsInfo.argsSize = sizeof(args);
     InitByStream(&task, stream_);
-    Kernel *kernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, kernel, 1, nullptr);
-    delete kernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
 
     rtDavidSqe_t sqe = {};
@@ -5050,9 +5047,7 @@ TEST_F(UbStreamTest1, AIV_SQE)
     argsInfo.args = &args;
     argsInfo.argsSize = sizeof(args);
     InitByStream(&task, stream_);
-    Kernel *kernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, kernel, 1, nullptr);
-    delete kernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
 
     rtDavidSqe_t sqe = {};
@@ -5078,9 +5073,7 @@ TEST_F(UbStreamTest1, MIX_AIC_SQE)
     argsInfo.args = &args;
     argsInfo.argsSize = sizeof(args);
     InitByStream(&task, stream_);
-    Kernel *vecKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel, 1, nullptr);
-    delete vecKernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     task.u.aicTaskInfo.kernel = kernel;
     task.u.aicTaskInfo.kernel->mixType_ = MIX_AIC;
@@ -5109,9 +5102,7 @@ TEST_F(UbStreamTest1, MIX_AIV_SQE)
     argsInfo.args = &args;
     argsInfo.argsSize = sizeof(args);
     InitByStream(&task, stream_);
-    Kernel *vecKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel, 1, nullptr);
-    delete vecKernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     task.u.aicTaskInfo.kernel = kernel;
     task.u.aicTaskInfo.kernel->mixType_ = MIX_AIV;
@@ -5140,9 +5131,7 @@ TEST_F(UbStreamTest1, MIX_AIC_AIV_MAIN_AIC_SQE)
     argsInfo.args = &args;
     argsInfo.argsSize = sizeof(args);
     InitByStream(&task, stream_);
-    Kernel *vecKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task, vecKernel, 1, nullptr);
-    delete vecKernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AIVEC);
     task.u.aicTaskInfo.kernel = kernel;
     task.u.aicTaskInfo.kernel->mixType_ = MIX_AIC_AIV_MAIN_AIC;
@@ -5224,9 +5213,7 @@ TEST_F(UbStreamTest1, DieFriendly_SQE)
     taskCfg.base.blockDimOffset = launchTaskCfg.blockDimOffset;
     taskCfg.base.dumpflag = launchTaskCfg.dumpflag;
     taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
-    Kernel *aicKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel, launchTaskCfg.blockDim, &taskCfg, false);
-    delete aicKernel;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, &taskCfg, false);
     task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
     task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     rtDavidSqe_t sqe = {};
@@ -5240,9 +5227,7 @@ TEST_F(UbStreamTest1, DieFriendly_SQE)
     launchTaskCfg.blockDim = 4U;
     launchTaskCfg.Group.groupDim = 0U;
     taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
-    Kernel *aicKernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel2, launchTaskCfg.blockDim, &taskCfg, false);
-    delete aicKernel2;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, &taskCfg, false);
     task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
     task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     ToConstructDavidSqe(&task, &sqe, sqBaseAddr);
@@ -5279,9 +5264,7 @@ TEST_F(UbStreamTest1, PiMix_SQE)
     taskCfg.base.blockDimOffset = launchTaskCfg.blockDimOffset;
     taskCfg.base.dumpflag = launchTaskCfg.dumpflag;
     taskCfg.base.localMemorySize = launchTaskCfg.dynamicShareMemSize;
-    Kernel *aicKernel3 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel3, launchTaskCfg.blockDim, &taskCfg, false);
-    delete aicKernel3;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, &taskCfg, false);
     task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
     task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     aicTaskInfo->kernel = kernel;
@@ -5299,9 +5282,7 @@ TEST_F(UbStreamTest1, PiMix_SQE)
     EXPECT_EQ(sqe.aicAivSqe.loose, 1);
 
     aicTaskInfo->kernel->taskRation_ = 2;
-    Kernel *aicKernel4 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel4, launchTaskCfg.blockDim, &taskCfg, false);
-    delete aicKernel4;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, launchTaskCfg.blockDim, &taskCfg, false);
     task.u.aicTaskInfo.groupDim = launchTaskCfg.Group.groupDim;
     task.u.aicTaskInfo.groupBlockDim = launchTaskCfg.Group.groupBlockDim;
     aicTaskInfo->kernel->SetMixType(NO_MIX);

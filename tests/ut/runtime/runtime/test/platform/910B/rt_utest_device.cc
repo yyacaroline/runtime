@@ -36,7 +36,6 @@
 #undef protected
 #include "rdma_task.h"
 #include "platform/platform_info.h"
-#include "../../task_test_helper.h"
 
 using namespace testing;
 using namespace cce::runtime;
@@ -1553,9 +1552,7 @@ TEST_F(CloudV2DeviceTest, STARS_AicoreTimeoutDfx)
     stm->streamId_ = 1;
     rtError_t errCode = RT_ERROR_NONE;
     TaskInfo * const tsk = device->GetTaskFactory()->Alloc(stm, TS_TASK_TYPE_KERNEL_AICORE, errCode);
-    Kernel *aicKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(tsk, aicKernel, 1, nullptr);
-    delete aicKernel;
+    AicTaskInit(tsk, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
 
     const void *stubFunc = (void *)0x03;
     const char *stubName = "efgexample";

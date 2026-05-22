@@ -49,7 +49,6 @@
 #include "profiler_struct.hpp"
 #include "toolchain/prof_api.h"
 #include "task_submit.hpp"
-#include "../../task_test_helper.h"
 #include "thread_local_container.hpp"
 #include "device/device_error_proc.hpp"
 #include "memory_task.h"
@@ -194,18 +193,14 @@ TEST_F(CloudV2TaskTest, stars_timeout_sqe)
     Complete(&task, 0);
 
     InitByStream(&task1, stream_);
-    Kernel *vecKernel = CreateTestKernel(RT_KERNEL_ATTR_TYPE_VECTOR);
-    AicTaskInit(&task1, vecKernel, 1, nullptr);
-    delete vecKernel;
+    AicTaskInit(&task1, RT_KERNEL_ATTR_TYPE_VECTOR, 1, nullptr);
     task1.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task1, &sqe2);
 
     TaskCfg taskcfg = {};
     taskcfg.isBaseValid = 1U;
     taskcfg.base.dumpflag = RT_KERNEL_DUMPFLAG;
-    Kernel *aicKernel1 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel1, 1, &taskcfg);
-    delete aicKernel1;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, &taskcfg);
     EXPECT_EQ(task.u.aicTaskInfo.comm.kernelFlag, RT_KERNEL_DUMPFLAG);
 
     delete kernel;
@@ -228,9 +223,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_1)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    Kernel *aicKernel2 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel2, 1, nullptr);
-    delete aicKernel2;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -257,9 +250,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_2)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    Kernel *aicKernel3 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel3, 1, nullptr);
-    delete aicKernel3;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -285,9 +276,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_3)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    Kernel *aicKernel4 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel4, 1, nullptr);
-    delete aicKernel4;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -313,9 +302,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_4)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    Kernel *aicKernel5 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel5, 1, nullptr);
-    delete aicKernel5;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);
@@ -339,9 +326,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_biu)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, stream_);
-    Kernel *aicKernel6 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel6, 1, nullptr);
-    delete aicKernel6;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     EXPECT_EQ(task.type, TS_TASK_TYPE_KERNEL_AICORE);
     Driver *driver_ = ((Runtime *)Runtime::Instance())->driverFactory_.GetDriver(NPU_DRIVER);
     MOCKER_CPP_VIRTUAL(driver_, &Driver::DevMemAlloc)
@@ -373,9 +358,7 @@ TEST_F(CloudV2TaskTest, stars_mix_sqe_l2_cache)
     Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
 
     InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
-    Kernel *aicKernel7 = CreateTestKernel(RT_KERNEL_ATTR_TYPE_AICORE);
-    AicTaskInit(&task, aicKernel7, 1, nullptr);
-    delete aicKernel7;
+    AicTaskInit(&task, RT_KERNEL_ATTR_TYPE_AICORE, 1, nullptr);
     task.u.aicTaskInfo.kernel = kernel;
     ToConstructSqe(&task, &sqe);
     TaskUnInitProc(&task);

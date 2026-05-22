@@ -49,14 +49,13 @@ static void DavinciTaskInitCommon(DavinciTaskInfoCommon *comm, const uint16_t di
     return;
 }
 
-void AicTaskInitCommon(TaskInfo *taskInfo, const Kernel *kernel, const uint16_t dimNum, const uint32_t flag,
+void AicTaskInitCommon(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, const uint16_t dimNum, const uint32_t flag,
     const bool isNeedAllocSqeDevBuf)
 {
     TaskCommonInfoInit(taskInfo);
     AicTaskInfo *aicTaskInfo = &(taskInfo->u.aicTaskInfo);
     DavinciTaskInitCommon(&(aicTaskInfo->comm), dimNum, flag, taskInfo->isUpdateSinkSqe);
 
-    rtKernelAttrType kernelAttrType = (kernel == nullptr) ? RT_KERNEL_ATTR_TYPE_AICORE : kernel->GetKernelAttrType();
     if (kernelAttrType == RT_KERNEL_ATTR_TYPE_VECTOR) {
         taskInfo->type = TS_TASK_TYPE_KERNEL_AIVEC;
         taskInfo->typeName = const_cast<char_t*>("KERNEL_AIVEC");
@@ -68,12 +67,14 @@ void AicTaskInitCommon(TaskInfo *taskInfo, const Kernel *kernel, const uint16_t 
     aicTaskInfo->argsInfo = nullptr;
     aicTaskInfo->tilingKey = 0ULL;
 
+    aicTaskInfo->smDescData = 0U;
+    aicTaskInfo->smSize = 0U;
     aicTaskInfo->kernelTaskMode = RT_DEFAULT_KERNEL_MODE;
     aicTaskInfo->qos = 0U;
     aicTaskInfo->partId = 0U;
-    uint32_t schedMode = (kernel == nullptr) ? static_cast<uint32_t>(RT_SCHEM_MODE_NORMAL) : kernel->GetSchedMode();
-    aicTaskInfo->schemMode = static_cast<uint8_t>(schedMode);
+    aicTaskInfo->schemMode = static_cast<uint8_t>(RT_SCHEM_MODE_END);
     aicTaskInfo->infMode = 0U;
+    aicTaskInfo->resv = 0U;
 
     aicTaskInfo->mixOpt = false;
     aicTaskInfo->dynamicShareMemSize = 0U;
@@ -128,7 +129,7 @@ void AicpuTaskInit(TaskInfo *taskInfo, const uint16_t dimNum, const uint32_t fla
     return;
 }
 
-void AicTaskInit(TaskInfo *taskInfo, const Kernel *kernel, const uint16_t dimNum,
+void AicTaskInit(TaskInfo *taskInfo, const rtKernelAttrType kernelAttrType, const uint16_t dimNum,
     const TaskCfg * const taskcfg, const bool isNeedAllocSqeDevBuf)
 {
     uint32_t flag = RT_KERNEL_DEFAULT;
@@ -138,7 +139,7 @@ void AicTaskInit(TaskInfo *taskInfo, const Kernel *kernel, const uint16_t dimNum
         RT_LOG(RT_LOG_WARNING, "dumpflag set %u.", taskcfg->base.dumpflag);
     }
     
-    AicTaskInitCommon(taskInfo, kernel, dimNum, flag, isNeedAllocSqeDevBuf);
+    AicTaskInitCommon(taskInfo, kernelAttrType, dimNum, flag, isNeedAllocSqeDevBuf);
     AicTaskInfo *aicTaskInfo = &(taskInfo->u.aicTaskInfo);
 
     if (taskcfg == nullptr) {
@@ -148,9 +149,7 @@ void AicTaskInit(TaskInfo *taskInfo, const Kernel *kernel, const uint16_t dimNum
     if (taskcfg->isBaseValid == 1U) {
         aicTaskInfo->qos = taskcfg->base.qos;
         aicTaskInfo->partId = taskcfg->base.partId;
-        if (taskcfg->base.schemMode != RT_SCHEM_MODE_END) {
-            aicTaskInfo->schemMode = taskcfg->base.schemMode;
-        }
+        aicTaskInfo->schemMode = taskcfg->base.schemMode;
         aicTaskInfo->blockDimOffset = taskcfg->base.blockDimOffset;
         aicTaskInfo->dynamicShareMemSize = taskcfg->base.localMemorySize;
 
@@ -183,6 +182,19 @@ rtError_t CheckMixKernelValid(const uint8_t mixType, const uint64_t func2)
         }
     }
     return RT_ERROR_NONE;
+}
+
+uint32_t GetSchemMode(AicTaskInfo* const taskInfo)
+{
+    // cfg配置的优先级最高 其次是meta section段配置 最后是默认的 normal mode
+    if (taskInfo->schemMode == static_cast<uint8_t>(RT_SCHEM_MODE_END)) {
+        if (taskInfo->kernel != nullptr) {
+            return taskInfo->kernel->GetSchedMode();
+        } else {
+            return RT_SCHEM_MODE_NORMAL;
+        }
+    }
+    return taskInfo->schemMode;
 }
 
 static void CheckCoreLimit(TaskInfo* const taskInfo, const rtDevResLimitType_t resType, const uint16_t blockDim)
@@ -239,7 +251,7 @@ static void CheckBlockDim(TaskInfo* const taskInfo, const RtFftsPlusKernelSqe* c
                         const rtFftsPlusMixAicAivCtx_t* const fftsCtx)
 {
     AicTaskInfo *aicTaskInfo = &(taskInfo->u.aicTaskInfo);
-    if (aicTaskInfo->schemMode != RT_SCHEM_MODE_BATCH) {
+    if (GetSchemMode(aicTaskInfo) != static_cast<uint32_t>(RT_SCHEM_MODE_BATCH)) {
         return;
     }
 
@@ -280,7 +292,7 @@ void ToCommandBodyForAicAivTask(TaskInfo* taskInfo, rtCommand_t *const command)
 
     command->u.kernelTask.priority = stm->Priority();
     command->u.kernelTask.L2_size = l2Size;
-    command->u.kernelTask.L2PreloadCtrl = 0;
+    command->u.kernelTask.L2PreloadCtrl = aicTaskInfo->smDescData;
     command->u.kernelTask.funcPtr = aicTaskInfo->funcAddr;
     command->u.kernelTask.funcDesc = RtPtrToValue(aicTaskInfo->comm.args);
     command->u.kernelTask.literalSrcAddr =  static_cast<uint64_t>(aicTaskInfo->blockDimOffset);
@@ -298,12 +310,13 @@ void ToCommandBodyForAicAivTask(TaskInfo* taskInfo, rtCommand_t *const command)
     command->taskInfoFlag = stm->GetTaskRevFlag(taskInfo->bindFlag);
 
     CheckBlockDim(taskInfo, nullptr, nullptr);
-    command->u.kernelTask.schemMode = aicTaskInfo->schemMode;
+    command->u.kernelTask.schemMode = GetSchemMode(aicTaskInfo);
 
-    RT_LOG(RT_LOG_DEBUG, "funcAddr=%#" PRIx64 ", args=%#" PRIx64 ", isConvertAddr=%u, kernelFlag=%u, schemMode=%u, taskType=%u.",
-        command->u.kernelTask.funcPtr, command->u.kernelTask.funcDesc, 
+    RT_LOG(RT_LOG_DEBUG, "funcAddr=%#" PRIx64 ", args=%#" PRIx64 ", smDescData=%#" PRIx64
+        ", isConvertAddr=%u, kernelFlag=%u, schemMode=%u, cfgInfo schemMode=%u, taskType=%u.",
+        command->u.kernelTask.funcPtr, command->u.kernelTask.funcDesc, command->u.kernelTask.L2PreloadCtrl,
         static_cast<uint32_t>(command->u.kernelTask.isConvertAddr), static_cast<uint32_t>(aicTaskInfo->comm.kernelFlag),
-        command->u.kernelTask.schemMode, taskInfo->type);
+        command->u.kernelTask.schemMode, aicTaskInfo->schemMode, taskInfo->type);
 }
 
 void ToCommandBodyForAicpuTask(TaskInfo* taskInfo, rtCommand_t *const command)
@@ -515,8 +528,8 @@ void FillFftsAicAivCtxForDavinciTask(TaskInfo* const taskInfo, rtFftsPlusMixAicA
     fftsCtx->schem = 0U;
     if (IS_SUPPORT_CHIP_FEATURE(Runtime::Instance()->GetChipType(), RtOptionalFeatureType::RT_FEATURE_TASK_FFTS_PLUS)) {
         CheckBlockDim(taskInfo, nullptr, fftsCtx);
-        fftsCtx->schem = aicTaskInfo->schemMode;
-        RT_LOG(RT_LOG_INFO, "set schemMode=%u, taskType=%u", fftsCtx->schem, taskInfo->type);
+        fftsCtx->schem = static_cast<uint16_t>(GetSchemMode(aicTaskInfo));
+        RT_LOG(RT_LOG_INFO, "set schemMode=%u, cfgInfo schemMode=%u, taskType=%u", fftsCtx->schem, aicTaskInfo->schemMode, taskInfo->type);
     }
     fftsCtx->atm = 0U;
     fftsCtx->prefetchEnableBitmap = 0U;
@@ -697,8 +710,8 @@ void ConstructAICoreSqeForDavinciTask(TaskInfo* const taskInfo, rtStarsSqe_t *co
     if (IS_SUPPORT_CHIP_FEATURE(Runtime::Instance()->GetChipType(), RtOptionalFeatureType::RT_FEATURE_TASK_FFTS_PLUS)) {
         if ((taskInfo->type == TS_TASK_TYPE_KERNEL_AICORE) || (taskInfo->type == TS_TASK_TYPE_KERNEL_AIVEC)) {
             CheckBlockDim(taskInfo, sqe, nullptr);
-            sqe->schem = aicTaskInfo->schemMode;
- 	        RT_LOG(RT_LOG_INFO, "set schemMode=%u, taskType=%u", sqe->schem, taskInfo->type);
+            sqe->schem = static_cast<uint16_t>(GetSchemMode(aicTaskInfo));
+ 	        RT_LOG(RT_LOG_INFO, "set schemMode=%u, cfgInfo schemMode=%u, taskType=%u", sqe->schem, aicTaskInfo->schemMode, taskInfo->type);
         }
     }
     sqe->res3 = 0U;
@@ -1069,7 +1082,7 @@ rtError_t GetArgsInfo(TaskInfo* taskInfo)
             (j - 1U) * ARGS_PER_STRING_MAX_LEN, curLen - 1U, ss.str().c_str());
     }
     RT_LOG(RT_LOG_ERROR, "tilingKey = %" PRIu64 ", print %u Times totalLen=(%u*8), argsSize=%u, schemMode=%u,"
-        " blockDim=%hu", tilingKey, argsTimes, totalLen, aicTaskInfo->comm.argsSize, aicTaskInfo->schemMode,
+        " blockDim=%hu", tilingKey, argsTimes, totalLen, aicTaskInfo->comm.argsSize, GetSchemMode(aicTaskInfo),
         aicTaskInfo->comm.dim);
     (void)dev->Driver_()->HostMemFree(hostMem);
     return RT_ERROR_NONE;

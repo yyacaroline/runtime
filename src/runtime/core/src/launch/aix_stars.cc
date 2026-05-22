@@ -573,7 +573,7 @@ rtError_t StreamLaunchKernelV2(Kernel *kernel, const uint32_t coreDim, Stream *s
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
 
-    AicTaskInit(kernTask, kernel, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg,
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), extendAgrs->taskCfg,
         isNeedAllocSqeDevBuf);
     ERROR_GOTO_MSG_INNER(error, ERROR_FREE,
         "Init kernel task failed, stream_id=%d, task_id=%hu, kernelAttrType=%d, retCode=%#x.",
@@ -705,7 +705,7 @@ rtError_t StreamLaunchKernelV1(const void * const stubFunc, const uint32_t coreD
 
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
-    AicTaskInit(kernTask, registeredKernel, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
 
     aicTask = &kernTask->u.aicTaskInfo;
     if (copyFlag) {
@@ -831,7 +831,7 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
     COND_PROC(((kernTask->isUpdateSinkSqe == 1U) && (!(kernTask->stream->IsSoftwareSqEnable()))),
         isNeedAllocSqeDevBuf = true);
 
-    AicTaskInit(kernTask, registeredKernel, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
+    AicTaskInit(kernTask, kernelAttrType, static_cast<uint16_t>(coreDim), taskCfg, isNeedAllocSqeDevBuf);
 
     aicTask = &kernTask->u.aicTaskInfo;
     if (copyFlag) {
