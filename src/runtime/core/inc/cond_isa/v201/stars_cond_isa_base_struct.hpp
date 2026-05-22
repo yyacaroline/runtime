@@ -229,6 +229,39 @@ struct RtStarsCondOpFuncCall {
     uint32_t reserved4 : 7;
 };
 
+// GQM instr
+struct RtStarsCondGqm {
+    uint32_t opCode : 7;
+    uint32_t rd : 4;
+    uint32_t reserved0 : 4; // reserved
+    uint32_t rs1 : 4;
+    uint32_t reserved1 : 1; // reserved
+    uint32_t rs2 : 4;
+    uint32_t reserved2 : 8; // reserved
+};
+
+// GQM PUSH & POP instr
+struct RtStarsCondGqmOp {
+    uint32_t command : 6;
+    uint32_t wakeUp : 1;
+    uint32_t reserved0 : 25; // reserved
+    uint32_t reserved1; // reserved
+};
+
+union RtStarsCondGqmOpFc {
+    RtStarsCondGqmOp inst;
+    uint64_t value;
+};
+
+struct RtStarsCondOpErrorInstr {
+    uint32_t err;
+};
+
+struct RtStarsSetCsrJumpPc {
+    RtStarsCondOpLHWI lhwi;
+    RtStarsCondOpLLWI llwi;
+    RtStarsCondOpSystemCsr csrrw;
+};
 #pragma pack(pop)
 }
 }

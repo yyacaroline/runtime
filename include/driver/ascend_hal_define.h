@@ -609,6 +609,62 @@ struct MemPoolUsedStatus {
     struct MemPoolUsedByPidStatus usedByPid[BUFF_MAX_USED_PID_RECORD];
 };
 
+enum mbuf_op_type {
+    MBUF_OP_RSV_TYPE,
+    C_CORE_ALLOC,
+    C_CORE_ENQUE_PRODQ,
+    C_CORE_DEQUE_CONSQ,
+    C_CORE_FREE,
+    DSFW_DEQUE_PRODQ,
+    DSFW_COPY_REF,
+    DSFW_QS_FINISH,
+    DSFW_ENQUE_CONSQ,
+    DSFW_NOTIFY_CONS,
+    DSFW_NOTIFY_INTERCHIP,
+    DSFW_FREE,
+    SOFT_ALLOC,
+    SOFT_ALLOC_ENQUE_PRODQ,
+    SOFT_ALLOC_FREE,
+    SOFT_COPY_REF,
+    SOFT_COPY_REF_ENQUE_PRODQ,
+    SOFT_OW_FREE,
+    SOFT_DEQUE_CONSQ,
+    SOFT_DEQUE_ENQUE_PRODQ,
+    SOFT_FREE,
+    MBUF_OP_TYPE_BUTT
+};
+
+struct mbuf_owner_info {
+    unsigned long long op_type : 8; // see alos enum mbuf_op_type
+    unsigned long long owner_id: 40; // proc_uid or rtsqid or isp task id
+    unsigned long long op_qid : 16;
+};
+
+struct mbuf_owner_info_ext {
+    unsigned char op_type;
+    unsigned char owner_id[5];
+    unsigned short op_qid;
+};
+
+typedef union dqs_mbuf_owner_info {
+    struct mbuf_owner_info bits;
+    struct mbuf_owner_info_ext ext_bits;
+    unsigned long long value;
+} dqs_mbuf_owner_info_t;
+
+struct dqs_mbuf_prod_trace {
+    union dqs_mbuf_owner_info prod_owner_info;
+    unsigned long long alloc_req_time;
+    unsigned long long prodq_enque_time;
+    unsigned long long prod_free_time;
+};
+
+struct dqs_mbuf_cons_trace {
+    union dqs_mbuf_owner_info cons_owner_info;
+    unsigned long long cons_deque_copy_ref_time;
+    unsigned long long cons_free_time;
+};
+
 typedef struct {
     unsigned int poolId;
     unsigned int pool_depth;
@@ -616,13 +672,20 @@ typedef struct {
     unsigned int dataPoolBlkSize;
     unsigned int dataPoolBlkObjSize;
     unsigned int dataPoolBlkOffset;
+    unsigned int dataPoolGroupId;
     unsigned long long  headPoolBaseAddr;
     unsigned int headPoolBlkSize;
     unsigned int headPoolBlkObjSize;
     unsigned int headPoolBlkOffset;
+    unsigned int headPoolGroupId;
     unsigned long long allocOpAddr;
     unsigned long long freeOpAddr;
     unsigned long long copyRefOpAddr;
+    unsigned long long mngPoolBaseAddr;
+    unsigned int mngPoolBlkSize;
+    unsigned int mngPoolBlkObjSize;
+    unsigned int mngPoolBlkOffset;
+    unsigned int mngPoolGroupId;
 } DqsPoolInfo;
 
 /*=========================== Memory Manage ===========================*/

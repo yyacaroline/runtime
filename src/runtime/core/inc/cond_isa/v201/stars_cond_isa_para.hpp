@@ -15,6 +15,19 @@
 namespace cce {
 namespace runtime {
 
+struct CondMbufTraceParam {
+    uint64_t traceBlockSizeAddr;
+    uint64_t traceBaseAddr;
+    uint64_t lpSysCntAddr;
+    uint64_t qidAddr;
+    uint64_t opQidOffset;
+    uint64_t opTypeOffset;
+    uint64_t ownerIdOffset;
+    uint64_t updateTimeOffset;
+    uint32_t streamId;
+    uint8_t opTypeVal;
+};
+
 struct RtDqsMbufFreeFcPara {
     uint64_t ctrlSpaceAddr; // ctrlSpace的地址
     uint64_t mbufFreeAddr; // 存放mbuf pool寄存器的地址
@@ -24,6 +37,7 @@ struct RtDqsMbufFreeFcPara {
     uint16_t mbufPoolIndexMax; // pool的下标 和 mbufHandle的下标一致
     uint8_t schedType;
     uint8_t sizeofHandleCache;
+    CondMbufTraceParam freeMbufTracePara;
 };
 
 struct RtStarsDqsFcPara {
@@ -41,6 +55,9 @@ struct RtStarsDqsFcPara {
     uint64_t realEnqueMbufCntAddr;
     uint32_t sqId;
     RtDqsMbufFreeFcPara mbufFreePara;
+    CondMbufTraceParam owFreeMbufTracePara;
+    CondMbufTraceParam enqueMbufTracePara;
+    CondMbufTraceParam dequeMbufTracePara;
 };
 
 struct RtStarsDqsBatchDeqFcPara {
@@ -54,6 +71,8 @@ struct RtStarsDqsBatchDeqFcPara {
     uint8_t cntOffset;
 	uint8_t sizeofHandleCache;
 	uint16_t mbufPoolIndexMax;
+
+    CondMbufTraceParam dequeMbufTracePara;
 };
 
 struct RtStarsDqsPrepareFcPara {
@@ -71,6 +90,8 @@ struct RtStarsDqsPrepareFcPara {
     uint64_t csPtrOutputHeadPoolBaseAddr; // 含offset
     uint64_t csPtrOutputHeadPoolBlockSize;
     uint64_t realOutputAllocMbufCntAddr; // alloc成功计数
+
+    CondMbufTraceParam allocMbufTracePara;
 };
 
 struct RtStarsDqsZeroCopyPara {
@@ -98,9 +119,10 @@ struct RtStarsDqsInterChipPreProcPara {
     uint64_t dstMbufDataBlockSizeAddr;
     uint64_t dstMbufHeadBaseAddr;
     uint64_t dstMbufDataBaseAddr;
-
     uint64_t mbufDataSdmaSqeAddr; // mbuf data sdma
     uint64_t mbufHeadSdmaSqeAddr; // mbuf head sdma
+
+    CondMbufTraceParam allocMbufTracePara;
 };
 
 struct RtStarsDqsInterChipPostProcPara {
@@ -111,6 +133,9 @@ struct RtStarsDqsInterChipPostProcPara {
     uint64_t srcMbufFreeAddr;
     uint64_t dstMbufFreeAddr;
     uint64_t dstQmngrOwAddr;
+    CondMbufTraceParam dstProdEnqueMbufTracePara;
+    CondMbufTraceParam srcConsFreeMbufTracePara;
+    CondMbufTraceParam dstProdFreeMbufTracePara;
 };
 
 struct RtStarsDqsAdspcFcPara {

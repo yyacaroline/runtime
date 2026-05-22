@@ -14,46 +14,13 @@
 #include "base.hpp"
 #include "stars_cond_isa_base_struct.hpp"
 #include "stars_cond_isa_para.hpp"
+#include "stars_cond_isa_mbuf_trace.hpp"
 
 namespace cce {
 namespace runtime {
 
 #pragma pack(push)
 #pragma pack(1)
-
-// GQM instr
-struct RtStarsCondGqm {
-    uint32_t opCode : 7;
-    uint32_t rd : 4;
-    uint32_t reserved0 : 4; // reserved
-    uint32_t rs1 : 4;
-    uint32_t reserved1 : 1; // reserved
-    uint32_t rs2 : 4;
-    uint32_t reserved2 : 8; // reserved
-};
-
-// GQM PUSH & POP instr
-struct RtStarsCondGqmOp {
-    uint32_t command : 6;
-    uint32_t wakeUp : 1;
-    uint32_t reserved0 : 25; // reserved
-    uint32_t reserved1; // reserved
-};
-
-union RtStarsCondGqmOpFc {
-    RtStarsCondGqmOp inst;
-    uint64_t value;
-};
-
-struct RtStarsCondOpErrorInstr {
-    uint32_t err;
-};
-
-struct RtStarsSetCsrJumpPc {
-    RtStarsCondOpLHWI lhwi;
-    RtStarsCondOpLLWI llwi;
-    RtStarsCondOpSystemCsr csrrw;
-};
 
 struct RtStarsGqmInitFc {
     RtStarsCondOpLLWI              llwi1;
@@ -82,8 +49,6 @@ struct RtStarsDqsEnqueueFc {
     RtStarsCondOpLHWI              lhwi3;
     RtStarsCondOpLLWI              llwi7;
     RtStarsCondOpLHWI              lhwi7;
-    RtStarsCondOpLLWI              llwi4;
-    RtStarsCondOpLHWI              lhwi4;
     RtStarsCondOpLoad              ldr1;
     RtStarsCondOpLoad              ldr2;
     RtStarsCondOpImmSLLI           slli1;
@@ -107,12 +72,16 @@ struct RtStarsDqsEnqueueFc {
     RtStarsCondOpSystemCsr         csrrc;
     RtStarsCondOpStore             owfree;
     RtStarsCondOpSystemCsr         csrrs;
+
+    CondMbufTraceFc                owFreeMbufTracefc;
+
     RtStarsCondOpLoad              ldr4;
     RtStarsCondOpImmSLLI           slli2;
     RtStarsCondOpImmSLLI           srli2;
     RtStarsCondOpLoad              ldr5;
     RtStarsCondOpStore             enquei;
 
+    CondMbufTraceFc                enqueMbufTracefc;
     // 成功计数处理
     RtStarsCondOpLLWI              llwiCntAddr1;
     RtStarsCondOpLHWI              lhwiCntAddr1;
@@ -125,6 +94,8 @@ struct RtStarsDqsEnqueueFc {
     RtStarsCondOpImm               addi3;
     RtStarsCondOpImm               addi4;
     RtStarsCondOpImm               addi5;
+    RtStarsCondOpLLWI              llwi4;
+    RtStarsCondOpLHWI              lhwi4;
 
     RtStarsSetCsrJumpPc            jumpPc4;
     RtStarsCondOpBranch            blt1;
@@ -164,6 +135,9 @@ struct RtStarsDqsDequeueFc {
     RtStarsSetCsrJumpPc            jumpPc2;
     RtStarsCondOpImmSLLI           srli1;
     RtStarsCondOpBranch            bne2;
+
+    CondMbufTraceFc                dequeMbufTracefc;
+
     RtStarsCondOpStore             store;
 
     RtStarsCondOpLoad              ldr2;
@@ -229,6 +203,8 @@ struct RtStarsDqsPrepareOutFc {
     RtStarsCondOpStore            store2;
     RtStarsSetCsrJumpPc           jumpPc1;
     RtStarsCondOpBranch           bne;
+
+    CondMbufTraceFc               allocMbufTracefc;
 
     // 将output mbuf存入output_mbuf_list
     RtStarsCondOpLLWI             llwi13;
@@ -399,15 +375,19 @@ struct RtStarsDqsInterChipPreProcFc {
     RtStarsCondOpLLWI              llwi;
     RtStarsCondOpLLWI              llwi1;
     RtStarsCondOpLHWI              lhwi1;
+
     RtStarsCondOpLoad              ldr1;
     RtStarsCondOpSystemCsr         csrrc;
     RtStarsCondOpLoad              ldr2;
     RtStarsCondOpSystemCsr         csrrs;
+
     RtStarsCondOpImmSLLI           slli1;
     RtStarsCondOpImmSLLI           srli1;
-
     RtStarsSetCsrJumpPc            jumpPc1;
     RtStarsCondOpBranch            bne1;
+
+    CondMbufTraceFc                allocMbufTracefc;
+
     RtStarsCondOpImmSLLI           slli2;
     RtStarsCondOpImmSLLI           srli2;
 
@@ -490,15 +470,22 @@ struct RtStarsDqsInterChipPostProcFc {
     RtStarsCondOpLLWI              llwi6;
     RtStarsCondOpLHWI              lhwi6;
     RtStarsCondOpOp                and1;
+
     RtStarsCondOpSystemCsr         csrrc1;
     RtStarsCondOpStore             sw1;
     RtStarsCondOpSystemCsr         csrrs1;
+
+    CondMbufTraceFc                dstProdFreeMbufTracefc;
+
     RtStarsCondOpLLWI              llwi7;
     RtStarsCondOpLHWI              lhwi7;
     RtStarsCondOpLoad              ldr4;
     RtStarsCondOpLLWI              llwi8;
     RtStarsCondOpLHWI              lhwi8;
     RtStarsCondOpLoad              ldr5;
+
+    CondMbufTraceFc                dstProdEnquembufTracefc;
+
     RtStarsCondOpSystemCsr         csrrc2;
     RtStarsCondOpStore             sw2;
     RtStarsCondOpSystemCsr         csrrs2;
@@ -512,6 +499,8 @@ struct RtStarsDqsInterChipPostProcFc {
     RtStarsCondOpSystemCsr         csrrc3;
     RtStarsCondOpStore             sw3;
     RtStarsCondOpSystemCsr         csrrs3;
+
+    CondMbufTraceFc                srcConsFreembufTracefc;
 
     RtStarsSetCsrJumpPc            jumpPc4;
     RtStarsCondOpBranch            beq3;

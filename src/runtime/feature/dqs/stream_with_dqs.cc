@@ -195,6 +195,22 @@ static rtError_t UpdateCtrlSpaceFrameAlignInfo(const uint8_t inputQueNum, const 
     return RT_ERROR_NONE;  
 }
 
+static rtError_t TryToFlushCsMbufTraceCfg(const int32_t streamId, const uint32_t tsId)
+{
+    stars_ioctl_cmd_args_t args = {};
+    stars_dqs_update_cs_mbuf_trace_cfg_t param = {};
+    param.stream_id = static_cast<uint8_t>(streamId);
+    param.ts_id = static_cast<uint8_t>(tsId);
+    args.input_ptr = &param;
+    args.input_len = sizeof(stars_dqs_update_cs_mbuf_trace_cfg_t);
+    args.output_len = 0U;
+
+    const rtError_t error = IoctlUtil::GetInstance().IoctlByCmd(STARS_IOCTL_CMD_UPDATE_CS_MBUF_TRACE_CFG, &args);
+    COND_RETURN_ERROR((error != RT_ERROR_NONE), error, "ioctl failed, retCode=%#x", static_cast<uint32_t>(error));
+
+    return RT_ERROR_NONE;
+}
+
 rtError_t StreamWithDqs::SetCtrlSpaceInputQueInfo(const rtDqsSchedCfg_t * const dqsSchedCfg)
 {
     dqsCtrlSpace_->input_queue_num = dqsSchedCfg->inputQueueNum;
@@ -221,9 +237,13 @@ rtError_t StreamWithDqs::SetCtrlSpaceInputQueInfo(const rtDqsSchedCfg_t * const 
         RT_LOG(RT_LOG_INFO, "input queue id=%hu, gqm base=%#llx", qid, dqsCtrlSpace_->input_queue_gqm_base_addrs[i]);
     }
 
+    const uint32_t tsId = Device_()->DevGetTsId();
     // 内核态会从ctrl space中读取input queue id，所以此处的接口应该放在input_queue_ids更新之后
-    ret = UpdateCtrlSpaceFrameAlignInfo(dqsCtrlSpace_->input_queue_num, streamId_, Device_()->DevGetTsId());
+    ret = UpdateCtrlSpaceFrameAlignInfo(dqsCtrlSpace_->input_queue_num, streamId_, tsId);
     ERROR_RETURN(ret, "update ctrl space frame align info failed, ret=%#x.", static_cast<uint32_t>(ret));
+
+    ret = TryToFlushCsMbufTraceCfg(streamId_, tsId);
+    ERROR_RETURN(ret, "update ctrl space mbuf trace cfg, ret=%#x.", static_cast<uint32_t>(ret));
 
     return RT_ERROR_NONE;
 }
@@ -252,7 +272,7 @@ static rtError_t GetOutputQueMbufPoolInfo(const uint16_t *queueIds, uint8_t queu
     return RT_ERROR_NONE;    
 }
 
-static stars_queue_bind_mbuf_pool_item_t* GetMbufPoolInfoByPid(const uint16_t qid,
+static stars_queue_bind_mbuf_pool_item_t* GetMbufPoolInfoByQid(const uint16_t qid,
     stars_dqs_queue_mbuf_pool_result_t &result)
 {
     for (uint8_t idx = 0U; idx < result.count; idx++) {
@@ -276,6 +296,9 @@ static void DumpCtrlSpaceDfx(const uint32_t qid, const int32_t streamId, uint32_
         ctrlSpace->output_head_pool_block_size_list[idx], ctrlSpace->output_data_pool_base_addrs[idx],
         ctrlSpace->output_data_pool_block_size_list[idx], ctrlSpace->output_mbuf_alloc_addrs[idx],
         ctrlSpace->output_mbuf_free_addrs[idx]);
+
+     RT_LOG(RT_LOG_INFO, "trace info: output_trace_base_addrs=%#llx, mbuf_trace_blk_size=%u.",
+        ctrlSpace->output_trace_base_addrs[idx], ctrlSpace->output_mbuf_trace_block_size_list[idx]);
 
     return;
 }
@@ -309,7 +332,7 @@ rtError_t StreamWithDqs::SetCtrlSpaceOutputQueInfo(const rtDqsSchedCfg_t * const
         dqsCtrlSpace_->output_qmngr_enqueue_addrs[i] = queInfo.enqueOpAddr;
         dqsCtrlSpace_->output_qmngr_ow_addrs[i] = queInfo.prodqOwAddr;
 
-        const stars_queue_bind_mbuf_pool_item_t * const item = GetMbufPoolInfoByPid(qid, result);
+        const stars_queue_bind_mbuf_pool_item_t * const item = GetMbufPoolInfoByQid(qid, result);
         COND_RETURN_ERROR_MSG_INNER(item == nullptr, RT_ERROR_INVALID_VALUE,
             "The mbuf pool info corresponding to qid %u does not exist. Check the configuration process.", qid);
 
@@ -320,6 +343,8 @@ rtError_t StreamWithDqs::SetCtrlSpaceOutputQueInfo(const rtDqsSchedCfg_t * const
         dqsCtrlSpace_->output_data_pool_base_addrs[i] = item->mbuf_data_pool_base_addr + item->mbuf_data_pool_offset;
         dqsCtrlSpace_->output_data_pool_block_size_list[i] = item->mbuf_data_pool_blk_size;
         dqsCtrlSpace_->output_mbuf_free_addrs[i] = item->mbuf_free_op_addr;
+        dqsCtrlSpace_->output_trace_base_addrs[i] = item->mbuf_trace_base_addr + item->mbuf_trace_blk_offset;
+        dqsCtrlSpace_->output_mbuf_trace_block_size_list[i] = item->mbuf_trace_blk_size;
         DumpCtrlSpaceDfx(qid, streamId_, i, dqsCtrlSpace_);
     }
 

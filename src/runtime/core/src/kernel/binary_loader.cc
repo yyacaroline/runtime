@@ -97,6 +97,7 @@ static rtError_t ParseDebugOptions(const nlohmann::json &kernelJson)
         RT_LOG(RT_LOG_ERROR, "Invalid debugOptions in json file, because %s.", e.what());
         return RT_ERROR_INVALID_VALUE;
     }
+
     return RT_ERROR_NONE;
 }
 

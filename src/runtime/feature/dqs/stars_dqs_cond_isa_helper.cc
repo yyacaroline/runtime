@@ -11,6 +11,7 @@
 #include "stars_dqs_cond_isa_helper.hpp"
 #include "stars_cond_isa_helper.hpp"
 #include "stars_cond_isa_batch_struct.hpp"
+#include "stars_cond_isa_struct.hpp"
 
 namespace cce {
 namespace runtime {
@@ -27,6 +28,20 @@ constexpr uint64_t mbufInvalidErrCode = 0x5B5BULL;
 constexpr uint64_t QUEUE_NOT_ENABLE_ERR_CODE = 0x6A6AULL;
 constexpr uint64_t OW_NOT_ENABLE_ERR_CODE = 0x6B6BULL;
 constexpr uint64_t INVALID_CONDITION_ERR_CODE = 0x7A7BULL;
+constexpr uint64_t AXI_USER_VA_CFG_MASK = 0x900000009ULL;
+
+constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
+constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
+constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
+constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
+constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
+constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
+constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
+constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
+constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
+constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
+constexpr rtStarsCondIsaRegister_t r10 = RT_STARS_COND_ISA_REGISTER_R10;
+
 // GQM CMD
 constexpr uint32_t RT_STARS_COND_GQM_COMMAND_POP = 0B000101;
 constexpr uint64_t RT_DQS_MBUF_INVALID = 0x20000ULL; // max + 1: 0x1FFFF + 1
@@ -76,16 +91,128 @@ static void InitMbufOpCnt(const rtStarsCondIsaRegister_t dstReg, uint64_t cntAdd
     return;
 }
 
+static void ConstructMbufTrace(CondMbufTraceFc &fc, const CondMbufTraceParam &funcCallPara, MbufTraceRegParam &param, const uint32_t traceFcNop)
+{
+    // mbuf_handle_reg 为mbuf handle
+    // loop_index_reg不可修改，只读
+    constexpr uint64_t traceAddrOffset = 8ULL;                   // 地址为U64
+    constexpr uint64_t qidOffset = 2ULL;
+    constexpr uint64_t blkSizeOffset = 4ULL;
+    constexpr uint64_t traceStreamIdOcupySize = 4ULL; // owner_id
+
+    ConstructLLWI(param.avail_reg0, dqsBlockIdMask, fc.llwiBlkIdMask);
+    ConstructLHWI(param.avail_reg0, dqsBlockIdMask, fc.lhwiBlkIdMask);
+    ConstructOpAnd(param.avail_reg0, param.mbuf_handle_reg, param.avail_reg0, fc.andWithBlkIdMask);
+    ConstructOpImmSlli(param.avail_reg0, param.avail_reg0, dqsBlockIdOffset, RT_STARS_COND_ISA_OP_IMM_FUNC3_SRLI,
+        RT_STARS_COND_ISA_OP_IMM_FUNC7_SRLI, fc.srliForGetBlkId);
+
+    // 加载trace地址偏移，在ctrl space中为u64数组，偏移为8个字节
+    ConstructLLWI(param.avail_reg1, traceAddrOffset, fc.llwiAddrOffset);
+    ConstructLHWI(param.avail_reg1, traceAddrOffset, fc.lhwiAddrOffset);
+    // 计算基于基地址的偏移存入avail_reg1 = 地址偏移[8] * loop_index
+    ConstructOpMul(param.avail_reg1, param.loop_index_reg, param.avail_reg1, fc.multGetAddrOffset);
+
+    // 执行执行完后，avail_reg2为trace地址数组的基地址
+    ConstructLLWI(param.avail_reg2, funcCallPara.traceBaseAddr, fc.llwiTraceBaseAddr);
+    ConstructLHWI(param.avail_reg2, funcCallPara.traceBaseAddr, fc.lhwiTraceBaseAddr);
+    // 基地址 + avail_reg1（地址偏移）= 实际在ctrl space trace地址数组偏移后的地址, 记录到avail_reg2
+    ConstructOpAdd(param.avail_reg2, param.avail_reg1, param.avail_reg2, fc.addiGetRealOpTraceAddr);
+    // 此运算完成后avail_reg2为对应qid trace在share pool中数据的基地址
+    ConstructLoad(param.avail_reg2, 0U, param.avail_reg2, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrTraceOpAddr);
+
+    // 如果地址为0跳转到Trace Fc的Nop指令退出Mbuf Trace的录入逻辑，目的是初始化异常时不要影响正常的逻辑运行
+    ConstructSetJumpPcFc(param.avail_reg3, traceFcNop, fc.jumpTraceNop);
+    ConstructBranch(param.avail_reg2, r0, RT_STARS_COND_ISA_BRANCH_FUNC3_BEQ, traceFcNop, fc.beqForBranch);
+
+    // 读取TraceBlockSize基地址到avail_reg3，在ctrl space为数组
+    ConstructLLWI(param.avail_reg3, funcCallPara.traceBlockSizeAddr, fc.llwiTraceBlockSizeAddr);
+    ConstructLHWI(param.avail_reg3, funcCallPara.traceBlockSizeAddr, fc.lhwiTraceBlockSizeAddr);
+    // 加载blk size offset偏移
+    ConstructLLWI(param.avail_reg1, blkSizeOffset, fc.llwiBlkSizeOffset);
+    ConstructLHWI(param.avail_reg1, blkSizeOffset, fc.lhwiBlkSizeOffset);
+    // 计算基于基地址的blk size offset偏移存入avail_reg1 = 地址偏移 * loop_index
+    ConstructOpMul(param.avail_reg1, param.loop_index_reg, param.avail_reg1, fc.multGetBlkSizeOffset);
+
+    // 基地址avail_reg3 + avail_reg1（地址偏移）= 在ctrl space中的数组地址偏移avail_reg3
+    ConstructOpAdd(param.avail_reg3, param.avail_reg1, param.avail_reg3, fc.addiGetRealOpBlockAddr);
+
+    // 读取当前qid对应的的mbuf blk size值到avail_reg3
+    ConstructLoad(param.avail_reg3, 0U, param.avail_reg3, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrTraceBlockSizeAddr);
+
+    // 计算偏移trace_blk_size * blk_id，结果存储到avail_reg3
+    ConstructOpMul(param.avail_reg0, param.avail_reg3, param.avail_reg3, fc.muliGetOffset);
+    // 计算当前需要操作trace share pool地址，结果存储到avail_reg2 [后续都基于此地址在结构体内做操作]
+    ConstructOpAdd(param.avail_reg3, param.avail_reg2, param.avail_reg2, fc.addiGetTraceAddr);
+
+    // 计算opTypeOffset的地址并存储在avail_reg3， 【avail_reg2为trace结构体基地址】
+    ConstructLLWI(param.avail_reg3, funcCallPara.opTypeOffset, fc.llwiOpTypeOffset);
+    ConstructLHWI(param.avail_reg3, funcCallPara.opTypeOffset, fc.lhwiOpTypeOffset);
+    ConstructOpAdd(param.avail_reg2, param.avail_reg3, param.avail_reg3, fc.addiGetOpTypeAddr);
+
+    // 读取opType到avail_reg1
+    ConstructLLWI(param.avail_reg1, funcCallPara.opTypeVal, fc.llwiOpType);
+    ConstructLHWI(param.avail_reg1, funcCallPara.opTypeVal, fc.lhwiOpType);
+    // avail_reg3为trace中op type的地址， 将avail_reg1中的op type内存写入avail_reg3
+    ConstructStore(param.avail_reg3, param.avail_reg1, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SB, fc.storeOpType);
+
+    // 加载owner_id数组在ctrl space的偏移, 占40个bit, streamId 32个bit
+    ConstructLLWI(param.avail_reg3, funcCallPara.ownerIdOffset, fc.llwiOwnIdAddr);
+    ConstructLHWI(param.avail_reg3, funcCallPara.ownerIdOffset, fc.lhwiOwnIdAddr);
+    ConstructLLWI(param.avail_reg1, funcCallPara.streamId, fc.llwiStreamId);
+    ConstructLHWI(param.avail_reg1, funcCallPara.streamId, fc.lhwiStreamId);
+    ConstructOpAdd(param.avail_reg2, param.avail_reg3, param.avail_reg3, fc.addiGetOwnIdOpAddr);
+    ConstructStore(param.avail_reg3, param.avail_reg1, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.storeOwnerId);
+
+    // 剩余8bit写0
+    ConstructLLWI(param.avail_reg1, traceStreamIdOcupySize, fc.llwiOwnIdOccpySize);
+    ConstructLHWI(param.avail_reg1, traceStreamIdOcupySize, fc.lhwiOwnIdOccpySize);
+    ConstructOpAdd(param.avail_reg3, param.avail_reg1, param.avail_reg3, fc.addiGetLeft1BitOpAddr);
+    ConstructStore(param.avail_reg3, r0, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SB, fc.storeLeft1BitTo0);
+
+    // 加载qid数组偏移, qid 类型为U16
+    ConstructLLWI(param.avail_reg3, qidOffset, fc.llwiQidAddrOffset);
+    ConstructLHWI(param.avail_reg3, qidOffset, fc.lhwiQidAddrOffset);
+    // 计算基于基地址的偏移存入avail_reg3 = 地址偏移【2字节】 * loop_index
+    ConstructOpMul(param.loop_index_reg, param.avail_reg3, param.avail_reg3, fc.multGetQidOffset);
+
+    // 获取qid地址到avail_reg1
+    ConstructLLWI(param.avail_reg1, funcCallPara.qidAddr, fc.llwiQidBaseAddr);
+    ConstructLHWI(param.avail_reg1, funcCallPara.qidAddr, fc.lhwiQidBaseAddr);
+    ConstructOpAdd(param.avail_reg1, param.avail_reg3, param.avail_reg1, fc.addiGetOpQidAddr);
+    // 读取qid的值到avail_reg1
+    ConstructLoad(param.avail_reg1, 0U, param.avail_reg1, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrDstQid);
+    // avail_reg2为mbuf trace数据结构的基地址， 将opQidOffset读取到avail_reg3
+    ConstructLLWI(param.avail_reg3, funcCallPara.opQidOffset, fc.llwiQidOffset);
+    ConstructLHWI(param.avail_reg3, funcCallPara.opQidOffset, fc.lhwiQidOffset);
+    // avail_reg3为真正qid在trace结构体中的地址
+    ConstructOpAdd(param.avail_reg2, param.avail_reg3, param.avail_reg3, fc.addiGetQidAddr);
+    // avail_reg1为trace中op_qid的地址，avail_reg1为qid的值
+    ConstructStore(param.avail_reg3, param.avail_reg1, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SH, fc.storeQid);
+
+    ConstructLLWI(param.avail_reg1, funcCallPara.updateTimeOffset, fc.llwiUpdateTimeOffset);
+    ConstructLHWI(param.avail_reg1, funcCallPara.updateTimeOffset, fc.lhwiUpdateTimeOffset);
+    ConstructOpAdd(param.avail_reg2, param.avail_reg1, param.avail_reg1,  fc.addiGetUpdateTimeAddr);
+    // read immd reg va cfg mask
+    ConstructLLWI(param.avail_reg0, AXI_USER_VA_CFG_MASK, fc.llwiAxiUserVaCfgMask);
+    ConstructLLWI(param.avail_reg3, funcCallPara.lpSysCntAddr, fc.llwiLpSysCntAddr);
+    ConstructLHWI(param.avail_reg3, funcCallPara.lpSysCntAddr, fc.lhwiLpSysCntAddr);
+    ConstructLoad(param.avail_reg3, 0U, param.avail_reg3, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrLpSysCntAddr);
+
+    // cfg use PA
+    ConstructSystemCsr(param.avail_reg0, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrcForLpSysCntAddr);
+    // 读取sys cnt
+    ConstructLoad(param.avail_reg3, 0U, param.avail_reg3, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrLpSysCnt);
+    // restore to use VA
+    ConstructSystemCsr(param.avail_reg0, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrsForLpSysCntAddr);
+    // avail_reg1为trace中更新时间的地址, avail_reg3为lp syscnt值
+    ConstructStore(param.avail_reg1, param.avail_reg3, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SD, fc.storeUpdateTime);
+    ConstructNop(fc.nop);
+
+    return;
+}
+
 static void ConstructMbufFreeDssDelayPart(RtStarsDqsMbufFreeFc &fc, const RtDqsMbufFreeFcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
-    constexpr rtStarsCondIsaRegister_t r10 = RT_STARS_COND_ISA_REGISTER_R10;
-
     // 获取当前任务type
     ConstructLLWI(r9, static_cast<uint64_t>(funcCallPara.schedType), fc.llwi4);
     ConstructLHWI(r9, static_cast<uint64_t>(funcCallPara.schedType), fc.lhwi4);
@@ -142,26 +269,13 @@ static void ConstructMbufFreeDssDelayPart(RtStarsDqsMbufFreeFc &fc, const RtDqsM
 
 void ConstructMbufFreeInstrFc(RtStarsDqsMbufFreeFc &fc, const RtDqsMbufFreeFcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
-    constexpr rtStarsCondIsaRegister_t r10 = RT_STARS_COND_ISA_REGISTER_R10;
-    constexpr uint64_t axiUserVaCfgMask = 0x900000009ULL;
-
     // realFreeMbufCnt = 0
     InitMbufOpCnt(r1, funcCallPara.realFreeMbufCntAddr, fc.llwiCntAddr1, fc.lhwiCntAddr1, fc.initCnt1);
 
     // r8 = read immd reg va cfg mask
-    ConstructLLWI(r8, axiUserVaCfgMask, fc.llwi);
-    ConstructLHWI(r8, axiUserVaCfgMask, fc.lhwi);
-    // r6 作为inpu queue num 的下标，从0开始
+    ConstructLLWI(r8, AXI_USER_VA_CFG_MASK, fc.llwi);
+    ConstructLHWI(r8, AXI_USER_VA_CFG_MASK, fc.lhwi);
+    // r6 作为input queue num 的下标，从0开始
     ConstructOpImmAndi(r0, r6, 0, RT_STARS_COND_ISA_OP_IMM_FUNC3_ANDI, fc.andi);
 
     // 加载mbuf pool操作寄存器的地址到 r1 寄存器 (input_mbuf_free_addrs)
@@ -195,6 +309,14 @@ void ConstructMbufFreeInstrFc(RtStarsDqsMbufFreeFc &fc, const RtDqsMbufFreeFcPar
 
     // restore to use VA
     ConstructSystemCsr(r8, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrs);
+
+    // r4位mbuf handle value寄存器， 结合上下文mbuf_handle_reg可复用
+    MbufTraceRegParam freeRegParam = {
+        .loop_index_reg = r6, .mbuf_handle_reg = r4, .avail_reg0 = r5, .avail_reg1 = r7, .avail_reg2 = r9, .avail_reg3 = r10
+    };
+
+    const uint32_t mbufTraceNop = (RtPtrToValue(&(fc.freeMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.freeMbufTracefc, funcCallPara.freeMbufTracePara, freeRegParam, mbufTraceNop);
 
     // r2 mbufHandleAddr + 4， 下一个mbuf handle 的地址
     ConstructOpImmAndi(r2, r2, 4, RT_STARS_COND_ISA_OP_IMM_FUNC3_ADDI, fc.addi2);
@@ -230,18 +352,6 @@ void ConstructMbufFreeInstrFc(RtStarsDqsMbufFreeFc &fc, const RtDqsMbufFreeFcPar
 
 void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
-    constexpr rtStarsCondIsaRegister_t r10 = RT_STARS_COND_ISA_REGISTER_R10;
-
     // realEnqueMbufCntAddr = 0
     InitMbufOpCnt(r1, funcCallPara.realEnqueMbufCntAddr, fc.llwiCntAddr0, fc.lhwiCntAddr0, fc.initCnt0);
 
@@ -263,10 +373,6 @@ void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &func
     // free mbuf handle // 加载 mbuf pool 操作寄存器的地址到 r9 寄存器 (output_mbuf_free_addrs)
     ConstructLLWI(r9, funcCallPara.mbufFreePara.mbufFreeAddr, fc.llwi7);
     ConstructLHWI(r9, funcCallPara.mbufFreePara.mbufFreeAddr, fc.lhwi7);
-
-    // 加载 mbufPoolIndexMax 到 r4 寄存器中
-    ConstructLLWI(r4, funcCallPara.mbufPoolIndexMax, fc.llwi4);
-    ConstructLHWI(r4, funcCallPara.mbufPoolIndexMax, fc.lhwi4);
 
     // 加载 QMGR_PRODQ_OW 寄存器内容到r5
     ConstructLoad(r1, 0U, r5, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldr1);
@@ -307,16 +413,22 @@ void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &func
     ConstructLHWI(r8, dqsPoolIdBlkIdMask, fc.lhwi8);
     ConstructOpAnd(r5, r8, r8, fc.and1);
 
-    constexpr uint64_t axiUserVaCfgMask = 0x900000009ULL;
     // read immd reg va cfg mask
-    ConstructLLWI(r5, axiUserVaCfgMask, fc.llwi);
-    ConstructLHWI(r5, axiUserVaCfgMask, fc.lhwi);
+    ConstructLLWI(r5, AXI_USER_VA_CFG_MASK, fc.llwi);
+    ConstructLHWI(r5, AXI_USER_VA_CFG_MASK, fc.lhwi);
     // cfg use PA
     ConstructSystemCsr(r5, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrc);
     // 释放 ow mbuf handle
     ConstructStore(r7, r8, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.owfree);
     // restore to use VA
     ConstructSystemCsr(r5, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrs);
+
+    // r8位当前mbuf handle value寄存器，结合上下文mbuf_handle_reg可复用
+    MbufTraceRegParam owFreeRegInfo = {
+        .loop_index_reg = r10, .mbuf_handle_reg = r8, .avail_reg0 = r4, .avail_reg1 = r5, .avail_reg2 = r6, .avail_reg3 = r7
+    };
+    uint32_t mbufTraceNop = (RtPtrToValue(&(fc.owFreeMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.owFreeMbufTracefc, funcCallPara.owFreeMbufTracePara, owFreeRegInfo, mbufTraceNop);
 
     // load mbufHandle into R6
     ConstructLoad(r2, 0U, r6, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldr4);
@@ -330,6 +442,13 @@ void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &func
 
     // Qmanager enqueue
     ConstructStore(r7, r5, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.enquei);
+
+    // r5为当前操作mbuf handle value寄存器，集合上下文mbuf_handle_reg可复用
+    MbufTraceRegParam enqueRegInfo = {
+        .loop_index_reg = r10, .mbuf_handle_reg = r5, .avail_reg0 = r4, .avail_reg1 = r6, .avail_reg2 = r7, .avail_reg3 = r8
+    };
+    mbufTraceNop = (RtPtrToValue(&(fc.enqueMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.enqueMbufTracefc, funcCallPara.enqueMbufTracePara, enqueRegInfo, mbufTraceNop);
 
     // increment realEnqueMbufCntAddr
     ConstructLLWI(r5, static_cast<uint64_t>(funcCallPara.realEnqueMbufCntAddr), fc.llwiCntAddr1);
@@ -352,6 +471,10 @@ void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &func
 
     // r10自增1, index ++
     ConstructOpImmAndi(r10, r10, 1, RT_STARS_COND_ISA_OP_IMM_FUNC3_ADDI, fc.addi5);
+
+    // 加载 mbufPoolIndexMax 到 r4 寄存器中
+    ConstructLLWI(r4, funcCallPara.mbufPoolIndexMax, fc.llwi4);
+    ConstructLHWI(r4, funcCallPara.mbufPoolIndexMax, fc.lhwi4);
 
     // Jump pc 在 Func call 中，跳转指令大于15时，需要借助 CSR寄存器(JUMP_PC)完成跳转
     offset = offsetof(RtStarsDqsEnqueueFc, ldr1);
@@ -391,16 +514,6 @@ void ConstructDqsEnqueueFc(RtStarsDqsEnqueueFc &fc, const RtStarsDqsFcPara &func
 
 void ConstructDqsDequeueFc(RtStarsDqsDequeueFc &fc, const RtStarsDqsFcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
     RtStarsCondGqmOpFc gqmPopi;
  
     // realInputMbufCntAddr = 0
@@ -443,6 +556,13 @@ void ConstructDqsDequeueFc(RtStarsDqsDequeueFc &fc, const RtStarsDqsFcPara &func
     ConstructOpImmSlli(r7, r9, 17U, RT_STARS_COND_ISA_OP_IMM_FUNC3_SRLI, RT_STARS_COND_ISA_OP_IMM_FUNC7_SRLI, fc.srli1);
     ConstructBranch(r0, r9, RT_STARS_COND_ISA_BRANCH_FUNC3_BNE, static_cast<uint8_t>(offset), fc.bne2);
 
+    // r7位当前操作mbuf handle value寄存器，结合上下文mbuf_handle_reg不可复用
+    MbufTraceRegParam param = {
+        .loop_index_reg = r0, .mbuf_handle_reg = r7, .avail_reg0 = r3, .avail_reg1 = r5, .avail_reg2 = r9, .avail_reg3 = r10
+    };
+    const uint32_t mbufTraceNop = (RtPtrToValue(&(fc.dequeMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.dequeMbufTracefc, funcCallPara.dequeMbufTracePara, param, mbufTraceNop);
+
     // write mbuffer into mbuf handle addr
     ConstructStore(r8, r7, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.store);
 
@@ -479,18 +599,6 @@ void ConstructDqsDequeueFc(RtStarsDqsDequeueFc &fc, const RtStarsDqsFcPara &func
 
 void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBatchDeqFcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
-    constexpr rtStarsCondIsaRegister_t r10 = RT_STARS_COND_ISA_REGISTER_R10;
-
     // 加载 gqmAddr 到 r2 寄存器中
     ConstructLLWI(r2, funcCallPara.gqmAddr, fc.llwiGqmAddr);
     ConstructLHWI(r2, funcCallPara.gqmAddr, fc.lhwiGqmAddr);
@@ -508,9 +616,8 @@ void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBa
     // 循环开始，后续流程R2\3\4\7寄存器都不可写，因为存储了临时变量作为索引
 
     /* pa和va的相关配置 */
-    constexpr uint64_t axiUserVaCfgMask = 0x900000009ULL;
-    ConstructLLWI(r1, axiUserVaCfgMask, fc.llwiAddrMask);
-    ConstructLHWI(r1, axiUserVaCfgMask, fc.lhwiAddrMask);
+    ConstructLLWI(r1, AXI_USER_VA_CFG_MASK, fc.llwiAddrMask);
+    ConstructLHWI(r1, AXI_USER_VA_CFG_MASK, fc.lhwiAddrMask);
 
     /* GQM相关配置 */
     RtStarsCondGqmOpFc gqmPopi;
@@ -585,6 +692,14 @@ void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBa
     ConstructBranch(r0, r9, RT_STARS_COND_ISA_BRANCH_FUNC3_BNE, static_cast<uint8_t>(offset), fc.bneErrHandle);
 
 	/* 此时r6存储的是合法的handle。可用寄存器：R1\5\8\9\10 */
+    // r5为blk id, TODO: 此处需要修改，另存一个可用寄存器
+    // r6为mbuf handle value寄存器，结合上下文，mbuf_handle_reg不可复用
+    MbufTraceRegParam mbufTraceRegInfo = {
+        .loop_index_reg = r7, .mbuf_handle_reg = r6, .avail_reg0 = r1, .avail_reg1 = r5, .avail_reg2 = r8, .avail_reg3 = r9
+    };
+    const uint32_t mbufTraceNop = (RtPtrToValue(&(fc.dequeMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.dequeMbufTracefc, funcCallPara.dequeMbufTracePara, mbufTraceRegInfo, mbufTraceNop);
+
     /* If the value of MAX_CACHE_SIZE is changed, the corresponding algorithm also needs to be changed. */
 	ConstructOpImmAndi(r3, r10, 0U, RT_STARS_COND_ISA_OP_IMM_FUNC3_ADDI, fc.ldrHandleCacheAddr);
 	ConstructLLWI(r5, static_cast<uint64_t>(funcCallPara.cntOffset), fc.llwiHandleCnt); // r5 = offsetOfCnt;
@@ -638,8 +753,8 @@ void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBa
 
     // free_handle:
     ConstructLoad(r4, 0U, r5, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrMbuffMangAddr);
-	ConstructLLWI(r1, axiUserVaCfgMask, fc.llwiAddrMask1);
-	ConstructLHWI(r1, axiUserVaCfgMask, fc.lhwiAddrMask1);
+	ConstructLLWI(r1, AXI_USER_VA_CFG_MASK, fc.llwiAddrMask1);
+	ConstructLHWI(r1, AXI_USER_VA_CFG_MASK, fc.lhwiAddrMask1);
 	ConstructSystemCsr(r1, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrcMbufManag);
 	ConstructStore(r5, r8, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.swHanleForFree);
 	ConstructSystemCsr(r1, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrsMbufManag);
@@ -678,8 +793,8 @@ void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBa
     ConstructSystemCsr(r9, r0, RT_STARS_COND_CSR_CSQ_STATUS_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRW,
                       fc.wHandleErr);
     ConstructLoad(r4, 0U, r5, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldrMbuffMangAddr1);
-	ConstructLLWI(r1, axiUserVaCfgMask, fc.llwiAddrMask2);
-	ConstructLHWI(r1, axiUserVaCfgMask, fc.lhwiAddrMask2);
+	ConstructLLWI(r1, AXI_USER_VA_CFG_MASK, fc.llwiAddrMask2);
+	ConstructLHWI(r1, AXI_USER_VA_CFG_MASK, fc.lhwiAddrMask2);
 	ConstructSystemCsr(r1, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrcMbufManag1);
 	ConstructStore(r4, r8, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.swHanleForFree1);
 	ConstructSystemCsr(r1, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrsMbufManag1);
@@ -696,10 +811,6 @@ void ConstructDqsBatchDequeueFc(RtStarsDqsBatchDequeueFc &fc, const RtStarsDqsBa
 
 void ConstructDqsFrameAlignFc(RtStarsDqsFrameAlignFc &fc, const RtStarsDqsFrameAlignFcPara &fcPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-
     ConstructLLWI(r1, fcPara.frameAlignResAddr, fc.llwi1);
     ConstructLHWI(r1, fcPara.frameAlignResAddr, fc.lhwi1);
     ConstructLoad(r1, 0U, r1, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.load1);
@@ -724,17 +835,6 @@ void ConstructDqsFrameAlignFc(RtStarsDqsFrameAlignFc &fc, const RtStarsDqsFrameA
 
 void ConstructDqsPrepareFc(RtStarsDqsPrepareOutFc &fc, const RtStarsDqsPrepareFcPara &fcPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-    constexpr rtStarsCondIsaRegister_t r9 = RT_STARS_COND_ISA_REGISTER_R9;
-
     // realOutputAllocMbufCnt = 0
     InitMbufOpCnt(r9, fcPara.realOutputAllocMbufCntAddr, fc.llwiCntAddr1, fc.lhwiCntAddr1, fc.initCnt1); 
 
@@ -796,6 +896,13 @@ void ConstructDqsPrepareFc(RtStarsDqsPrepareOutFc &fc, const RtStarsDqsPrepareFc
     offset = offset / sizeof(uint32_t);
     ConstructSetJumpPcFc(r6, offset, fc.jumpPc1);
     ConstructBranch(r5, r0, RT_STARS_COND_ISA_BRANCH_FUNC3_BNE, offset, fc.bne);
+
+    // r4 当前操作mbuf handle value寄存器, mbuf_handle_reg不可复用
+    MbufTraceRegParam param = {
+        .loop_index_reg = r2, .mbuf_handle_reg = r4, .avail_reg0 = r5, .avail_reg1 = r6, .avail_reg2 = r7, .avail_reg3 = r8
+    };
+    const uint32_t mbufTraceNop = (RtPtrToValue(&(fc.allocMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.allocMbufTracefc, fcPara.allocMbufTracePara, param, mbufTraceNop);
 
     /* 将output mbuf 存入ctrlSpace output_mbuf_list */
     ConstructLLWI(r5, dqsPoolIdBlkIdMask, fc.llwi13);
@@ -892,16 +999,6 @@ void ConstructDqsPrepareFc(RtStarsDqsPrepareOutFc &fc, const RtStarsDqsPrepareFc
 
 void ConstructDqsZeroCopyFc(RtStarsDqsZeroCopyFc &fc, const RtStarsDqsZeroCopyPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-
     // r1: dataPoolBlkSize
     ConstructLLWI(r1, funcCallPara.blockSizeAddr, fc.llwi1);
     ConstructLHWI(r1, funcCallPara.blockSizeAddr, fc.lhwi1);
@@ -997,14 +1094,6 @@ void ConstructDqsZeroCopyFc(RtStarsDqsZeroCopyFc &fc, const RtStarsDqsZeroCopyPa
 
 void ConstructConditionCopyFc(RtStarsDqsConditionCopyFc &fc, const RtStarsDqsConditionCopyPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
     constexpr uint64_t dqsConditionValue = 1ULL;
 
     // r1: conditionAddr
@@ -1088,24 +1177,16 @@ void ConstructConditionCopyFc(RtStarsDqsConditionCopyFc &fc, const RtStarsDqsCon
 
 void ConstructDqsInterChipPreProcFc(RtStarsDqsInterChipPreProcFc &fc, const RtStarsDqsInterChipPreProcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-
-    constexpr uint64_t axiUserVaCfgMask = 0x900000009ULL; // [0]VA, [3]Read-Allocate
     // read immd reg va cfg mask
-    ConstructLLWI(r6, axiUserVaCfgMask, fc.llwi);
+    ConstructLLWI(r6, AXI_USER_VA_CFG_MASK, fc.llwi);
 
     // r1: dstMbufAllocAddr
     ConstructLLWI(r1, funcCallPara.dstMbuffAllocAddr, fc.llwi1);
     ConstructLHWI(r1, funcCallPara.dstMbuffAllocAddr, fc.lhwi1);
+
     // r1: dstMbufHandle
     ConstructLoad(r1, 0U, r1, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldr1);
+
     // cfg use PA
     ConstructSystemCsr(r6, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrc);
     ConstructLoad(r1, 0U, r1, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldr2);
@@ -1120,6 +1201,14 @@ void ConstructDqsInterChipPreProcFc(RtStarsDqsInterChipPreProcFc &fc, const RtSt
     offset = offset / sizeof(uint32_t);
     ConstructSetJumpPcFc(r7, offset, fc.jumpPc1);
     ConstructBranch(r2, r0, RT_STARS_COND_ISA_BRANCH_FUNC3_BNE, offset, fc.bne1);
+
+    // r1为mbuf handle value寄存器， 如果结合上下文，当前mbuf_handle_reg不可复用
+    MbufTraceRegParam dstProdAllocRegInfo = {
+        .loop_index_reg = r0, .mbuf_handle_reg = r1, .avail_reg0 = r2, .avail_reg1 = r8, .avail_reg2 = r9, .avail_reg3 = r10
+    };
+    const uint32_t mbufTraceNop = (RtPtrToValue(&(fc.allocMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.allocMbufTracefc, funcCallPara.allocMbufTracePara, dstProdAllocRegInfo, mbufTraceNop);
+
     // r1：mbuf_handle=[block_id:pool_id], bits[16:0]
     ConstructOpImmSlli(r1, r1, 47U, RT_STARS_COND_ISA_OP_IMM_FUNC3_SLLI, RT_STARS_COND_ISA_OP_IMM_FUNC7_SLLI, fc.slli2);
     ConstructOpImmSlli(r1, r1, 47U, RT_STARS_COND_ISA_OP_IMM_FUNC3_SRLI, RT_STARS_COND_ISA_OP_IMM_FUNC7_SRLI, fc.srli2);
@@ -1205,17 +1294,9 @@ void ConstructDqsInterChipPreProcFc(RtStarsDqsInterChipPreProcFc &fc, const RtSt
 
 void ConstructDqsInterChipPostProcFc(RtStarsDqsInterChipPostProcFc &fc, const RtStarsDqsInterChipPostProcPara &funcCallPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr uint64_t axiUserVaCfgMask = 0x900000009ULL;
     // r4: read immd reg va cfg mask
-    ConstructLLWI(r4, axiUserVaCfgMask, fc.llwi1);
-    ConstructLHWI(r4, axiUserVaCfgMask, fc.lhwi1);
+    ConstructLLWI(r4, AXI_USER_VA_CFG_MASK, fc.llwi1);
+    ConstructLHWI(r4, AXI_USER_VA_CFG_MASK, fc.lhwi1);
 
     // r5: dstQmngrOwAddr
     ConstructLHWI(r5, funcCallPara.dstQmngrOwAddr, fc.lhwi2);
@@ -1272,6 +1353,13 @@ void ConstructDqsInterChipPostProcFc(RtStarsDqsInterChipPostProcFc &fc, const Rt
     // restore to use VA
     ConstructSystemCsr(r4, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrs1);
 
+    // r3为mbuf handle value寄存器， 结合上下文，mbuf_handle_reg可以复用
+    MbufTraceRegParam dstProdFreePara = {
+        .loop_index_reg = r0, .mbuf_handle_reg = r3, .avail_reg0 = r1, .avail_reg1 = r2, .avail_reg2 = r7, .avail_reg3 = r9
+    };
+    uint32_t mbufTraceNop = (RtPtrToValue(&(fc.dstProdFreeMbufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.dstProdFreeMbufTracefc, funcCallPara.dstProdFreeMbufTracePara, dstProdFreePara, mbufTraceNop);
+
     // r1: dstMbufHandleAddr
     ConstructLLWI(r1, funcCallPara.dstMbufHandleAddr, fc.llwi7);
     ConstructLHWI(r1, funcCallPara.dstMbufHandleAddr, fc.lhwi7);
@@ -1283,6 +1371,13 @@ void ConstructDqsInterChipPostProcFc(RtStarsDqsInterChipPostProcFc &fc, const Rt
     ConstructLLWI(r2, funcCallPara.dstQueueAddr, fc.llwi8);
     ConstructLHWI(r2, funcCallPara.dstQueueAddr, fc.lhwi8);
     ConstructLoad(r2, 0U, r2, RT_STARS_COND_ISA_LOAD_FUNC3_LDR, fc.ldr5);
+
+    // r1为mbuf handle value寄存器， 结合上下文mbuf_handle_reg可以复用
+    MbufTraceRegParam dstProdEnqueRegInfo = {
+        .loop_index_reg = r0, .mbuf_handle_reg = r1, .avail_reg0 = r3, .avail_reg1 = r8, .avail_reg2 = r9, .avail_reg3 = r10
+    };
+    mbufTraceNop = (RtPtrToValue(&(fc.dstProdEnquembufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.dstProdEnquembufTracefc, funcCallPara.dstProdEnqueMbufTracePara, dstProdEnqueRegInfo, mbufTraceNop);
 
     // cfg use PA
     ConstructSystemCsr(r4, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRC, fc.csrrc2);
@@ -1309,6 +1404,13 @@ void ConstructDqsInterChipPostProcFc(RtStarsDqsInterChipPostProcFc &fc, const Rt
     ConstructStore(r1, r3, 0U, RT_STARS_COND_ISA_STORE_FUNC3_SW, fc.sw3);
     // restore to use VA
     ConstructSystemCsr(r4, r0, RT_STARS_COND_CSR_AXI_USER_REG, RT_STARS_COND_ISA_SYSTEM_FUNC3_CSRRS, fc.csrrs3);
+
+    // r3为mbuf handle value寄存器，结合上下文mbuf_handle_reg可以复用
+    MbufTraceRegParam srcConsFreePara = {
+        .loop_index_reg = r0, .mbuf_handle_reg = r3, .avail_reg0 = r1, .avail_reg1 = r2, .avail_reg2 = r6, .avail_reg3 = r7
+    };
+    mbufTraceNop = (RtPtrToValue(&(fc.srcConsFreembufTracefc.nop)) - RtPtrToValue(&fc)) / sizeof(uint32_t);
+    ConstructMbufTrace(fc.srcConsFreembufTracefc, funcCallPara.srcConsFreeMbufTracePara, srcConsFreePara, mbufTraceNop);
 
     // skip error
     offset = offsetof(RtStarsDqsInterChipPostProcFc, end);
@@ -1341,16 +1443,6 @@ void ConstructDqsInterChipPostProcFc(RtStarsDqsInterChipPostProcFc &fc, const Rt
 
 void ConstructDqsAdspcFc(RtStarsDqsAdspcFc &fc, const RtStarsDqsAdspcFcPara &fcPara)
 {
-    constexpr rtStarsCondIsaRegister_t r0 = RT_STARS_COND_ISA_REGISTER_R0;
-    constexpr rtStarsCondIsaRegister_t r1 = RT_STARS_COND_ISA_REGISTER_R1;
-    constexpr rtStarsCondIsaRegister_t r2 = RT_STARS_COND_ISA_REGISTER_R2;
-    constexpr rtStarsCondIsaRegister_t r3 = RT_STARS_COND_ISA_REGISTER_R3;
-    constexpr rtStarsCondIsaRegister_t r4 = RT_STARS_COND_ISA_REGISTER_R4;
-    constexpr rtStarsCondIsaRegister_t r5 = RT_STARS_COND_ISA_REGISTER_R5;
-    constexpr rtStarsCondIsaRegister_t r6 = RT_STARS_COND_ISA_REGISTER_R6;
-    constexpr rtStarsCondIsaRegister_t r7 = RT_STARS_COND_ISA_REGISTER_R7;
-    constexpr rtStarsCondIsaRegister_t r8 = RT_STARS_COND_ISA_REGISTER_R8;
-
     constexpr uint16_t dfxSqHeadOffset = 0U;
     constexpr uint16_t dfxSqTailOffset = 4U;
     constexpr uint16_t dfxQmngrOwValOffst = 8U;

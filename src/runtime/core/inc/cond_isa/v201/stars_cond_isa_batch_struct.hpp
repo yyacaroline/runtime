@@ -13,6 +13,7 @@
 
 #include "stars_cond_isa_base_struct.hpp"
 #include "stars_cond_isa_struct.hpp"
+#include "stars_cond_isa_mbuf_trace.hpp"
 
 namespace cce {
 namespace runtime {
@@ -79,6 +80,8 @@ struct RtStarsDqsBatchDequeueFc {
     RtStarsSetCsrJumpPc jumpPcHandleErr;
     RtStarsCondOpImmSLLI srliHandleValue;
     RtStarsCondOpBranch bneErrHandle;
+
+    CondMbufTraceFc     dequeMbufTracefc;
 
     RtStarsCondOpImm ldrHandleCacheAddr;
     RtStarsCondOpLLWI llwiHandleCnt;
@@ -218,6 +221,8 @@ struct RtStarsDqsMbufFreeFc {
     RtStarsCondOpSystemCsr         csrrc; // use PA
     RtStarsCondOpStore             sw3;
     RtStarsCondOpSystemCsr         csrrs; // restore to VA
+
+    CondMbufTraceFc                freeMbufTracefc;
     RtStarsCondOpImm               addi2;
     RtStarsCondOpImm               addi3;
     RtStarsCondOpImm               addi4;

@@ -34,6 +34,7 @@ typedef enum {
     STARS_IOCTL_CMD_BIND_FRAME_ALIGN_INFO = 0x107, /* bind frame algin cfg */
     STARS_IOCTL_CMD_UNBIND_FRAME_ALIGN_INFO = 0x108, /* unbind frame algin cfg */
     STARS_IOCTL_CMD_UPDATE_CS_FRAME_ALIGN_INFO = 0x109, /* update ctrl space frame align cfg */
+    STARS_IOCTL_CMD_UPDATE_CS_MBUF_TRACE_CFG = 0x10A, /* update ctrl space mbuf trace cfg */
     STARS_IOCTL_CMD_ACC_SUBSCRIBE_QUEUE = 0x200, /* dqs acc subscribe, nn/dss/vpc+q */
     STARS_IOCTL_CMD_INTERCHIP_SUBSCRIBE_QUEUE = 0x201, /* dqs inter chip subscribe */
     STARS_IOCTL_CMD_DQS_CONTROL_SPACE = 0x300, /* create or delete dqs ctrl space shm for nn/dss/vpc+q */
@@ -42,6 +43,7 @@ typedef enum {
 
 /* 单次队列绑定、解绑ioctl请求所支持的操作数量；特别的，单个源队列（生产者队列）最大支持绑定128个目的队列（消费者队列） */
 #define STARS_DQS_MAX_QUEUE_OP_NUM                  128U
+#define STARS_DQS_MAX_MBUF_POOL_OP_NUM              64U
 #define STARS_DQS_MAX_INPUT_QUEUE_NUM               10U     // 输入队列最大数量
 #define STARS_DQS_MAX_OUTPUT_QUEUE_NUM              10U     // 输出队列最大数量
 
@@ -55,6 +57,7 @@ typedef enum {
     STARS_ERROR_QUEUE_MBUF_POOL_NOT_MATCH,         // 未在controlSpace中找到需要绑定mbuf pool的队列
     STARS_ERROR_QUEUE_NOT_SUB,                     // 目的队列未订阅时无法进行转发关系绑定
     STARS_ERROR_QUEUE_FRAME_ALIGN_INFO_EXIST,      // 队列的帧对齐信息已经存在
+    STARS_ERROR_TRACE_CFG_TRACE_INFO_FAIL,         // 转发关系，pool关系，订阅关系完整的情况下，配置trace info信息失败
 } stars_queue_op_error_t;
 
 typedef struct {
@@ -115,21 +118,24 @@ typedef struct {
     uint32_t mbuf_head_pool_blk_size;
     uint32_t mbuf_data_pool_offset;
     uint32_t mbuf_head_pool_offset;
+    uint32_t mbuf_trace_blk_offset;
+    uint32_t mbuf_trace_blk_size;
     uint64_t mbuf_head_pool_base_addr;
     uint64_t mbuf_data_pool_base_addr;
     uint64_t mbuf_free_op_addr;
     uint64_t mbuf_alloc_op_addr;
+    uint64_t mbuf_trace_base_addr;
 } stars_queue_bind_mbuf_pool_item_t;
 
 typedef struct {
     uint8_t count;  // 生产者队列（源队列）mbuf pool信息绑定请求数量
-    stars_queue_bind_mbuf_pool_item_t queue_mbuf_pool_list[STARS_DQS_MAX_QUEUE_OP_NUM];
+    stars_queue_bind_mbuf_pool_item_t queue_mbuf_pool_list[STARS_DQS_MAX_MBUF_POOL_OP_NUM];
 } stars_queue_bind_mbuf_pool_param_t;
 
 typedef struct {
     uint8_t count;  // mbuf pool解绑请求数量
     uint8_t reserve;
-    uint16_t queue_list[STARS_DQS_MAX_QUEUE_OP_NUM]; // 要解绑的生产者队列id
+    uint16_t queue_list[STARS_DQS_MAX_MBUF_POOL_OP_NUM]; // 要解绑的生产者队列id
 } stars_unbind_queue_mbuf_pool_param_t;
 
 typedef enum {
@@ -150,6 +156,7 @@ typedef struct {
     uint32_t src_mbuf_head_pool_offset;         // mbuf的head block的偏移
     uint64_t src_mbuf_data_pool_base_addr;      // data pool池的基地址
     uint64_t src_mbuf_head_pool_base_addr;      // head pool池的基地址
+
     /* 对片 */
     uint8_t  dst_chip_id;                       // 对片chip id
     uint16_t dst_chip_qid;                      // 对片生产者qid，本片跨片队列时会将对片mbuf入队到此队列，触发对端的调度
@@ -158,10 +165,21 @@ typedef struct {
     uint32_t dst_mbuf_data_pool_blk_real_size;  // 原始的blksize
     uint32_t dst_mbuf_head_pool_blk_size;       // 实际分配对齐后的blksize，非原始的blksize
     uint32_t dst_mbuf_head_pool_blk_real_size;  // 原始的head池blksize
+
+    // 对片trace相关 blk size
+    uint32_t dst_prod_trace_blk_size;
+
     uint32_t dst_mbuf_data_pool_offset;         // mbuf的data block的偏移
     uint32_t dst_mbuf_head_pool_offset;         // mbuf的head block的偏移
+
+    // 对片trace相关blk offset
+    uint32_t dst_prod_trace_blk_offset;
+
     uint64_t dst_mbuf_data_pool_base_addr;      // data pool池的基地址
     uint64_t dst_mbuf_head_pool_base_addr;      // head pool池的基地址
+
+    // 对片trace先关基地址
+    uint64_t dst_prod_trace_base_addr;          // 对片生产者队列trace的基地址
 } stars_queue_bind_inter_chip_info_item_t;
 
 typedef struct {
@@ -242,6 +260,12 @@ typedef struct {
     uint16_t rsv;
 } stars_dqs_update_cs_frame_align_info_t;
 
+typedef struct {
+    uint8_t ts_id;
+    uint8_t stream_id;
+    uint16_t rsv;
+} stars_dqs_update_cs_mbuf_trace_cfg_t;
+
 #define MAX_CACHE_SIZE 2
 
 typedef struct {
@@ -256,7 +280,7 @@ typedef struct {
 typedef struct {
     uint8_t real_input_mbuf_cnt;
     uint8_t real_output_alloc_mbuf_cnt;
-    uint8_t real_enqueque_output_mbuf_cnt;
+    uint8_t real_enqueue_output_mbuf_cnt;
     uint8_t real_free_input_mbuf_cnt;
 } mbuf_list_op_snapshot_info;
 
@@ -277,15 +301,18 @@ typedef struct {
 
     uint32_t input_data_pool_block_size_list[STARS_DQS_MAX_INPUT_QUEUE_NUM];    // 输入mbuf data pool block大小
     uint32_t input_head_pool_block_size_list[STARS_DQS_MAX_INPUT_QUEUE_NUM];    // 输入mbuf head pool block大小
+    uint32_t input_mbuf_trace_block_size_list[STARS_DQS_MAX_INPUT_QUEUE_NUM];   // 输入mbuf trace block大小
 
     uint32_t output_data_pool_block_size_list[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];  // 输出mbuf data pool block大小
     uint32_t output_head_pool_block_size_list[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];  // 输出mbuf head pool block大小
+    uint32_t output_mbuf_trace_block_size_list[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];  // 输出mbuf trace block大小
 
     uint64_t input_addr_list[STARS_DQS_MAX_INPUT_QUEUE_NUM];                    // 模型、VPC或DSS输入数据地址列表
     uint64_t input_data_pool_base_addrs[STARS_DQS_MAX_INPUT_QUEUE_NUM];         // 输入mbuf data地址，注意，这里已经加了偏移 dataPoolOffset
     uint64_t input_head_pool_base_addrs[STARS_DQS_MAX_INPUT_QUEUE_NUM];         // 输入mbuf head地址，注意，这里已经加了偏移 headPoolOffset
     uint64_t input_queue_gqm_base_addrs[STARS_DQS_MAX_INPUT_QUEUE_NUM];         // 输入队列gqm基地址
     uint64_t input_mbuf_free_addrs[STARS_DQS_MAX_INPUT_QUEUE_NUM];              // 输入队列mbuf释放操作寄存器地址
+    uint64_t input_trace_base_addrs[STARS_DQS_MAX_INPUT_QUEUE_NUM];             // 输入队列trace操作的基地址 uva
 
     uint64_t output_addr_list[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];                  // 模型、VPC输出数据地址列表
     uint64_t output_data_pool_base_addrs[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];       // 输出mbuf data地址，注意，这里已经加了偏移 dataPoolOffset
@@ -294,6 +321,8 @@ typedef struct {
     uint64_t output_qmngr_ow_addrs[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];             // 输出队列qmngr overwrite操作寄存器地址
     uint64_t output_mbuf_alloc_addrs[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];           // 输出队列mbuf申请操作寄存器地址
     uint64_t output_mbuf_free_addrs[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];            // 输出队列mbuf释放操作寄存器地址
+    uint64_t output_trace_base_addrs[STARS_DQS_MAX_OUTPUT_QUEUE_NUM];           // 输出队列trace操作的基地址 uva
+    uint64_t lp_sys_cnt_addr;                                                   // LP sys cnt基地址
 
     stars_dqs_frame_align_mode_t frame_align_mode;
     stars_dqs_frame_align_timeout_mode_t frame_align_timeout_mode;
@@ -362,6 +391,11 @@ typedef struct {
 } stars_memcpy_ptr_sdma_sqe_t;
 
 typedef struct {
+    uint16_t src_prod_qid;
+    uint16_t src_cons_qid;
+    uint16_t dst_prod_qid;
+    uint16_t stream_id;
+
     uint32_t src_mbuf_handle;                               // 本片出队的mbuf handle
     uint32_t dst_mbuf_handle;                               // 对片申请的mbuf handle
     uint64_t src_mbuf_free_addr;                            // 本片mbuf释放操作寄存器
@@ -372,6 +406,9 @@ typedef struct {
 
     uint32_t src_mbuf_head_pool_block_size;                 // 本片mbuf pool head block大小
     uint32_t src_mbuf_data_pool_block_size;                 // 本片mbuf pool data block大小
+    uint32_t src_cons_trace_blk_size;
+    uint32_t dst_prod_trace_blk_size;
+
     uint64_t src_mbuf_head_pool_base_addr;                  // 本片mbuf pool head基地址
     uint64_t src_mbuf_data_pool_base_addr;                  // 本片mbuf pool data基地址
 
@@ -380,6 +417,11 @@ typedef struct {
     uint64_t dst_mbuf_head_pool_base_addr;                  // 对片mbuf pool head基地址
     uint64_t dst_mbuf_data_pool_base_addr;                  // 对片mbuf pool data基地址
 
+    uint64_t src_cons_trace_base_addr;                     // 本片消费者队列trace基地址 user va
+    uint64_t dst_prod_trace_base_addr;                     // 对片生产者队列trace基地址 user va
+    uint64_t src_lp_sys_cnt_addr;                           // 本片LP sys cnt基地址
+    uint64_t dst_lp_sys_cnt_addr;                           // 对片LP sys cnt基地址
+    
     /* SDMA拷贝SQE：用于拷贝mbuf private info数据, 必须64B对齐 */
     __attribute__((aligned(64))) stars_memcpy_ptr_sdma_sqe_t mbuf_head_memcpy_sqe;
     /* SDMA拷贝SQE: 用于拷贝mbuf data数据, 必须64B对齐 */
