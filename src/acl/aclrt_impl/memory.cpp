@@ -1819,7 +1819,11 @@ static aclError MemcpyBatchImpl(void **dsts, size_t *destMaxs, void **srcs, size
         const auto rtErr = rtsMemcpyBatchAsync(dsts, destMaxs, srcs, sizes, numBatches, reinterpret_cast<rtMemcpyBatchAttr*>(attrs),
             attrsIndexes, numAttrs, failIndex, stream);
         if (rtErr != RT_ERROR_NONE) {
-            ACL_LOG_CALL_ERROR("call rtsMemcpyBatchAsync failed, runtime result = %d.", static_cast<int32_t>(rtErr));
+            if (rtErr == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
+                ACL_LOG_WARN("rtsMemcpyBatchAsync unsupport, runtime result = %d.", static_cast<int32_t>(rtErr));
+            } else {
+                ACL_LOG_CALL_ERROR("call rtsMemcpyBatchAsync failed, runtime result = %d.", static_cast<int32_t>(rtErr));
+            }   
             return ACL_GET_ERRCODE_RTS(rtErr);
         }
         ACL_LOG_INFO("successfully execute %s", apiName);
@@ -1827,7 +1831,11 @@ static aclError MemcpyBatchImpl(void **dsts, size_t *destMaxs, void **srcs, size
         const auto rtErr = rtsMemcpyBatch(dsts, srcs, sizes, numBatches, reinterpret_cast<rtMemcpyBatchAttr*>(attrs),
             attrsIndexes, numAttrs, failIndex);
         if (rtErr != RT_ERROR_NONE) {
-            ACL_LOG_CALL_ERROR("call rtsMemcpyBatch failed, runtime result = %d.", static_cast<int32_t>(rtErr));
+            if (rtErr == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
+                ACL_LOG_WARN("rtsMemcpyBatch unsupport, runtime result = %d.", static_cast<int32_t>(rtErr));
+            } else {
+                ACL_LOG_CALL_ERROR("call rtsMemcpyBatch failed, runtime result = %d.", static_cast<int32_t>(rtErr));
+            }   
             return ACL_GET_ERRCODE_RTS(rtErr);
         }
         ACL_LOG_INFO("successfully execute %s", apiName);

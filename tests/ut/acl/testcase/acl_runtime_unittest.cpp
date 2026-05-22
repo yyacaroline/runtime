@@ -6332,6 +6332,30 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_success)
     EXPECT_EQ(ret, ACL_SUCCESS);
 }
 
+TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_feature_not_support)
+{
+    constexpr size_t numBatches = 1UL;
+    void **dsts = reinterpret_cast<void **>(0x04);
+    size_t destMax[numBatches] = {1};
+    void **srcs = reinterpret_cast<void **>(0x04);
+    size_t sizes[numBatches] = {1};
+    aclrtMemcpyBatchAttr attrs = {};
+    size_t attrsIndexes = 0;
+    constexpr size_t numAttrs = 1UL;
+    size_t failIndex = 0;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatch(_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_ERROR_RT_FEATURE_NOT_SUPPORT));
+    auto ret = aclrtMemcpyBatch(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs, &failIndex);
+    EXPECT_EQ(ret, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatchAsync(_,_,_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_ERROR_RT_FEATURE_NOT_SUPPORT));
+    ret = aclrtMemcpyBatchAsync(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs, &failIndex,
+        nullptr);
+    EXPECT_EQ(ret, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+}
+
 TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatchAsync_failed_with_invalid_args)
 {
     constexpr size_t numBatches = 5UL;
