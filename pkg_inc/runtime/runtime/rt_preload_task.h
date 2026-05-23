@@ -170,16 +170,6 @@ RTS_API rtError_t rtUnRegKernelLaunchFillFunc(const char* symbol);
 */
 RTS_API rtError_t rtGetL2CacheOffset(uint32_t deviceId, uint64_t *offset);
 
-/**
- * @ingroup rt_preload_task
- * @brief not use now, return RT_ERROR_NONE
- * @param [in] isHuge
- * @param [out] bufferLen
- * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtGetStreamBufferLen(const bool isHuge, uint32_t * const bufferLen);
-
 #if defined(__cplusplus)
 }
 #endif

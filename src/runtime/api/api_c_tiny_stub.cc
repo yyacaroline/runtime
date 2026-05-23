@@ -930,14 +930,6 @@ RTS_API rtError_t rtSnapShotCallbackUnregister(rtSnapShotStage stage, rtSnapShot
 }
 
 VISIBILITY_DEFAULT
-rtError_t rtGetStreamBufferLen(const bool isHuge, uint32_t * const bufferLen)
-{
-    (void)isHuge;
-    (void)bufferLen;
-    return ACL_ERROR_RT_FEATURE_NOT_SUPPORT;
-}
-
-VISIBILITY_DEFAULT
 rtError_t rtCacheLastTaskOpInfo(const void * const infoPtr, const size_t infoSize)
 {
     (void)infoPtr;

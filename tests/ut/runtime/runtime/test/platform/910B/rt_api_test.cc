@@ -544,14 +544,6 @@ TEST_F(CloudV2ApiAbnormalTest, taskbuffer_abnormal)
     EXPECT_NE(ret, RT_ERROR_NONE);
 }
 
-TEST_F(CloudV2ApiAbnormalTest, rtGetStreamBufferLen_abnormal)
-{ 
-    const bool isHuge = true;
-    uint32_t * const bufferLen = nullptr;
-    rtError_t ret = rtGetStreamBufferLen(isHuge, bufferLen);
-    EXPECT_NE(ret, RT_ERROR_NONE);
-}
-
 TEST_F(CloudV2ApiAbnormalTest, rtIpcDestroyMemoryName_abnormal)
 { 
     rtError_t ret = RT_ERROR_NONE;

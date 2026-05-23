@@ -115,21 +115,6 @@ rtError_t rtFreeKernelBin(char_t * const buffer)
     return ACL_RT_SUCCESS;
 }
  
-VISIBILITY_DEFAULT
-rtError_t rtGetStreamBufferLen(const bool isHuge, uint32_t * const bufferLen)
-{
-    UNUSED(isHuge);
-    UNUSED(bufferLen);
-    Runtime *rtInstance = Runtime::Instance();
-    NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
-    if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_TASK_PRE_BUILD_SQE)) {
-        RT_LOG(RT_LOG_WARNING, "Chip type(%d) does not support.", static_cast<int32_t>(rtInstance->GetChipType()));
-        return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
-    }
- 
-    return ACL_RT_SUCCESS;
-}
- 
 #ifdef __cplusplus
 }
 #endif

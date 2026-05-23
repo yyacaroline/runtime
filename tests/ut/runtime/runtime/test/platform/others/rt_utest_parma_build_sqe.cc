@@ -68,24 +68,6 @@ protected:
     }
 };
 
-TEST_F(ApiParmaSqeTest, GetStreamBufferLen)
-{
-    rtError_t error;
-    Runtime *rtInstance = (Runtime *)Runtime::Instance();
-    rtChipType_t chipType = rtInstance->GetChipType();
-    uint32_t bufferLen = 0;
-    error = rtGetStreamBufferLen(true, &bufferLen);
-    EXPECT_EQ(error, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
-    rtInstance->SetChipType(CHIP_NANO);
-    GlobalContainer::SetRtChipType(CHIP_NANO);
-
-    error = rtGetStreamBufferLen(true, &bufferLen);
-    EXPECT_EQ(error, RT_ERROR_NONE);
-    rtInstance->SetChipType(chipType);
-    GlobalContainer::SetRtChipType(chipType);
-}
-
-
 TEST_F(ApiParmaSqeTest, GetTaskBufferLen)
 {
     rtError_t error;

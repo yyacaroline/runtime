@@ -684,14 +684,6 @@ TEST_F(TinyStubTest, npu_snapshot_stub)
     EXPECT_EQ(ret, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
 }
 
-TEST_F(TinyStubTest, rtGetStreamBufferLen_stub)
-{
-    const bool isHuge = true;
-    uint32_t * const bufferLen = nullptr;
-    auto ret = rtGetStreamBufferLen(isHuge, bufferLen);
-    EXPECT_EQ(ret, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
-}
-
 TEST_F(TinyStubTest, printf_stub)
 {
     rtError_t ret = RT_ERROR_NONE;
