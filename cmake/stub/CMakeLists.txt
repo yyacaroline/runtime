@@ -10,6 +10,7 @@
 
 add_library(ascend_hal_headers INTERFACE)
 target_include_directories(ascend_hal_headers INTERFACE
+    $<BUILD_INTERFACE:${RUNTIME_DIR}/include>
     $<BUILD_INTERFACE:${RUNTIME_DIR}/include/driver>
     $<INSTALL_INTERFACE:include>
     $<INSTALL_INTERFACE:include/ascend_hal>
@@ -56,6 +57,10 @@ set_target_properties(ascend_hal_stub
     PROPERTIES
     OUTPUT_NAME ascend_hal
 )
+
+if(ENABLE_OPEN_SRC)
+    add_library(ascend_hal ALIAS ascend_hal_stub)
+endif()
 
 if(PRODUCT_SIDE STREQUAL "host" OR NOT ENABLE_OPEN_SRC)
     set(PKG_NAME ascend_hal)

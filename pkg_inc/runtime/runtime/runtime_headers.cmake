@@ -29,6 +29,8 @@ if(ENABLE_OPEN_SRC)
         $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc>
         $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/profiling>
         $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/runtime>
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/runtime/runtime>
+        $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/aicpu_sched>
         $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/aicpu_sched/common>
     )
 endif()

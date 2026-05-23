@@ -50,15 +50,7 @@ target_include_directories(awatchdog_headers INTERFACE
     $<INSTALL_INTERFACE:include/awatchdog>
 )
 
-############################## [atrace_headers] ####################################
-add_library(atrace_headers INTERFACE)
-target_include_directories(atrace_headers INTERFACE
-    $<BUILD_INTERFACE:${ATRACE_DIR}/../../../pkg_inc/trace>
-    $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/trace>
-    $<INSTALL_INTERFACE:include>
-    $<INSTALL_INTERFACE:include/atrace>
-    $<INSTALL_INTERFACE:include/atrace/utrace>
-)
+include(atrace_headers.cmake)
 
 add_subdirectory(common)
 add_subdirectory(atrace)

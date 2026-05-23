@@ -38,7 +38,11 @@ add_cann_subdirectories_relative(${RUNTIME_DIR}
     ${RUNTIME_DIR}/cmake/stub
 )
 
+include(${RUNTIME_DIR}/pkg_inc/runtime/runtime/runtime_headers.cmake)
 include(${RUNTIME_DIR}/src/dfx/error_manager/error_manager_headers.cmake)
+include(${RUNTIME_DIR}/src/acl/aclrt/acl_rt_headers.cmake)
+include(${RUNTIME_DIR}/src/dfx/trace/atrace_headers.cmake)
+include(${RUNTIME_DIR}/src/dfx/msprof/msprof_headers.cmake)
 
 add_dependencies(mmpa c_sec)
 add_dependencies(static_mmpa c_sec)

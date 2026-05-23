@@ -8,13 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-############ acl_rt_headers ############
-add_library(acl_rt_headers INTERFACE)
-
-target_include_directories(acl_rt_headers INTERFACE
-    $<BUILD_INTERFACE:${RUNTIME_DIR}/include/external>
-    $<BUILD_INTERFACE:${RUNTIME_DIR}/include/external/acl>
-)
+include(acl_rt_headers.cmake)
 
 ############ libacl_rt.so ############
 add_library(acl_rt SHARED

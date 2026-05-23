@@ -7,28 +7,13 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.14)
 
-include(CMakePackageConfigHelpers)
-
-set(MSPROF_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(INSTALL_LIBRARY_DIR lib)
-set(INSTALL_CONFIG_DIR  ${CMAKE_CURRENT_BINARY_DIR}/lib/cmake)
-
-include(msprof_headers.cmake)
-
-add_subdirectory(collector)
-
-add_custom_target(profiling
-    ${CMAKE_COMMAND} -E echo "begin to build profiling"
-    && ${CMAKE_COMMAND} -E make_directory ${INSTALL_CONFIG_DIR}/profiling
-    COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/* ${INSTALL_CONFIG_DIR}/profiling/
-    && ${CMAKE_COMMAND} -E chdir ${INSTALL_CONFIG_DIR}/profiling/build/build_hiprof ./build_for_hiprof.sh "debug"
-)
-
-install(DIRECTORY
-    ${INSTALL_CONFIG_DIR}/profiling # install_config_dir is a relative path, must Splicing it while install
-    DESTINATION
-    ${INSTALL_LIBRARY_DIR}
-    OPTIONAL
+############################## [atrace_headers] ####################################
+add_library(atrace_headers INTERFACE)
+target_include_directories(atrace_headers INTERFACE
+    $<BUILD_INTERFACE:${ATRACE_DIR}/../../../pkg_inc/trace>
+    $<BUILD_INTERFACE:${RUNTIME_DIR}/pkg_inc/trace>
+    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:include/atrace>
+    $<INSTALL_INTERFACE:include/atrace/utrace>
 )
