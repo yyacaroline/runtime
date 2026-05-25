@@ -84,6 +84,7 @@ rtError_t ConvertTaskType(const TaskInfo * const task, rtTaskType *type)
             break;
         case TS_TASK_TYPE_CAPTURE_WAIT:
         case TS_TASK_TYPE_STREAM_WAIT_EVENT:
+        case TS_TASK_TYPE_DAVID_EVENT_WAIT:
             taskType = RT_TASK_EVENT_WAIT;
             break;
         case TS_TASK_TYPE_MEM_WAIT_VALUE: 
@@ -91,9 +92,11 @@ rtError_t ConvertTaskType(const TaskInfo * const task, rtTaskType *type)
             break;
         case TS_TASK_TYPE_EVENT_RECORD:
         case TS_TASK_TYPE_CAPTURE_RECORD:
+        case TS_TASK_TYPE_DAVID_EVENT_RECORD:
             taskType = RT_TASK_EVENT_RECORD;
             break;
         case TS_TASK_TYPE_EVENT_RESET:
+        case TS_TASK_TYPE_DAVID_EVENT_RESET:
             taskType = RT_TASK_EVENT_RESET;
             break;
         case TS_TASK_TYPE_MEM_WRITE_VALUE:
