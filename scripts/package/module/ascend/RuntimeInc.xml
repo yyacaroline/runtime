@@ -284,6 +284,7 @@
     </file_info>
     <file_info copy_type="source" src_path="" dst_path="compat" install_path="compat" install_type="all">
         <file value="cann-tsch-compat.tar.gz" install_mod="440" entity="true" optional="true"/>
+        <file value="cann-tsch-compat.ini" install_mod="440" entity="true" optional="true"/>
     </file_info>
     <file_info copy_type="source" src_path="" dst_path="$(TARGET_ENV)/data/platform_config" install_path="$(TARGET_ENV)/data/platform_config" install_type="all">
         <file value="Ascend950PR_9599.ini" install_mod="440" entity="true"/>

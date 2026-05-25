@@ -56,7 +56,8 @@ sign_file(
   DEPENDS copy_acl_headers_and_libs
 )
 
-pack_targets_and_files(
+include(${RUNTIME_DIR}/version.cmake)
+cann_pack_targets_and_files(
   OUTPUT_TARGET "pack_cann_tsch_compat"
   OUTPUT "cann-tsch-compat.tar.gz"
   FILES "${tsch_fw_sign_file}"
@@ -75,6 +76,13 @@ install(FILES
   ${tsch_compat_sign_file}
   DESTINATION compat
   COMPONENT npu-runtime
+)
+
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/cann-tsch-compat.ini
+  DESTINATION compat
+  COMPONENT npu-runtime
+  OPTIONAL
 )
 
 if(TOPLEVEL_PROJECT)
