@@ -1700,15 +1700,9 @@ rtError_t GetBinaryMetaInfo(const rtElfData * const elfData, const uint16_t type
 static rtError_t GetMetaInfoInternal(const rtElfData * const elfData, const std::string &kernelName,
                                       const uint16_t type, std::vector<std::pair<void *, uint32_t>> &metaInfo)
 {
-    if (elfData == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "elfData is nullptr.");
-        return RT_ERROR_INVALID_VALUE;
-    }
-
-    if ((type > RT_FUNCTION_TYPE_SCHED_MODE_INFO) || (type == 0)) {
-        RT_LOG(RT_LOG_WARNING, "No data segment with the type value of %u was found.", type);
-        return RT_ERROR_INVALID_VALUE;
-    }
+    NULL_PTR_RETURN(elfData, RT_ERROR_INVALID_VALUE);
+    COND_RETURN_WARN(((type > RT_FUNCTION_TYPE_SCHED_MODE_INFO) || (type == 0)), RT_ERROR_FEATURE_NOT_SUPPORT,
+        "Meta type %u is invalid.", type);
 
     const std::string targetSection = ELF_SECTION_PREFIX_ASCEND_META + kernelName;
     Elf_Internal_Shdr *section = nullptr;
@@ -1716,7 +1710,9 @@ static rtError_t GetMetaInfoInternal(const rtElfData * const elfData, const std:
     const rtError_t errorAic = GetMetaSection(elfData, section, targetSection + ELF_SECTION_MIX_KERNEL_AIC);
     const rtError_t errorAiv = GetMetaSection(elfData, section, targetSection + ELF_SECTION_MIX_KERNEL_AIV);
     if ((error != RT_ERROR_NONE) && (errorAic != RT_ERROR_NONE) && (errorAiv != RT_ERROR_NONE)) {
-        RT_LOG(RT_LOG_ERROR, "Get meta section failed!");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1014,
+            "Failed to obtain the meta section from the operator binary file " + kernelName + 
+            ". The meta type is " + std::to_string(type));
         return error;
     }
 

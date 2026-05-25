@@ -1525,9 +1525,11 @@ TEST_F(CloudV2ELFTest, rtGetMetaInfo)
 
     error = rtFunctionGetMetaInfo(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_KERNEL_TYPE, nullptr, length);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
-
+    prog->elfData_ = new rtElfData;
     error = rtFunctionGetMetaInfo(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_INVALID, RtPtrToPtr<void *>(&data), length);
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    EXPECT_EQ(error, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+    delete prog->elfData_;
+    prog->elfData_ = nullptr;
 
     error = rtFunctionGetMetaInfo(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_KERNEL_TYPE, RtPtrToPtr<void *>(&data), length);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
@@ -1557,9 +1559,11 @@ TEST_F(CloudV2ELFTest, rtFunctionGetMetaInfoSize)
 
     error = rtFunctionGetMetaInfoSize(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_KERNEL_TYPE, nullptr);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
-
+    prog->elfData_ = new rtElfData;
     error = rtFunctionGetMetaInfoSize(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_INVALID, &metaSize);
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    EXPECT_EQ(error, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+    delete prog->elfData_;
+    prog->elfData_ = nullptr;
 
     error = rtFunctionGetMetaInfoSize(RtPtrToPtr<rtFuncHandle>(funcHandle), RT_FUNCTION_TYPE_SCHED_MODE_INFO, &metaSize);
     EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);

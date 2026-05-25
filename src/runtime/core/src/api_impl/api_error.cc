@@ -548,12 +548,11 @@ rtError_t ApiErrorDecorator::FunctionGetMetaInfo(const Kernel * const funcHandle
 
 rtError_t ApiErrorDecorator::FunctionGetMetaInfoSize(const Kernel * const funcHandle, const rtFunctionMetaType type,
  	                                                       size_t *size)
- 	 {
- 	     NULL_PTR_RETURN_MSG_OUTER(funcHandle, RT_ERROR_INVALID_VALUE);
- 	     NULL_PTR_RETURN_MSG_OUTER(size, RT_ERROR_INVALID_VALUE);
- 	     return impl_->FunctionGetMetaInfoSize(funcHandle, type, size);
- 	 }
-
+{
+    NULL_PTR_RETURN_MSG_OUTER(funcHandle, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN_MSG_OUTER(size, RT_ERROR_INVALID_VALUE);
+    return impl_->FunctionGetMetaInfoSize(funcHandle, type, size);
+}
 rtError_t ApiErrorDecorator::RegisterCpuFunc(
     rtBinHandle binHandle, const char_t *const funcName, const char_t *const kernelName, rtFuncHandle *funcHandle)
 {
