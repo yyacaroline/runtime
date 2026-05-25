@@ -107,6 +107,7 @@ enum class DumpTensorPosition : uint16_t {
     L0C,
     BIAS,
     FIXBUF,
+    REG,
     MAX
 };
 
@@ -119,6 +120,7 @@ const std::unordered_map<uint16_t, std::string> POSITION_MAP = {
     {static_cast<uint16_t>(DumpTensorPosition::L0C), "L0C"},
     {static_cast<uint16_t>(DumpTensorPosition::BIAS), "BIAS"},
     {static_cast<uint16_t>(DumpTensorPosition::FIXBUF), "FIXBUF"},
+    {static_cast<uint16_t>(DumpTensorPosition::REG), "REG"},
 };
 
 template<typename T>
