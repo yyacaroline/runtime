@@ -202,6 +202,8 @@ typedef enum tag_ts_error {
     TS_ERROR_AICPU_HCCL_OP_RETRY_FAILED = 0x224,      /* aicpu hccl op retry failed */
     TS_ERROR_LOCAL_MEM_ERROR = 0x225,                 /*local mem error*/
     TS_ERROR_REMOTE_MEM_ERROR = 0x226,                /*remote mem error*/
+    TS_ERROR_CCU_EXCEPTION = 0x227,                     /* ccu exception */
+    TS_ERROR_CCU_TIMEOUT = 0x228,                       /* ccu timeout */
     TS_ERROR_GET_PAGES_WRONG = 0x300,                 /* get pages wrong */
     // the following error codes are ts inner codes, no need return to runtime
     TS_EXEC_AGAIN = 0x900,                           /**< task exec again */

@@ -4271,7 +4271,7 @@ TEST_F(DavidTaskTest2, set_stars_result_for_fusion_kernel_task)
     cqe.errorType = 1U;
     cqe.errorCode = 0x404U;
     SetStarsResult(&kernTask, cqe);
-    EXPECT_EQ(kernTask.errorCode, TS_ERROR_TASK_EXCEPTION);
+    EXPECT_EQ(kernTask.errorCode, TS_ERROR_AICORE_EXCEPTION);
     TaskUnInitProc(&kernTask);
     EXPECT_EQ(kernTask.u.fusionKernelTask.args, nullptr);
 }
@@ -5057,6 +5057,151 @@ TEST_F(DavidTaskTest, ProcessReportFastRingBuffer_with_valid_task)
     EXPECT_EQ(taskInfo.stream->GetErrCode(), TS_ERROR_AICORE_EXCEPTION);
     
     errorProc->fastRingBufferAddr_ = nullptr;
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_guard_non_fusion_task_type)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.tid = 1U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_TASK_EXCEPTION);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_guard_non_fusion_sqe_type)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_AIC;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_TASK_EXCEPTION);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_aicore_exception)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = (1U << 2);
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_AICORE_EXCEPTION);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_aicore_timeout)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = (1U << 2);
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_TIMEOUT;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_AICORE_TIMEOUT);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_ccu_exception)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = 0x18U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_CCU_EXCEPTION);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_ccu_timeout)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = 0x18U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_TIMEOUT;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_CCU_TIMEOUT);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_no_matching_sub_task)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = 0x01U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_TASK_EXCEPTION);
+
     delete errorProc;
     GlobalMockObject::verify();
 }

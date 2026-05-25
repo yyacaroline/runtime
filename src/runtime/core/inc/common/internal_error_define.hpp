@@ -115,6 +115,8 @@ constexpr int32_t RT_ERROR_CCU_HCCL_MEM_ERROR       = 0x07010031;
 constexpr int32_t RT_ERROR_CCU_HCCL_REMOTE_ERROR    = 0x07010032;
 constexpr int32_t RT_ERROR_DEVICE_LINK_ERROR = 0x07010033;
 constexpr int32_t RT_ERROR_L3_PORT_ERROR = 0x07010034;
+constexpr int32_t RT_ERROR_CCU_EXCEPTION            = 0x07010035;
+constexpr int32_t RT_ERROR_CCU_TIMEOUT              = 0x07010036;
 
 constexpr int32_t RT_ERROR_STREAM_BASE              = 0x07030000;
 constexpr int32_t RT_ERROR_STREAM_NULL              = 0x07030001;

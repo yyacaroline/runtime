@@ -437,6 +437,21 @@ void SetStarsResultForFusionKernelTask(TaskInfo* taskInfo, const rtLogicCqReport
         const uint32_t errorIndex =
             static_cast<uint32_t>(BitScan(static_cast<uint64_t>(logicCq.errorType & RT_STARS_EXIST_ERROR)));
         taskInfo->errorCode = errMap[errorIndex];
+
+        const uint32_t logicCqErrorCode = logicCq.errorCode;
+        const uint32_t MASK_AICORE = 0x00000400U;
+        const uint32_t MASK_AICPU = 0x00000044U;
+        const uint32_t MASK_CCU = 0x00044000U;
+        const bool isTimeout = (taskInfo->errorCode == TS_ERROR_TASK_TIMEOUT);
+    
+        if (logicCqErrorCode & MASK_AICORE) {
+            taskInfo->errorCode = isTimeout ? TS_ERROR_AICORE_TIMEOUT : TS_ERROR_AICORE_EXCEPTION;
+        } else if (logicCqErrorCode & MASK_AICPU) {
+            taskInfo->errorCode = isTimeout ? TS_ERROR_AICPU_TIMEOUT : TS_ERROR_AICPU_EXCEPTION;
+        } else if (logicCqErrorCode & MASK_CCU) {
+            taskInfo->errorCode = isTimeout ? TS_ERROR_CCU_TIMEOUT : TS_ERROR_CCU_EXCEPTION;
+        }
+
         RT_LOG(RT_LOG_ERROR, "FusionKernelTask errorCode=%u, logicCq:errType=%u, errCode=%u, "
             "stream_id=%hu, task_id=%hu", taskInfo->errorCode, logicCq.errorType, logicCq.errorCode,
             taskInfo->stream->Id_(), taskInfo->id);

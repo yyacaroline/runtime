@@ -158,6 +158,8 @@ extern "C" {
 #define  ACL_ERROR_SNAPSHOT_CALLBACK_FAILED          507912 // snapshot callback function execution failed
 #define  ACL_ERROR_SNAPSHOT_REGISTER_CALLBACK_FAILED 507913 // register snapshot callback function failed
 #define  ACL_ERROR_RT_L3_PORT_ERROR              507914 // ub mem error
+#define  ACL_ERROR_RT_CCU_TIMEOUT                507915 // ccu timeout
+#define  ACL_ERROR_RT_CCU_EXCEPTION              507916 // ccu exception
 
 #ifdef __cplusplus
 }

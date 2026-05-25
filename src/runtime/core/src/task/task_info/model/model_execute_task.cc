@@ -58,7 +58,6 @@ static rtError_t SaveFuncCallDataForModelExecuteTask(TaskInfo * const taskInfo,
         "Failed to call memcpy_s to copy headSq.data(), src=%p, dest=%p, dest_max=%zu, count=%zu, retCode=%#x.",
         headSq.data(), dstMem, headSqArrMax * sizeof(uint64_t), headSqArrMax * sizeof(uint64_t), ret);
     
-
     dstMem = dstMem + headSqArrMax * sizeof(uint64_t);
     ret = memcpy_s(dstMem, (streamSvmArrMax * sizeof(uint64_t)), streamSvmAddr.data(),
         (streamSvmArrMax * sizeof(uint64_t)));

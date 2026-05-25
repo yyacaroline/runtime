@@ -394,6 +394,8 @@ void ErrorcodeManage::InitRtErrCodeMap()
     rtErrMap_[RT_ERROR_TSFW_TASK_L2_DESC_ENTRY_NOT_ENOUGH] = {ACL_ERROR_RT_TS_ERROR, "l2 description enter not enough"};
     rtErrMap_[RT_ERROR_TSFW_AICORE_TIMEOUT] = {ACL_ERROR_RT_AICORE_TIMEOUT, "aicore timeout"};
     rtErrMap_[RT_ERROR_TSFW_AICORE_EXCEPTION] = {ACL_ERROR_RT_AICORE_EXCEPTION, "aicore exception"};
+    rtErrMap_[RT_ERROR_CCU_EXCEPTION] = {ACL_ERROR_RT_CCU_EXCEPTION, "ccu exception"};
+    rtErrMap_[RT_ERROR_CCU_TIMEOUT] = {ACL_ERROR_RT_CCU_TIMEOUT, "ccu timeout"};
     rtErrMap_[RT_ERROR_TSFW_AICORE_TRAP_EXCEPTION] = {ACL_ERROR_RT_AICORE_TRAP_EXCEPTION, "aicore trap exception"};
     rtErrMap_[RT_ERROR_TSFW_VECTOR_CORE_TIMEOUT] = {ACL_ERROR_RT_VECTOR_CORE_TIMEOUT, "vector core timeout"};
     rtErrMap_[RT_ERROR_TSFW_VECTOR_CORE_EXCEPTION] = {ACL_ERROR_RT_VECTOR_CORE_EXCEPTION, "vector core exception"};

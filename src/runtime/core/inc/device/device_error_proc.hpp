@@ -83,6 +83,7 @@ public:
     // read ringbuffer for watchDog.
     rtError_t ReportRingBuffer(uint16_t *errorStreamId);
     void ProcessReportFastRingBuffer();
+    void MapFusionTaskErrorCode(TaskInfo* tsk, StarsOpExceptionInfo* report);
 
     rtError_t ProcCleanRingbuffer();
     void ProcClearFastRingBuffer() const;

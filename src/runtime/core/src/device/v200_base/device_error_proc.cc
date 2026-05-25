@@ -12,6 +12,7 @@
 #include "runtime.hpp"
 #include "context.hpp"
 #include "task_recycle.hpp"
+#include "kernel.h"
 
  
 namespace cce {
@@ -39,6 +40,20 @@ void UpdateDeviceErrorProcFunc(std::map<uint64_t, DeviceErrorProc::StarsErrorInf
 uint16_t GetMteErrWaitCount()
 {
     return 20U;
+}
+
+void DeviceErrorProc::MapFusionTaskErrorCode(TaskInfo* tsk, StarsOpExceptionInfo* report)
+{
+    if ((tsk->type != TS_TASK_TYPE_FUSION_KERNEL) || (report->sqeType != RT_DAVID_SQE_TYPE_FUSION)) {
+        return;
+    }
+    const uint8_t sqeSubType = tsk->u.fusionKernelTask.sqeSubType;
+    const bool isTimeout = (report->errorCode == TS_ERROR_TASK_TIMEOUT);
+    if ((sqeSubType & (1U << 2)) != 0U) { // has AICORE sub task
+        report->errorCode = isTimeout ? TS_ERROR_AICORE_TIMEOUT : TS_ERROR_AICORE_EXCEPTION;
+    } else if (sqeSubType == 0x18U) { // only CCU sub task
+        report->errorCode = isTimeout ? TS_ERROR_CCU_TIMEOUT : TS_ERROR_CCU_EXCEPTION;
+    }
 }
 
 // fast ringbuffer(4k): DevRingBufferCtlInfo + RingBufferElementInfo + StarsOpExceptionInfo
@@ -74,18 +89,19 @@ void DeviceErrorProc::ProcessReportFastRingBuffer()
         ConvertErrorCodeForFastReport(report);
         TaskInfo* tsk =
             GetTaskInfo(device_, static_cast<uint32_t>(report->streamId), static_cast<uint32_t>(report->sqHead), true);
-        RT_LOG(
-            RT_LOG_ERROR,
-            "fast ring buffer report error, "
-            "device_id=%u, stream_id=%u, task_id=%u, sq_head=%u, sqe_type=%u, error_code=%#x, kernel_name=%s.",
-            device_->Id_(), report->streamId, report->taskId, report->sqHead, report->sqeType, report->errorCode,
-            GetTaskKernelName(tsk).c_str());
         if (tsk == nullptr) {
             RT_LOG(RT_LOG_ERROR, "stream_id=%u, task_id=%u, task has been recycled.", report->streamId, report->taskId);
             head = (head + 1U) % depth;
             ctrlInfo->head = head;
             continue;
         }
+        MapFusionTaskErrorCode(tsk, report);
+        RT_LOG(
+            RT_LOG_ERROR,
+            "fast ring buffer report error, "
+            "device_id=%u, stream_id=%u, task_id=%u, sq_head=%u, sqe_type=%u, error_code=%#x, kernel_name=%s.",
+            device_->Id_(), report->streamId, report->taskId, report->sqHead, report->sqeType, report->errorCode,
+            GetTaskKernelName(tsk).c_str());
         tsk->stream->SetErrCode(report->errorCode);
         tsk->stream->EnterFailureAbort();
         TaskFailCallBack(report->streamId, report->taskId, tsk->tid, report->errorCode, device_);
@@ -108,7 +124,9 @@ void GetFastRingBufferErrorMap(std::unordered_map<uint32_t, std::unordered_map<u
         {RT_DAVID_SQE_TYPE_AICPU_D,
          {{TS_ERROR_TASK_EXCEPTION, TS_ERROR_AICPU_EXCEPTION}, {TS_ERROR_TASK_TIMEOUT, TS_ERROR_AICPU_TIMEOUT}}},
         {RT_DAVID_SQE_TYPE_SDMA,
-         {{TS_ERROR_TASK_EXCEPTION, TS_ERROR_SDMA_ERROR}, {TS_ERROR_TASK_TIMEOUT, TS_ERROR_SDMA_TIMEOUT}}}};
+         {{TS_ERROR_TASK_EXCEPTION, TS_ERROR_SDMA_ERROR}, {TS_ERROR_TASK_TIMEOUT, TS_ERROR_SDMA_TIMEOUT}}},
+        {RT_DAVID_SQE_TYPE_FUSION,
+         {{TS_ERROR_TASK_EXCEPTION, TS_ERROR_TASK_EXCEPTION}, {TS_ERROR_TASK_TIMEOUT, TS_ERROR_TASK_TIMEOUT}}}};
 }
 
 void DeviceErrorProc::ProcClearFastRingBuffer() const
