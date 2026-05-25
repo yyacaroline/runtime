@@ -93,7 +93,7 @@ rtError_t SnapshotCallbackManager::InvokeCallbacks(rtSnapShotStage stage)
         }
 
         rtError_t error = Runtime::Instance()->ProcessForAllOpenDevice(
-            [this, &callBackInfo, stage](Device *dev) -> rtError_t {
+            [&callBackInfo, stage](Device *dev) -> rtError_t {
                 const int32_t devId = static_cast<int32_t>(dev->Id_());
                 uint32_t userDeviceId = 0U;
                 rtError_t err = Runtime::Instance()->GetUserDevIdByDeviceId(static_cast<uint32_t>(devId), &userDeviceId);
