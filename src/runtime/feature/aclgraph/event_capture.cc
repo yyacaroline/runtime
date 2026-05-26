@@ -62,7 +62,7 @@ rtError_t Event::CaptureWaitProcess(Stream * const stm)
     rtError_t errorReason;
     tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_STREAM_WAIT_EVENT, errorReason, MEM_WAIT_SQE_NUM);
     COND_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-        "task alloc fail err:%#x", static_cast<uint32_t>(errorReason));
+        "Alloc task failed, retCode=%#x.", static_cast<uint32_t>(errorReason));
     std::function<void()> const errRecycle = [&dev, &tsk]() {
         (void)dev->GetTaskFactory()->Recycle(tsk);
     };
@@ -74,7 +74,7 @@ rtError_t Event::CaptureWaitProcess(Stream * const stm)
     tsk->typeName = "EVENT_WAIT";
     tsk->type = TS_TASK_TYPE_CAPTURE_WAIT;
     error = MemWaitValueTaskInit(tsk, eventAddr, 1, 0x0);
-    ERROR_RETURN_MSG_INNER(error, "mem wait value init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Init MemWaitValueTask failed, stream_id=%d, task_id=%hu, retCode=%#x.",
         stm->Id_(), tsk->id, static_cast<uint32_t>(error));
     MemWaitValueTaskInfo *memWaitValueTask = &tsk->u.memWaitValueTask;
     memWaitValueTask->awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_8BIT;
@@ -99,7 +99,7 @@ rtError_t Event::CaptureResetProcess(Stream * const stm)
     TaskInfo submitTask = {};
     TaskInfo *tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_EVENT_RESET, errorReason);
     COND_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-                                "task alloc fail err:%#x",
+                                "Alloc task failed, retCode=%#x.",
                                      static_cast<uint32_t>(errorReason));
     std::function<void()> const errRecycle = [&dev, &tsk]() {
         (void)dev->GetTaskFactory()->Recycle(tsk);

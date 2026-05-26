@@ -385,7 +385,7 @@ rtError_t Stream::CreateArgRecycleList(uint32_t size)
 {
     argRecycleList_ = new (std::nothrow) RecycleArgs *[size]{};
     if (argRecycleList_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new arg handle list failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(RecycleArgs *) * size));
         return RT_ERROR_MEMORY_ALLOCATION;
     }
     argRecycleListSize_ = size;
@@ -393,7 +393,7 @@ rtError_t Stream::CreateArgRecycleList(uint32_t size)
         argRecycleList_[i] = new (std::nothrow) RecycleArgs();
         if (argRecycleList_[i] == nullptr) {
             argRecycleListSize_ = i;
-            RT_LOG(RT_LOG_ERROR, "new recycle args failed");
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(RecycleArgs)));
             return RT_ERROR_MEMORY_ALLOCATION;
         }
         argRecycleList_[i]->argHandle = nullptr;
@@ -619,22 +619,22 @@ rtError_t Stream::Setup()
         taskPublicBuffSize_ = isDisableThread ? STREAM_PUBLIC_TASK_BUFF_SIZE : STREAM_TASK_BUFF_SIZE;
         taskPublicBuff_ = new (std::nothrow) uint32_t[taskPublicBuffSize_];
         TIMESTAMP_END(rtStreamCreate_taskPublicBuff);
-        COND_RETURN_ERROR(taskPublicBuff_ == nullptr, RT_ERROR_STREAM_NEW,
-                          "new task public buffer failed, size=%hu", taskPublicBuffSize_);
+        COND_RETURN_AND_MSG_OUTER(taskPublicBuff_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+            std::to_string(sizeof(uint32_t) * taskPublicBuffSize_));
     }
 
     if (CheckASyncRecycle() && !IsSeparateSendAndRecycle()) {
         SetIsSupportASyncRecycle(true);
         davinciTaskListSize_ = STREAM_PUBLIC_TASK_BUFF_SIZE;
         davinciTaskList_ = new (std::nothrow) uint32_t[davinciTaskListSize_];
-        COND_RETURN_ERROR(davinciTaskList_ == nullptr, RT_ERROR_STREAM_NEW,
-            "new davinci task list failed, size=%hu", davinciTaskListSize_);
+        COND_RETURN_AND_MSG_OUTER(davinciTaskList_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+            std::to_string(sizeof(uint32_t) * davinciTaskListSize_));
     }
 
     posToTaskIdMapSize_ = rtsqDepth;
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
-    COND_RETURN_ERROR(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new posToTaskIdMap_ failed, size=%u", rtsqDepth);
+    COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+        std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));    
 
     const errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
@@ -647,7 +647,7 @@ rtError_t Stream::Setup()
 
     wrRecordQueue_.queue = new (std::nothrow) uint32_t[rtsqDepth];
     if (wrRecordQueue_.queue == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new wrRecordQueue_.queue failed, size=%u", rtsqDepth);
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(uint32_t) * rtsqDepth));
         return RT_ERROR_STREAM_NEW;
     }
     (void)memset_s(wrRecordQueue_.queue, rtsqDepth * sizeof(uint32_t), 0, rtsqDepth * sizeof(uint32_t));
@@ -845,8 +845,8 @@ rtError_t Stream::SetupWithoutBindSq()
     SetIsSupportASyncRecycle(false);
     posToTaskIdMapSize_ = GetSqDepth();
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
-    COND_RETURN_ERROR(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new posToTaskIdMap_ failed, size=%u", posToTaskIdMapSize_);
+    COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+        std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));
 
     errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
@@ -883,8 +883,8 @@ rtError_t Stream::SetupWithoutBindSq()
 
     sqeBufferSize_ = STREAM_SQE_BUFFER_MAX_SIZE;
     sqeBuffer_ = new (std::nothrow) uint8_t[sqeBufferSize_];
-    COND_RETURN_ERROR(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new sqeBuffer_ failed, size=%u", sqeBufferSize_);
+    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+            std::to_string(sqeBufferSize_));
 
     ret = memset_s(sqeBuffer_, sqeBufferSize_, 0U, sqeBufferSize_);
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
@@ -911,8 +911,9 @@ rtError_t Stream::InitAutoSplitBasicParams()
     SetSqDepth(STREAM_SQ_MAX_DEPTH);
     SetIsSupportASyncRecycle(false);
     streamSwitchInfo_ = new (std::nothrow) struct sq_switch_stream_info[1U]();
-    COND_RETURN_ERROR(streamSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW,
-                "new sq switch info failed, stream_id=%u.", Id_()); 
+    COND_PROC_RETURN_AND_MSG_OUTER(streamSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+        RT_LOG(RT_LOG_ERROR, "new sq switch info failed, stream_id=%u.", Id_()),
+        std::to_string(sizeof(sq_switch_stream_info)));
     return RT_ERROR_NONE;
 }
 
@@ -920,8 +921,8 @@ rtError_t Stream::AllocPosToTaskIdMap()
 {
     posToTaskIdMapSize_ = GetSqDepth();
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
-    COND_RETURN_ERROR(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new posToTaskIdMap_ failed, size=%u", posToTaskIdMapSize_);
+    COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+            std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));
 
     errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
@@ -935,8 +936,8 @@ rtError_t Stream::AllocPosToTaskIdMap()
 rtError_t Stream::AllocAutoSplitContext()
 {
     autoSplitCtx_ = new (std::nothrow) AutoSplitSqContext();
-    COND_RETURN_ERROR(autoSplitCtx_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new AutoSplitSqContext failed");
+    COND_RETURN_AND_MSG_OUTER(autoSplitCtx_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+                std::to_string(sizeof(AutoSplitSqContext)));
 
     autoSplitCtx_->masterStream = nullptr;  // master stream 此字段为空
     autoSplitCtx_->exposedStreamId = streamId_;
@@ -949,8 +950,8 @@ rtError_t Stream::AllocSqeBufferForAutoSplit()
 {
     sqeBufferSize_ = STREAM_SQE_BUFFER_INIT_SIZE;
     sqeBuffer_ = new (std::nothrow) uint8_t[sqeBufferSize_];
-    COND_RETURN_ERROR(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW,
-        "new sqeBuffer_ failed, size=%u", sqeBufferSize_);
+    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+                std::to_string(sqeBufferSize_));
 
     errno_t ret = memset_s(sqeBuffer_, sqeBufferSize_, 0U, sqeBufferSize_);
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
@@ -2005,10 +2006,10 @@ rtError_t Stream::Query(void) const
         uint16_t sqTail = 0U;
         error = device_->Driver_()->GetSqHead(device_->Id_(), device_->DevGetTsId(), this->GetSqId(), sqHead);
         COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE,
-            RT_ERROR_STREAM_NOT_COMPLETE, "Query sq head failed, retCode=%#x", static_cast<uint32_t>(error));
+            RT_ERROR_STREAM_NOT_COMPLETE, "Query sq head failed, retCode=%#x.", static_cast<uint32_t>(error));
         error = device_->Driver_()->GetSqTail(device_->Id_(), device_->DevGetTsId(), this->GetSqId(), sqTail);
         COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE,
-            RT_ERROR_STREAM_NOT_COMPLETE, "Query sq tail failed, retCode=%#x", static_cast<uint32_t>(error));
+            RT_ERROR_STREAM_NOT_COMPLETE, "Query sq tail failed, retCode=%#x.", static_cast<uint32_t>(error));
         if (sqHead != sqTail) {
             RT_LOG(RT_LOG_DEBUG, "Task not complete, stream_id=%d, sqHead=%hu, sqTail=%hu",
                 this->Id_(), sqHead, sqTail);
@@ -2654,7 +2655,8 @@ rtError_t Stream::ProcRecordTask(TaskInfo *&tsk)
     rtError_t errorReason;
     if (lastHalfRecord_ == nullptr) {
         lastHalfRecord_ = new (std::nothrow) Event(device_, RT_EVENT_STREAM_MARK, Context_(), true);
-        NULL_PTR_RETURN_MSG(lastHalfRecord_, RT_ERROR_EVENT_NEW);
+        COND_RETURN_AND_MSG_OUTER(lastHalfRecord_ == nullptr, RT_ERROR_EVENT_NEW, ErrorCode::EE1013,
+            std::to_string(sizeof(Event)));
         error = lastHalfRecord_->GenEventId();
         COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, DELETE_O(lastHalfRecord_), "Alloc event id failed.");
     }
@@ -3444,7 +3446,8 @@ rtError_t Stream::UpdateAllPersistentTask()
     CaptureModel* captureModel = dynamic_cast<CaptureModel*>(mdl);
     // 存在融合后sqe变多的场景，这里的buffer是按内存64字节逐个访问，为了提升性能不做memset
     std::unique_ptr<uint8_t[]> sqeBufferBackup(new (std::nothrow) uint8_t[sqeBufferSize_]);
-    COND_RETURN_ERROR(!sqeBufferBackup, RT_ERROR_STREAM_NEW, "New sqeBufferBackup failed, size=%u", sqeBufferSize_);
+    COND_RETURN_AND_MSG_OUTER(!sqeBufferBackup, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+            std::to_string(sqeBufferSize_));
 
     uint32_t totalSendSqeNum = 0U;
     rtError_t error = RT_ERROR_NONE;
@@ -3713,7 +3716,7 @@ rtError_t Stream::ModelWaitForTask(const uint32_t taskId, const bool isNeedWaitS
             RT_ERROR_DRV_ERR, "Device %u is unavailable, stream_id=%u.", device_->Id_(), streamId_);
 
         const rtError_t error = device_->Driver_()->GetSqTail(devId, tsId, sqId_, sqTail);
-        ERROR_RETURN_MSG_INNER(error, "Failed to get sq tail, stream_id=%d, task_id=%u, dev_id=%u, ts_id=%u",
+        ERROR_RETURN_MSG_INNER(error, "Failed to get sq tail, stream_id=%d, task_id=%u, dev_id=%u, ts_id=%u.",
             streamId_, taskId, devId, tsId);
 
         // Sq have no task, return OK

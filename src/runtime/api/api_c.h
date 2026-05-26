@@ -48,10 +48,6 @@ constexpr uint32_t RUNTIME_PUBLIC_VERSION = 1001U;
         } \
     } while (false)
 
-// 整改代码上线之后删除此宏
-#define COND_RETURN_ERROR_WITH_EXT_ERRCODE(COND, ERRCODE, format, ...) \
-    COND_RETURN_WITH_EXT_ERRCODE((COND), (ERRCODE), format, ##__VA_ARGS__)
-
 // EE1003使用，可变参数内容为参数期望值
 #define COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM(COND, RTERRCODE, param,...) \
     do { \

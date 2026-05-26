@@ -660,8 +660,8 @@ rtError_t Model::BindSqPerStream(Stream * const streamIn, const uint32_t flag)
 {
     Stream *execStream = context_->GetCtrlSQStream();
     rtError_t error = ModelBindTaskSubmit(execStream, streamIn, flag);
-    ERROR_RETURN_MSG_INNER(error, "Failed to submit model bind task, model_id=%d, stream_id=%d, sq_id=%u.",
-        id_, streamIn->Id_(), streamIn->GetSqId());
+    ERROR_RETURN_MSG_INNER(error, "Failed to submit model bind task, model_id=%d, stream_id=%d, sq_id=%u, retCode=%#x.",
+        id_, streamIn->Id_(), streamIn->GetSqId(), static_cast<uint32_t>(error));
 
     error = execStream->Synchronize();
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
@@ -773,8 +773,9 @@ rtError_t Model::BuildSqCqForAutoSplit()
 
     if (modelSwitchInfo_ == nullptr) {
         modelSwitchInfo_ = new (std::nothrow) struct sq_switch_stream_info[streamNum]();
-        COND_RETURN_ERROR(modelSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW,
-            "new sq switch info failed, model_id=%u, auto_split_sq=%d, sq_num=%u.", Id_(), IsAutoSplitSq(), streamNum);    
+        COND_PROC_RETURN_AND_MSG_OUTER(modelSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, 
+            RT_LOG(RT_LOG_ERROR, "new sq switch info failed, model_id=%u, auto_split_sq=%d, sq_num=%u.", Id_(), IsAutoSplitSq(), streamNum),
+            std::to_string(sizeof(sq_switch_stream_info) * streamNum));  
     }
     uint32_t index = 0U;
     for (auto stm : StreamList_()) {
@@ -795,7 +796,7 @@ rtError_t Model::BuildSqCqForAutoSplit()
         "stream bind sq failed, device_id=%u, model_id=%u, auto_split_sq=%d, sq_num=%u, retCode=%#x.",
         dev->Id_(), Id_(), IsAutoSplitSq(), streamNum, static_cast<uint32_t>(error));
     error = SendSqe();
-    ERROR_RETURN_MSG_INNER(error, "send sqe failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Send sqe failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
 
     for (auto stm : StreamList_()) {
         COND_PROC(((stm->Flags() & RT_STREAM_AICPU) != 0U), continue);
@@ -805,10 +806,10 @@ rtError_t Model::BuildSqCqForAutoSplit()
         COND_PROC(error != RT_ERROR_NONE, break);
         stm->SetIsTsBind(true);    
     }
-    ERROR_RETURN_MSG_INNER(error, "bind stream to model failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Bind stream to model failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
 
     error = ConfigSqTail();
-    ERROR_RETURN_MSG_INNER(error, "config sq tail failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Config sq tail failed, model_id=%u, auto_split_sq=%d, retCode=%#x.", Id_(), IsAutoSplitSq(), static_cast<uint32_t>(error));
     
     return RT_ERROR_NONE;
 }
@@ -850,7 +851,7 @@ rtError_t Model::SendAicpuModelLoadMsg(Stream *stream) const
 rtError_t Model::LoadCompleteByStreamPrep(Stream * &stream)
 {
     rtError_t error = PacketAicpuModelInfo();
-    ERROR_RETURN_MSG_INNER(error, "Fail to packet aicpu model task.");
+    ERROR_RETURN_MSG_INNER(error, "Failed to packet aicpu model task, retCode=%#x.", static_cast<uint32_t>(error));
     const bool isNeedLoadAicpuModel = NeedLoadAicpuModelTask();
     Device * const dev = context_->Device_();
     if (isNeedLoadAicpuModel) {
@@ -1040,7 +1041,7 @@ rtError_t Model::SynchronizeExecute(Stream * const stm, int32_t timeout)
         dev->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_MODEL_EXECUTE_TIMEOUT_MONITOR);
     time1 = GetTimeInterval(timeBegin);
     error = SubmitExecuteTask(stm);
-    ERROR_RETURN_MSG_INNER(error, "Failed to submit exeTask, stream_id=%d.", stm->Id_());
+    ERROR_RETURN_MSG_INNER(error, "Failed to submit exeTask, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     time2 = GetTimeInterval(timeBegin);
     if ((dev->IsStarsPlatform()) && (executeType != EXECUTOR_AICPU)) {
         error = NtyWait(endGraphNotify_, stm, MAX_UINT32_NUM);
@@ -1148,7 +1149,7 @@ rtError_t Model::SubmitExecuteTask(Stream * const streamIn)
             executorFlag_, RtPtrToValue(aicpuModelInfo_));
     } else {
         ERROR_RETURN_MSG_INNER(RT_ERROR_MODEL_EXECUTOR,
-            "Unsupported executor type=%u, modelId=%d.", executeType, id_);
+            "Unsupported executor type=%u, modelId=%d, retCode=%#x.", executeType, id_, static_cast<uint32_t>(RT_ERROR_MODEL_EXECUTOR));
     }
 
     if (unlikely(error != RT_ERROR_NONE)) {
@@ -2004,7 +2005,7 @@ rtError_t Model::UpdateSnapShotSqe(void)
     for (Stream * const stm : streams_) {
         error = stm->UpdateSnapShotSqe();
         ERROR_RETURN_MSG_INNER(error,
-            "update tasks failed, model id=%u, stream_id=%d, retCode=%d", Id_(), stm->Id_(), error);
+            "Update sqe failed, model id=%u, stream_id=%d, retCode=%#x.", Id_(), stm->Id_(), static_cast<uint32_t>(error));
     }
     return error;
 }

@@ -15,6 +15,7 @@
 #include "error_manager.h"
 #endif
 #include "mmpa/mmpa_api.h"
+#include "common/error_code_meta.h"
 namespace cce {
 namespace runtime {
 void RecordErrorLog(const char *file, const int32_t line, const char *fun, const char *fmt, ...)
@@ -68,55 +69,53 @@ void ReportErrMsg(std::string errorCode, const std::vector<char> &valueString)
 #endif
 }
 
+#define RT_PARAMS_TO_VEC(...) { __VA_ARGS__ }
+
 std::vector<std::string> GetParamNames(ErrorCode code) {
+#undef RT_GET_PARAMS
+#define RT_GET_PARAMS(code, name, params, msg, level) \
+    case ErrorCode::code: return RT_PARAMS_TO_VEC params;
     switch (code) {
-        case ErrorCode::EE1001: 
-            return {"extend_info"};
-        case ErrorCode::EE1002: 
-            return {"extend_info"};
-        case ErrorCode::EE1003:
-            return {"func", "value", "param", "expect"};
-        case ErrorCode::EE1004:
-            return {"func", "param"};
-        case ErrorCode::EE1005:
-            return {"func"};
-        case ErrorCode::EE1006:
-            return {"func", "type"};
-        case ErrorCode::EE1007:
-            return {"id", "reason"};
-        case ErrorCode::EE1008:
-            return {"reason"};
-        case ErrorCode::EE1009:
-            return {"id", "reason"};
-        case ErrorCode::EE1010:
-            return {"func", "object"};
-        case ErrorCode::EE1011: 
-            return {"func", "value", "param", "reason"};
-        case ErrorCode::EE1012: 
-            return {"func", "value", "param", "reason"};
-        case ErrorCode::EE1013:
-            return {"buf_size"};
-        case ErrorCode::EE1014:
-            return {"reason"};
-        case ErrorCode::EE1015: 
-            return {"func", "reason"};
-        case ErrorCode::EE1016:
-            return {"func", "reason"};
-        case ErrorCode::EE1017:
-            return {"func", "param", "reason"};
-        case ErrorCode::EE1018:
-            return {"func", "reason"};
-        case ErrorCode::EE1019:
-            return {"func", "reason"};
-        case ErrorCode::EE1020:
-            return {"func1", "func2", "ret_code", "reason", "extend_info"};
-        case ErrorCode::EE2002:
-            return {"value", "env", "expect"};
-        case ErrorCode::WE0001:
-            return {"function", "type"};
+        RUNTIME_ERROR_CODE_TABLE(RT_GET_PARAMS)
         default:
             return {};
     }
+#undef RT_GET_PARAMS
+#undef RT_PARAMS_TO_VEC
+}
+
+namespace {
+// 辅助宏：为 DispatchErrMsg 生成一个 switch case
+#define RT_DISPATCH(n, ...) \
+    case n: \
+        if (level == DLOG_WARN) { \
+            RecordLog(DLOG_WARN, file, line, func, fmt, ##__VA_ARGS__); \
+        } else { \
+            RecordErrorLog(file, line, func, fmt, ##__VA_ARGS__); \
+        } \
+        break;
+
+static void DispatchErrMsg(int32_t level, const char* file, int32_t line,
+    const char* func, const char* fmt, const std::vector<std::string>& values)
+{
+    switch (values.size()) {
+        case 0:
+            if (level == DLOG_WARN) {
+                RecordLog(DLOG_WARN, file, line, func, "%s", fmt);
+            } else {
+                RecordErrorLog(file, line, func, "%s", fmt);
+            }
+            break;
+        RT_DISPATCH(1, values[0].c_str())
+        RT_DISPATCH(2, values[0].c_str(), values[1].c_str())
+        RT_DISPATCH(3, values[0].c_str(), values[1].c_str(), values[2].c_str())
+        RT_DISPATCH(4, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str())
+        RT_DISPATCH(5, values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(), values[4].c_str())
+        default:
+            break;
+    }
+}
+#undef RT_DISPATCH
 }
 
 void PrintErrMsgToLog(ErrorCode errCode, const char *file, const int32_t line, const char *func,
@@ -125,144 +124,22 @@ void PrintErrMsgToLog(ErrorCode errCode, const char *file, const int32_t line, c
     const size_t expectedSize = GetParamNames(errCode).size();
     if (values.size() != expectedSize) {
         RecordLog(DLOG_WARN, file, line, func,
-            "Parameter count mismatch for error code %d. Expected %zu, got %zu." "\n",
+            "Parameter count mismatch for error code %d. Expected %zu, got %zu.\n",
             static_cast<int32_t>(errCode), expectedSize, values.size());
         return;
     }
 
-    switch (errCode)
-    {
-        case ErrorCode::EE1001: 
-            RecordErrorLog(file, line, func,
-                "The argument is invalid.Reason: %s. ErrorCode=EE1001." "\n", values[0].c_str());
-            break;
-        case ErrorCode::EE1002: 
-            RecordErrorLog(file, line, func,
-                "Stream synchronize timeout. %s. ErrorCode=EE1002." "\n", values[0].c_str());
-            break;
-        // Invalid_Argument
-        case ErrorCode::EE1003: 
-            RecordErrorLog(file, line, func,
-                "%s failed because value %s for parameter %s is invalid. Expected value: %s. ErrorCode=EE1003." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str());
-            break;
-        // Invalid_Argument_Null_Pointer
-        case ErrorCode::EE1004:
-            RecordErrorLog(file, line, func,
-                "%s failed because %s cannot be a NULL pointer. ErrorCode=EE1004." "\n",
-            values[0].c_str(), values[1].c_str());
-            break;
-        // Not_Supported
-        case ErrorCode::EE1005:
-            RecordErrorLog(file, line, func,
-                "The current system or device does not support %s. ErrorCode=EE1005." "\n",
-            values[0].c_str());
-            break;
-        // Not_Supported
-        case ErrorCode::EE1006:
-            RecordErrorLog(file, line, func,
-                "%s execution failed because %s is not supported. ErrorCode=EE1006." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Resource_Error_Bind_Stream
-        case ErrorCode::EE1007:
-            RecordErrorLog(file, line, func,
-                "Failed to bind stream with ID %s. Reason: %s. ErrorCode=EE1007." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Execution_Error_Load_OP_Kernel
-        case ErrorCode::EE1008:
-            RecordErrorLog(file, line, func,
-                "OP kernel loading failed. Reason: %s. ErrorCode=EE1008." "\n",
-                values[0].c_str());
-            break;
-        // Execution_Error_Model
-        case ErrorCode::EE1009:
-            RecordErrorLog(file, line, func,
-                "Failed to execute model with ID %s. Reason: %s. ErrorCode=EE1009." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Execution_Error_Invalid_Context
-        case ErrorCode::EE1010:
-            RecordErrorLog(file, line, func,
-                "%s execution failed because %s does not belong to the current context. ErrorCode=EE1010." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        case ErrorCode::EE1011:
-            RecordErrorLog(file, line, func,
-                "%s failed. Value %s for parameter %s is invalid. Reason: %s. ErrorCode=EE1011." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str());
-            break;
-        case ErrorCode::EE1012:
-            RecordErrorLog(file, line, func,
-                "%s failed. Value %s for %s is invalid. Reason: %s. ErrorCode=EE1012." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str());
-            break;
-        // Resource_Error_Insufficient_Host_Memory
-        case ErrorCode::EE1013:
-            RecordErrorLog(file, line, func,
-                "Failed to allocate %s bytes host memory for Runtime. ErrorCode=EE1013." "\n",
-                values[0].c_str());
-            break;
-        // File_Operation_Error_Parse
-        case ErrorCode::EE1014:
-            RecordErrorLog(file, line, func,
-                "Failed to parse the binary file of the operator. Reason: %s. ErrorCode=EE1014." "\n",
-                values[0].c_str());
-            break;
-        // Package_Error_Incorrect_Driver_Version
-        case ErrorCode::EE1015:
-            RecordErrorLog(file, line, func,
-                "%s failed. Reason: The driver version capacity is insufficient. %s ErrorCode=EE1015." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Not_Supported
-        case ErrorCode::EE1016:
-            RecordErrorLog(file, line, func,
-                "%s failed. Reason: %s. ErrorCode=EE1016." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Invalid_Argument
-        case ErrorCode::EE1017:
-            RecordErrorLog(file, line, func,
-                "%s failed. Parameter %s is invalid. Reason: %s. ErrorCode=EE1017." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str());
-            break;
-        // Invalid_Argument_API_Call_Sequence
-        case ErrorCode::EE1018:
-            RecordErrorLog(file, line, func,
-                "%s failed. Reason: %s. ErrorCode=EE1018." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Execution_Error
-        case ErrorCode::EE1019:
-            RecordErrorLog(file, line, func,
-                "%s (for delivering tasks to the stream) failed. Reason: %s. ErrorCode=EE1019." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
-        // Invalid_Argument
-        case ErrorCode::EE1020:
-            RecordErrorLog(file, line, func,
-                "%s failed. Reason: Standard function %s failed. [Errno %s] %s. %s ErrorCode=EE1020." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str(), values[3].c_str(), values[4].c_str());
-            break;
-        // Config_Error_Invalid_Environment_Variable
-        case ErrorCode::EE2002:
-            RecordErrorLog(file, line, func,
-                "Value %s for environment variable %s is invalid. Expected value: %s. ErrorCode=EE2002." "\n",
-                values[0].c_str(), values[1].c_str(), values[2].c_str());
-            break;
-        // Not_Supported for warning msg
-        case ErrorCode::WE0001:
-            RecordLog(DLOG_WARN, file, line, func,
-                "Failed to %s because %s is not supported. ErrorCode=WE0001." "\n",
-                values[0].c_str(), values[1].c_str());
-            break;
+#undef RT_PRINT_CASE
+#define RT_PRINT_CASE(code, name, params, msg, level) \
+    case ErrorCode::code: DispatchErrMsg(level, file, line, func, msg, values); break;
+    switch (errCode) {
+        RUNTIME_ERROR_CODE_TABLE(RT_PRINT_CASE)
         default:
             RecordErrorLog(file, line, func,
-                "Unknown error code: %d" "\n", static_cast<int32_t>(errCode));
+                "Unknown error code: %d\n", static_cast<int32_t>(errCode));
             break;
     }
+#undef RT_PRINT_CASE
 }
 
 void ProcessErrorCodeImpl(ErrorCode errCode, const char *file, const int32_t line, const char *func,

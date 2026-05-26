@@ -206,3 +206,119 @@ TEST_F(RtErrorCodeTest, CheckErrCodeParams)
     names = GetParamNames(ErrorCode::EE1012);
     EXPECT_EQ(names, (std::vector<std::string>{"func", "value", "param", "reason"}));
 }
+
+TEST_F(RtErrorCodeTest, ErrorCodeTableParamCountMatchesMessageFormat)
+{
+    struct CodeInfo {
+        ErrorCode code;
+        size_t expectedParamCount;
+    };
+    std::vector<CodeInfo> allCodes = {
+        {ErrorCode::EE1001, 1}, {ErrorCode::EE1002, 1}, {ErrorCode::EE1003, 4},
+        {ErrorCode::EE1004, 2}, {ErrorCode::EE1005, 1}, {ErrorCode::EE1006, 2},
+        {ErrorCode::EE1007, 2}, {ErrorCode::EE1008, 1}, {ErrorCode::EE1009, 2},
+        {ErrorCode::EE1010, 2}, {ErrorCode::EE1011, 4}, {ErrorCode::EE1012, 4},
+        {ErrorCode::EE1013, 1}, {ErrorCode::EE1014, 1}, {ErrorCode::EE1015, 2},
+        {ErrorCode::EE1016, 2}, {ErrorCode::EE1017, 3}, {ErrorCode::EE1018, 2},
+        {ErrorCode::EE1019, 2}, {ErrorCode::EE1020, 5}, {ErrorCode::EE2002, 3},
+        {ErrorCode::WE0001, 2},
+    };
+    for (const auto& info : allCodes) {
+        auto names = GetParamNames(info.code);
+        EXPECT_EQ(names.size(), info.expectedParamCount)
+            << "Param count mismatch for code " << static_cast<int>(info.code);
+    }
+}
+
+// DispatchErrMsg: 所有参数数量 + DLOG_ERROR 路径
+TEST_F(RtErrorCodeTest, DispatchErrMsgAllParamSizesErrorLevel)
+{
+    // 1 参数
+    std::vector<std::string> v1 = {"x"};
+    PrintErrMsgToLog(ErrorCode::EE1001, "f", 1, "g", v1);
+    // 2 参数
+    std::vector<std::string> v2 = {"x", "y"};
+    PrintErrMsgToLog(ErrorCode::EE1006, "f", 1, "g", v2);
+    // 3 参数
+    std::vector<std::string> v3 = {"x", "y", "z"};
+    PrintErrMsgToLog(ErrorCode::EE1017, "f", 1, "g", v3);
+    // 4 参数
+    std::vector<std::string> v4 = {"x", "y", "z", "w"};
+    PrintErrMsgToLog(ErrorCode::EE1011, "f", 1, "g", v4);
+    // 5 参数
+    std::vector<std::string> v5 = {"a", "b", "c", "d", "e"};
+    PrintErrMsgToLog(ErrorCode::EE1020, "f", 1, "g", v5);
+}
+
+// DispatchErrMsg: DLOG_WARN 路径（仅 WE0001）
+TEST_F(RtErrorCodeTest, DispatchErrMsgDlogWarnPath)
+{
+    std::vector<std::string> v = {"functionName", "reasonText"};
+    PrintErrMsgToLog(ErrorCode::WE0001, "f", 1, "g", v);
+}
+
+// DispatchErrMsg: 参数个数不匹配 → 走 mismatch 分支
+TEST_F(RtErrorCodeTest, DispatchErrMsgParamCountMismatch)
+{
+    // EE1003 需要 4 个参数，只给 3 个
+    std::vector<std::string> tooFew = {"rtMemCpy", "0", "size"};
+    PrintErrMsgToLog(ErrorCode::EE1003, "f", 1, "g", tooFew);
+    // EE1005 需要 1 个参数，给 5 个
+    std::vector<std::string> tooMany = {"a", "b", "c", "d", "e"};
+    PrintErrMsgToLog(ErrorCode::EE1005, "f", 1, "g", tooMany);
+}
+
+// DispatchErrMsg: 未知错误码 → switch default 打印 "Unknown error code"
+TEST_F(RtErrorCodeTest, DispatchErrMsgUnknownCodeDefaultPath)
+{
+    std::vector<std::string> v;
+    PrintErrMsgToLog(ErrorCode::EE_NO_ERROR, "f", 1, "g", v);
+}
+
+// X-Macro 表自动校验：格式串 % 个数 == 参数个数
+// 新增错误码后自动生效，格式写错直接报错
+namespace {
+static int CountFormatSpec(const char* msg)
+{
+    int count = 0;
+    for (const char* p = msg; *p != '\0'; p++) {
+        if (*p == '%' && *(p + 1) != '\0' && *(p + 1) != '%') {
+            count++;
+        }
+    }
+    return count;
+}
+}
+
+#define RT_UNPAREN(...) __VA_ARGS__
+#define RT_COUNT(...)   RT_COUNT_IMPL(__VA_ARGS__, 6, 5, 4, 3, 2, 1, 0)
+#define RT_COUNT_IMPL(_1, _2, _3, _4, _5, _6, N, ...) N
+
+TEST_F(RtErrorCodeTest, XMacroTableFormatSelfCheck)
+{
+#undef RT_CHECK
+#define RT_CHECK(code, name, params, msg, level) \
+    {name, msg, RT_COUNT(RT_UNPAREN params)},
+
+    struct Entry {
+        const char* name;
+        const char* msg;
+        int paramCount;
+    };
+    static const Entry kEntries[] = {
+        RUNTIME_ERROR_CODE_TABLE(RT_CHECK)
+    };
+#undef RT_CHECK
+
+    int total = static_cast<int>(sizeof(kEntries) / sizeof(kEntries[0]));
+    for (int i = 0; i < total; i++) {
+        int fmtCount = CountFormatSpec(kEntries[i].msg);
+        EXPECT_EQ(fmtCount, kEntries[i].paramCount)
+            << "[" << kEntries[i].name << "] message has " << fmtCount
+            << " format specifiers but param list has " << kEntries[i].paramCount
+            << " entries";
+    }
+}
+#undef RT_COUNT_IMPL
+#undef RT_COUNT
+#undef RT_UNPAREN

@@ -1505,7 +1505,7 @@ rtError_t ApiErrorDecorator::HostRegister(void *ptr, uint64_t size, rtHostRegist
 rtError_t ApiErrorDecorator::HostRegisterV2(void *ptr, uint64_t size, uint32_t flag)
 {
     NULL_PTR_RETURN_MSG_OUTER(ptr, RT_ERROR_INVALID_VALUE);
-    ZERO_RETURN_MSG_OUTER(size);
+    ZERO_RETURN_AND_MSG_OUTER(size);
     constexpr uint32_t validFlags = RT_MEM_HOST_REGISTER_MAPPED | RT_MEM_HOST_REGISTER_IOMEMORY |
         RT_MEM_HOST_REGISTER_READONLY | RT_MEM_HOST_REGISTER_PINNED;
     const bool isValidFlag = ((flag & validFlags) != 0U) && ((flag & (~validFlags)) == 0U);
@@ -6137,7 +6137,7 @@ rtError_t ApiErrorDecorator::GetMemUsageInfo(const uint32_t deviceId, rtMemUsage
     NULL_PTR_RETURN_MSG_OUTER(outputNum, RT_ERROR_INVALID_VALUE);
     *outputNum = 0U;
     NULL_PTR_RETURN_MSG_OUTER(memUsageInfo, RT_ERROR_INVALID_VALUE);
-    ZERO_RETURN_MSG_OUTER(inputNum);
+    ZERO_RETURN_AND_MSG_OUTER(inputNum);
     rtError_t error;
     uint32_t realDeviceId = 0U;
     error = Runtime::Instance()->ChgUserDevIdToDeviceId(deviceId, &realDeviceId);

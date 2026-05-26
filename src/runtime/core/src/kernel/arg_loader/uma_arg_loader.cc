@@ -266,7 +266,7 @@ rtError_t UmaArgLoader::LoadForMix(const rtArgsEx_t * const argsInfo,
     H2DCopyMgr *umaArgAllocator = argPcieBarAllocator_;
 
     if ((umaArgAllocator == nullptr) || (size > PCIE_BAR_COPY_SIZE)) {
-        ERROR_RETURN_MSG_INNER(RT_ERROR_INVALID_VALUE, "argsInfo->argsSize %u must be less than or equal to %u.",
+        ERROR_RETURN_MSG_INNER(RT_ERROR_INVALID_VALUE, "The value %u of argsInfo->argsSize must be less than or equal to %u.",
             size, PCIE_BAR_COPY_SIZE);
     }
     argHandle = static_cast<Handle *>(handleAllocator_->AllocItem());
@@ -281,7 +281,7 @@ rtError_t UmaArgLoader::LoadForMix(const rtArgsEx_t * const argsInfo,
         RT_LOG(RT_LOG_INFO, "args loader load for mix");
         error = LoadInputOutputArgsForMix(stm, kerArgs, umaArgAllocator, copyArgs, size, args,
             argsInfo);
-        ERROR_GOTO_MSG_INNER(error, RECYCLE, "load args(size=%u) failed, retCode=%#x.", size, static_cast<uint32_t>(error));
+        ERROR_GOTO_MSG_INNER(error, RECYCLE, "Load args(size=%u) failed, retCode=%#x.", size, static_cast<uint32_t>(error));
     }
 
     argHandle->kerArgs = umaArgAllocator->GetDevAddr(kerArgs);
@@ -335,7 +335,7 @@ rtError_t UmaArgLoader::Load(const rtArgsEx_t * const argsInfo,
                 RT_LOG(RT_LOG_DEBUG, "alloc pcie bar failed, rollback.");                            
             }
         }
-        ERROR_GOTO_MSG_INNER(error, RECYCLE, "load args(size=%u) failed, retCode=%#x.", size,
+        ERROR_GOTO_MSG_INNER(error, RECYCLE, "Load args(size=%u) failed, retCode=%#x.", size,
             static_cast<uint32_t>(error));
     }
 

@@ -25,7 +25,7 @@ rtError_t CondLabelSwitchByIndex(void* const ptr, const uint32_t maxIndex, void*
     uint32_t pos = 0xFFFFU;
     Stream *dstStm = stm;
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, stream_id=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
     std::function<void()> const errRecycle = [&rtStreamLabelSwitchIndexTask, &stm, &pos, &dstStm]() {
         TaskUnInitProc(rtStreamLabelSwitchIndexTask);
         TaskRollBack(dstStm, pos);
@@ -81,7 +81,7 @@ rtError_t CondLabelSet(Label* const lbl, Stream* const stm)
     uint32_t pos = 0xFFFFU;
     const int32_t streamId = stm->Id_();
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, stream_id=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
 
     Stream *dstStm = stm;
 

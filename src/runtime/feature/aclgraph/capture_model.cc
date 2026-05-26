@@ -193,11 +193,13 @@ rtError_t CaptureModel::ExecuteCommon(Stream * const stm, int32_t timeout, const
     // begin execute
     error = SetNotifyBeforeExecute(stm, this);
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "before model execute set notify failed, stream_id=%d, model_id=%u", stm->Id_(), Id_());
+        "Set notify before model execute failed, stream_id=%d, model_id=%u, retCode=%#x.",
+        stm->Id_(), Id_(), static_cast<uint32_t>(error));
 
     error = BuildSqCq(stm);
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "build sq cq failed, stream_id=%d, model_id=%u", stm->Id_(), Id_());  
+        "Build SQ/CQ failed, stream_id=%d, model_id=%u, retCode=%#x.",
+        stm->Id_(), Id_(), static_cast<uint32_t>(error));  
 
     ReportCacheTrackData();
     if (executeMode == RT_MODEL_CAPTURE_EXECUTE_DEFAULT) {
@@ -207,12 +209,14 @@ rtError_t CaptureModel::ExecuteCommon(Stream * const stm, int32_t timeout, const
     }
 
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "model execute failed, stream_id=%d, model_id=%u", stm->Id_(), Id_());
+        "Model execute failed, stream_id=%d, model_id=%u, retCode=%#x.",
+        stm->Id_(), Id_(), static_cast<uint32_t>(error));
 
     // after execute
     error = SetNotifyAfterExecute(stm, this);
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "after model execute set notify failed, stream_id=%d, model_id=%u", stm->Id_(), Id_());
+        "Set notify after model execute failed, stream_id=%d, model_id=%u, retCode=%#x.",
+        stm->Id_(), Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 rtError_t CaptureModel::Execute(Stream * const stm, int32_t timeout)

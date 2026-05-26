@@ -416,7 +416,7 @@ void SetKernelLaunchParams(const Stream *const stm, const rtArgsEx_t *const args
 
     launchParam.placeHoderPtr = new (std::nothrow) rtHostInputInfo_t[placeHoderNum];
     if (launchParam.placeHoderPtr == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "New rtHostInputInfo_t failed, size=%u.", placeHoderNum);
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtHostInputInfo_t) * placeHoderNum));
         return;
     }
     launchParam.placeHoderNum = placeHoderNum;

@@ -1544,7 +1544,7 @@ int32_t GetEhSizeOffset(void * const elfData, const uint32_t elfLen, uint32_t* o
     elfDataF->obj_size = elfLen;
 
     if (GetFileHeader(elfDataF) == ELF_FAIL) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "read object header failed");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Read object header failed.");
         if (elfDataF->section_headers != nullptr) {
             DELETE_A(elfDataF->section_headers);
             elfDataF->section_headers = nullptr;

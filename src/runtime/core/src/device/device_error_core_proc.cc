@@ -728,20 +728,19 @@ static void PrintCoreInfo(const StarsDeviceErrorInfo * const info, const uint32_
         "vec error info: %#" PRIx64 ", mte error info: %#" PRIx64 ", "
         "ifu error info: %#" PRIx64 ", ccu error info: %#" PRIx64 ", "
         "cube error info: %#" PRIx64 ", biu error info: %#" PRIx64 ", "
-        "aic error mask: %#" PRIx64 ", para base: %#" PRIx64 ".",
+        "aic error mask: %#" PRIx64 ", para base: %#" PRIx64 ".\n"
+        "The extend info: errcode:(%#" PRIx64 ", %#" PRIx64 ", %#" PRIx64 ") "
+        "errorStr: %s "
+        "fixp_error0 info: %#x, fixp_error1 info: %#x, "
+        "fsmId:%u, tslot:%u, thread:%u, ctxid:%u, blk:%u, sublk:%u, subErrType:%u.\n"
+        "For details, see the troubleshooting document on the Ascend official website. Search for the keyword \"AI Core Error\".",
         info->u.coreErrorInfo.comm.chipId, info->u.coreErrorInfo.comm.dieId, errorNumber, headMsg.c_str(),
         info->u.coreErrorInfo.info[coreIdx].coreId, info->u.coreErrorInfo.info[coreIdx].aicError[0],
         info->u.coreErrorInfo.info[coreIdx].pcStart, info->u.coreErrorInfo.info[coreIdx].currentPC,
         info->u.coreErrorInfo.info[coreIdx].vecErrInfo, info->u.coreErrorInfo.info[coreIdx].mteErrInfo,
         info->u.coreErrorInfo.info[coreIdx].ifuErrInfo, info->u.coreErrorInfo.info[coreIdx].ccuErrInfo,
         info->u.coreErrorInfo.info[coreIdx].cubeErrInfo, info->u.coreErrorInfo.info[coreIdx].biuErrInfo,
-        info->u.coreErrorInfo.info[coreIdx].aicErrorMask, info->u.coreErrorInfo.info[coreIdx].paraBase);
-
-    RT_LOG_CALL_MSG(ERR_MODULE_TBE,
-        "The extend info: errcode:(%#" PRIx64 ", %#" PRIx64 ", %#" PRIx64 ") "
-        "errorStr: %s "
-        "fixp_error0 info: %#x, fixp_error1 info: %#x, "
-        "fsmId:%u, tslot:%u, thread:%u, ctxid:%u, blk:%u, sublk:%u, subErrType:%u.",
+        info->u.coreErrorInfo.info[coreIdx].aicErrorMask, info->u.coreErrorInfo.info[coreIdx].paraBase,
         info->u.coreErrorInfo.info[coreIdx].aicError[0], info->u.coreErrorInfo.info[coreIdx].aicError[1],
         info->u.coreErrorInfo.info[coreIdx].aicError[2], errorString.c_str(),
         info->u.coreErrorInfo.info[coreIdx].fixPError0, info->u.coreErrorInfo.info[coreIdx].fixPError1,

@@ -830,8 +830,8 @@ rtError_t Program::RegisterSingleCpuKernel(const char *const funcName, const cha
     }
 
     Kernel *kernel = new (std::nothrow) Kernel(kernelName, 0U, this, RT_KERNEL_ATTR_TYPE_AICPU, 0U);
-    COND_PROC_RETURN_ERROR(kernel == nullptr, RT_ERROR_MEMORY_ALLOCATION, kernelMapLock_.Unlock();,
-            "kernel new failed, return.");
+    COND_PROC_RETURN_AND_MSG_OUTER(kernel == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        kernelMapLock_.Unlock();, std::to_string(sizeof(Kernel)));
 
     kernel->SetKernelRegisterType(RT_KERNEL_REG_TYPE_CPU);
     std::string tmpFuncName = funcName;
@@ -867,7 +867,7 @@ ElfProgram::ElfProgram(const rtKernelAttrType kernelAttrType) : Program(kernelAt
     SetType(Program::ELF_PROGRAM);
     elfData_ = new (std::nothrow) rtElfData();
     if (elfData_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new elfData_ failed.");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtElfData)));
     }
 }
 
@@ -1095,8 +1095,8 @@ rtError_t ElfProgram::UnifiedKernelRegister()
         /* kernelTable_ will maintain kernel and the function PutProgram() will release memory. */
         if (KernelTable_ == nullptr) {
             KernelTable_ = new (std::nothrow) rtKernelArray_t[GetKernelsCount()];
-            COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, KernelTable_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-                "new rtKernelArray_t fail, kernelCount=%u.", GetKernelsCount());
+            COND_RETURN_AND_MSG_OUTER(KernelTable_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+                std::to_string(sizeof(rtKernelArray_t) * GetKernelsCount()));
         }
 
         /* add kernel to KernelTable */
@@ -1198,9 +1198,10 @@ rtError_t Program::ProcCpuKernelH2DMem(bool isLoadCpuSo, Device * const device)
     std::vector<void *> allocMem;
     std::unique_ptr<Stream, void(*)(Stream*)> stm(StreamFactory::CreateStream(device, 0U, RT_STREAM_DEFAULT),
                                                   [](Stream* ptr) {ptr->Destructor();});
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, stm == nullptr, RT_ERROR_STREAM_NEW, "new Stream failed.");
+    COND_RETURN_AND_MSG_OUTER(stm == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+                std::to_string(sizeof(Stream)));
     ret = stm->Setup();
-    ERROR_RETURN_MSG_INNER(ret, "stream setup failed, retCode=%#x.", static_cast<uint32_t>(ret));
+    ERROR_RETURN_MSG_INNER(ret, "Stream setup failed, retCode=%#x.", static_cast<uint32_t>(ret));
 
     const std::function<void()> recycle = [&device, &allocMem, &stm, this]() {
         this->FreeCpuSoH2dMem(device, allocMem);
@@ -1407,7 +1408,7 @@ rtError_t Program::BinaryMemCopySync(void * const devMem, const uint32_t adviseS
     TIMESTAMP_BEGIN(BinaryMemCpy);
     error = curDrv->MemCopySync(devMem, static_cast<uint64_t>(size), data,
         static_cast<uint64_t>(size), RT_MEMCPY_HOST_TO_DEVICE);
-    ERROR_RETURN_MSG_INNER(error, "memcpy failed, size=%u(bytes),"
+    ERROR_RETURN_MSG_INNER(error, "Memcpy failed, size=%u(bytes),"
         "type=%d(RT_MEMCPY_HOST_TO_DEVICE), retCode=%#x, device_id=%u.",
         size, static_cast<int32_t>(RT_MEMCPY_HOST_TO_DEVICE), static_cast<uint32_t>(error), devId);
     TIMESTAMP_END(BinaryMemCpy);
@@ -1629,7 +1630,8 @@ rtError_t ElfProgram::BuildNewKernel(const std::string tripKernelName, const RtK
 
     Kernel *kernelObj = new (std::nothrow) Kernel(tripKernelName.c_str(), tilingKey, this, kernelAttrType,
         static_cast<uint32_t>(elfkernelInfo->offset), 0U, mixType);
-    COND_RETURN_ERROR((kernelObj == nullptr), RT_ERROR_KERNEL_NEW, "allocate new Kernel failed");
+    COND_RETURN_AND_MSG_OUTER((kernelObj == nullptr), RT_ERROR_KERNEL_NEW, ErrorCode::EE1013,
+        std::to_string(sizeof(Kernel)));
 
     // set other attrs
     SetKernelAttribute(elfkernelInfo, kernelObj);

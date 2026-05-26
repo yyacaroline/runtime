@@ -130,12 +130,6 @@
     COND_RETURN_CALL_MSG_(CALL, (PARAM) == 0U, \
         RT_ERROR_INVALID_VALUE, "Check param failed, " #PARAM " can not be 0.");
 
-// 整改代码上线之后，此宏删除
-#define ZERO_RETURN_MSG_OUTER(PARAM)            \
-    COND_RETURN_MSG_(OUTER, (PARAM) == 0U, \
-    RT_ERROR_INVALID_VALUE, RT_INVALID_ARGUMENT_ERROR, \
-    "Check param failed, " #PARAM " can not be 0.")
-
 #define ZERO_RETURN_AND_MSG_OUTER(PARAM)            \
     COND_RETURN_AND_MSG_OUTER_WITH_PARAM((PARAM) == 0U, \
         RT_ERROR_INVALID_VALUE, PARAM, "not equal to 0")

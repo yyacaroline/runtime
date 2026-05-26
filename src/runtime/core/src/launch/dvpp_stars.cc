@@ -42,7 +42,7 @@ rtError_t StarsLaunchDvppRRProcess(Stream * const stm)
         (void)WriteValueTaskInit(writeValueTask, addr, WRITE_VALUE_SIZE_32_BYTE, &(value[0U]), TASK_WR_CQE_NEVER);
 
         error = dev->SubmitTask(writeValueTask);
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "dvpp task submit failed, stream_id=%d, i=%u", streamId, i);
+        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Submit dvpp task failed, stream_id=%d, i=%u.", streamId, i);
     }
 
     return RT_ERROR_NONE;

@@ -506,7 +506,7 @@ rtError_t LaunchFusionKernel(Stream* stm, void * const fusionKernelInfo, rtFusio
     rt->PutProgram(prog);
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), taskInfo->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Post-processing of task submission failed, stream_id=%d, retCode=%#x.", stm->Id_(),
         static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }

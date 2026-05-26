@@ -177,8 +177,8 @@ rtError_t DavidStream::SubmitMaintenanceTask(const MtType type, bool isForceRecy
     TaskInfo *tsk = nullptr;
     uint32_t pos = 0xFFFFU;
     rtError_t error = CheckTaskCanSend(this);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check send failed, target_stream_id=%d, retCode=%#x.", streamId_,
-        targetStmId, static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, stream_id=%d, target_stream_id=%d, retCode=%#x.",
+        streamId_, targetStmId, static_cast<uint32_t>(error));
     StreamLock();
     error = AllocTaskInfo(&tsk, this, pos);
     ERROR_PROC_RETURN_MSG_INNER(error, StreamUnLock();, "Failed to alloc task, stream_id=%d, target_stream_id=%d,"
@@ -730,7 +730,7 @@ rtError_t DavidStream::ApplyCntNotifyId(int32_t &newEventId)
     if (unlikely(cntNotifyId_ == MAX_UINT32_NUM)) {
         const rtError_t error = driver->NotifyIdAlloc(static_cast<int32_t>(deviceId), &cntNotifyId_, tsId, 0U, true);
         if (error != RT_ERROR_NONE) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "alloc count notify failed, device_id=%u, retCode=%#x.",
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Alloc notifyId failed, device_id=%u, retCode=%#x.",
                 deviceId, static_cast<uint32_t>(error));
             return error;
         }
@@ -995,7 +995,7 @@ rtError_t DavidStream::JudgeHeadTailPos(rtEventStatus_t * const status, uint16_t
 {
     bool isFinished = false;
     const rtError_t error = JudgeTaskFinish(eventPos, isFinished);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "query task status failed, retCode=%#x.",
+    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Query task status failed, retCode=%#x.",
         static_cast<uint32_t>(error));
 
     if (isFinished) {

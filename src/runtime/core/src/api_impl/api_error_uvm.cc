@@ -39,7 +39,7 @@ rtError_t ApiErrorDecorator::MemManagedGetAttr(rtMemManagedRangeAttribute attrib
 {
     NULL_PTR_RETURN_MSG_OUTER(data, RT_ERROR_INVALID_VALUE);
     NULL_PTR_RETURN_MSG_OUTER(ptr, RT_ERROR_INVALID_VALUE);
-    ZERO_RETURN_MSG_OUTER(size);
+    ZERO_RETURN_AND_MSG_OUTER(size);
     COND_RETURN_AND_MSG_OUTER_WITH_PARAM(
         (attribute < rtMemRangeAttributeReadMostly) || (attribute > rtMemRangeAttributeLastPrefetchLocationId), 
         RT_ERROR_INVALID_VALUE, attribute, 
@@ -58,7 +58,7 @@ rtError_t ApiErrorDecorator::MemManagedGetAttrs(rtMemManagedRangeAttribute *attr
     NULL_PTR_RETURN_MSG_OUTER(dataSizes, RT_ERROR_INVALID_VALUE);
     NULL_PTR_RETURN_MSG_OUTER(attributes, RT_ERROR_INVALID_VALUE);
     NULL_PTR_RETURN_MSG_OUTER(ptr, RT_ERROR_INVALID_VALUE);
-    ZERO_RETURN_MSG_OUTER(size);
+    ZERO_RETURN_AND_MSG_OUTER(size);
 
     for (size_t i = 0U; i < numAttributes; i++) {
         COND_RETURN_AND_MSG_OUTER_WITH_PARAM((attributes[i] < rtMemRangeAttributeReadMostly) || 

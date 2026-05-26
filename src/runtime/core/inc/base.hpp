@@ -30,6 +30,7 @@
 #endif
 #include "args/args_inner.h"
 #include "rt_log.h"
+#include "common/error_code_meta.h"
 
 extern "C" {
 int __attribute((weak)) AtraceReportStart(int32_t devId);
@@ -198,54 +199,14 @@ static constexpr const char_t *RT_MODULE_TYPE_TO_ERR_MSG[ERR_MODULE_MAX] = {
     } while (false)
  
 constexpr const char* ErrorCodeToString(ErrorCode code) {
+#undef RT_ERR_TO_STR
+#define RT_ERR_TO_STR(code, name, params, msg, level) case ErrorCode::code: return name;
     switch (code) {
-        case ErrorCode::EE1001:
-            return "EE1001";
-        case ErrorCode::EE1002:
-            return "EE1002";
-        case ErrorCode::EE1003:
-            return "EE1003";
-        case ErrorCode::EE1004:
-            return "EE1004";
-        case ErrorCode::EE1005:
-            return "EE1005";
-        case ErrorCode::EE1006:
-            return "EE1006";
-        case ErrorCode::EE1007:
-            return "EE1007";
-        case ErrorCode::EE1008:
-            return "EE1008";
-        case ErrorCode::EE1009:
-            return "EE1009";
-        case ErrorCode::EE1010:
-            return "EE1010";
-        case ErrorCode::EE1011:
-            return "EE1011";
-        case ErrorCode::EE1012:
-            return "EE1012";
-        case ErrorCode::EE1013:
-            return "EE1013";
-        case ErrorCode::EE1014:
-            return "EE1014";
-        case ErrorCode::EE1015:
-            return "EE1015";
-        case ErrorCode::EE1016:
-            return "EE1016";
-        case ErrorCode::EE1017:
-            return "EE1017";
-        case ErrorCode::EE1018:
-            return "EE1018";
-        case ErrorCode::EE1019:
-            return "EE1019";
-        case ErrorCode::EE1020:
-            return "EE1020";
-        case ErrorCode::EE2002:
-            return "EE2002";
-        case ErrorCode::WE0001:
-            return "WE0001";
+        RUNTIME_ERROR_CODE_TABLE(RT_ERR_TO_STR)
         default:
             return "UNKNOWN";
     }
+#undef RT_ERR_TO_STR
 }
 
 template<class... Args>

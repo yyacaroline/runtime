@@ -372,7 +372,8 @@ rtError_t ModelSubmitExecuteTask(Model * const mdl, Stream * const streamIn)
                                 TaskUnInitProc(exeTask);
                                 TaskRollBack(streamIn, pos);
                                 streamIn->StreamUnLock();,
-                                "Failed to execute model, model_id=%u.", mdl->Id_());
+                                "Failed to execute model, model_id=%u, retCode=%#x.", mdl->Id_(),
+                                static_cast<uint32_t>(error));
     streamIn->StreamUnLock();
     error = SubmitTaskPostProc(streamIn, pos);
     ERROR_RETURN_MSG_INNER(error, "Failed to recycle task, stream_id=%d, retCode=%#x.",
@@ -592,11 +593,11 @@ rtError_t MdlBindTaskSubmit(Model * const mdl, Stream * const streamIn,
     ScopeGuard tskErrRecycle(errRecycle);
     SaveTaskCommonInfo(maintainceTask, stm, pos);
     error = DavidModelMaintainceTaskInit(maintainceTask, MMT_STREAM_ADD, mdl, streamIn, streamType, 0U);
-    ERROR_RETURN_MSG_INNER(error, "DavidModelMaintainceTaskInit failed, stream_id=%d, model_id=%u.",
-                           stm->Id_(), mdl->Id_());
+    ERROR_RETURN_MSG_INNER(error, "DavidModelMaintainceTaskInit failed, stream_id=%d, model_id=%u, retCode=%#x.",
+                           stm->Id_(), mdl->Id_(), static_cast<uint32_t>(error));
     error = DavidSendTask(maintainceTask, stm);
-    ERROR_RETURN_MSG_INNER(error, "Failed to submit model bind task, stream_id=%d, model_id=%u.",
-                           stm->Id_(), mdl->Id_());
+    ERROR_RETURN_MSG_INNER(error, "Failed to submit model bind task, stream_id=%d, model_id=%u, retCode=%#x.",
+                           stm->Id_(), mdl->Id_(), static_cast<uint32_t>(error));
     stm->StreamUnLock();
     tskErrRecycle.ReleaseGuard();
     return RT_ERROR_NONE;

@@ -203,12 +203,12 @@ static rtError_t DqsNotifyWait(Stream * const stm)
     if (queNum > 1U) {
         isCntNotify = true;
         error = DqsCountNotifyWaitCreate(streamWithDqs, createdFlag);
-        ERROR_RETURN_MSG_INNER(error, "dqs cnt notify wait failed, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_RETURN_MSG_INNER(error, "Dqs cnt notify wait failed, retCode=%#x.", static_cast<uint32_t>(error));
         CountNotify *cntNotify = RtPtrToUnConstPtr<CountNotify *>(streamWithDqs->GetDqsCountNotify());
         notifyId = cntNotify->GetCntNotifyId();
     } else {
         error = DqsNotifyWaitCreate(streamWithDqs, createdFlag);
-        ERROR_RETURN_MSG_INNER(error, "dqs notify wait failed, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_RETURN_MSG_INNER(error, "Dqs notify wait failed, retCode=%#x.", static_cast<uint32_t>(error));
         Notify *notify = RtPtrToUnConstPtr<Notify *>(streamWithDqs->GetDqsNotify());
         notifyId = notify->GetNotifyId();
     }
@@ -216,7 +216,7 @@ static rtError_t DqsNotifyWait(Stream * const stm)
     if (createdFlag == false) {
         // send notifyId and queId to kernel space
         error = SendAccSubscribeInfo(streamWithDqs, queNum, notifyId, ctrlSpacePtr->input_queue_ids, isCntNotify);
-        ERROR_RETURN_MSG_INNER(error, "send stars ioctl failed, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_RETURN_MSG_INNER(error, "Send stars ioctl failed, retCode=%#x.", static_cast<uint32_t>(error));
     }
 
     return RT_ERROR_NONE;
@@ -233,7 +233,7 @@ static rtError_t LaunchDqsTaskByType(const rtDqsTaskType type, Stream * const st
     RT_LOG(RT_LOG_INFO, "[%s], streamId=%d.", taskInitInfo->taskDesc, streamId);
     TaskInfo *task = nullptr;
     error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "streamId=%d check failed, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, streamId=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
     uint32_t pos = RT_DEFAULT_POS;
     stm->StreamLock();
     error = AllocTaskInfo(&task, stm, pos);
@@ -267,7 +267,7 @@ static rtError_t LaunchDqsInterChipTaskByType(Stream *const stm, const uint32_t 
     RT_LOG(RT_LOG_INFO, "[%s], streamId=%d.", taskInitInfo->taskDesc, streamId);
     TaskInfo *task = nullptr;
     error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "streamId=%d check failed, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, streamId=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
     uint32_t pos = RT_DEFAULT_POS;
     stm->StreamLock();
     error = AllocTaskInfo(&task, stm, pos);
@@ -275,7 +275,7 @@ static rtError_t LaunchDqsInterChipTaskByType(Stream *const stm, const uint32_t 
         "streamId=%d alloc [%s] failed, retCode=%#x.", streamId, taskInitInfo->taskDesc, static_cast<uint32_t>(error));
  
     SaveTaskCommonInfo(task, stm, pos);
- 
+
     error = taskInitInfo->taskInitFunc(task, blockIdx, type);
     ERROR_PROC_RETURN_MSG_INNER(error, RollbackAndRecycle(task, stm, pos),
         "[%s] init failed, streamId=%d, retCode=%#x.", taskInitInfo->taskDesc, streamId, static_cast<uint32_t>(error));

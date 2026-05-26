@@ -40,7 +40,7 @@ rtError_t MemcopyAsyncPtr(void * const memcpyAddrInfo, const uint64_t destMax, c
     ERROR_RETURN(error, "Failed to memory copy info, device_id=%u, size=%u, retCode=%#x.",
         dev->Id_(), cpySize, static_cast<uint32_t>(error));
     error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream check failed, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Failed to check if task can be sent, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     uint32_t pos = 0xFFFFU;
     Stream *dstStm = stm;
@@ -56,17 +56,17 @@ rtError_t MemcopyAsyncPtr(void * const memcpyAddrInfo, const uint64_t destMax, c
     SaveTaskCommonInfo(cpyAsyncTask, dstStm, pos);
     ScopeGuard tskErrRecycle(errRecycle);
     error = MemcpyAsyncTaskInitV1(cpyAsyncTask, static_cast<rtDavidMemcpyAddrInfo *>(memcpyAddrInfo), count);
-    ERROR_RETURN_MSG_INNER(error, "task init failed, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Task init failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     cpyAsyncTask->stmArgPos = static_cast<DavidStream *>(dstStm)->GetArgPos();
     error = DavidSendTask(cpyAsyncTask, dstStm);
-    ERROR_RETURN_MSG_INNER(error, "task submit failed, stream_id=%d, retCode=%#x",
+    ERROR_RETURN_MSG_INNER(error, "Task submit failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     tskErrRecycle.ReleaseGuard();
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), cpyAsyncTask->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Post-processing of task submission failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
@@ -77,7 +77,7 @@ rtError_t Memcpy2DAsync(void * const dst, const uint64_t dstPitch, const void * 
 {
     NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, stm->Id_(), retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Stream check failed, stream_id=%d , retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     uint32_t pos = 0xFFFFU;
     TaskInfo *taskAsync2d = nullptr;
@@ -96,7 +96,7 @@ rtError_t Memcpy2DAsync(void * const dst, const uint64_t dstPitch, const void * 
     ScopeGuard tskErrRecycle(errRecycle);
     error = MemcpyAsyncTaskInitV2(taskAsync2d, dst, dstPitch, src, srcPitch, width, height, kind, fixedSize);
     taskAsync2d->u.memcpyAsyncTaskInfo.copyMethod = RT_ASYNC_CPY_2D;
-    ERROR_RETURN_MSG_INNER(error, "invoke taskAsync2d Init stream_id=%d, errorcode:%#x", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Init MemcpyAsyncTask failed, stream_id=%d, retCode=%#x", stm->Id_(),
         static_cast<uint32_t>(error));
     // David UB 单算子场景 fixedSize是否与计算出的size相等，如果相等则不需要发送任务
     if (IsDavidUbDma(taskAsync2d->u.memcpyAsyncTaskInfo.copyType) && !stm->GetBindFlag() 
@@ -109,13 +109,13 @@ rtError_t Memcpy2DAsync(void * const dst, const uint64_t dstPitch, const void * 
     *realSize = taskAsync2d->u.memcpyAsyncTaskInfo.size;
     taskAsync2d->stmArgPos = static_cast<DavidStream *>(dstStm)->GetArgPos();
     error = DavidSendTask(taskAsync2d, dstStm);
-    ERROR_RETURN_MSG_INNER(error, "taskAsync2d task submit task failed, stream_id=%d, pos=%u, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Submit taskAsync2d task failed, stream_id=%d, pos=%u, retCode=%#x.",
         stm->Id_(), pos, static_cast<uint32_t>(error));
     tskErrRecycle.ReleaseGuard();
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), taskAsync2d->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Post-processing of task submission failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
@@ -125,7 +125,7 @@ rtError_t MemcopyBatchAsync(void** const dsts, const uint64_t* const destMaxs, v
 {
     UNUSED(destMaxs);
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Stream check failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     uint32_t pos = 0xFFFFU;
     TaskInfo *taskAsyncBatch = nullptr;
@@ -144,7 +144,7 @@ rtError_t MemcopyBatchAsync(void** const dsts, const uint64_t* const destMaxs, v
     ScopeGuard tskErrRecycle(errRecycle);
     error = MemcpyAsyncBatchTaskInit(taskAsyncBatch, dsts, srcs, sizes, count, fixedSize);
     taskAsyncBatch->u.memcpyAsyncTaskInfo.copyMethod = RT_ASYNC_CPY_BATCH;
-    ERROR_RETURN_MSG_INNER(error, "invoke taskAsyncBatch Init stream_id=%d, errorcode:%#x", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Init taskAsyncBatch task failed, stream_id=%d, retCode=%#x.", stm->Id_(),
         static_cast<uint32_t>(error));
      // David UB 单算子场景 如果驱动本次下发处理的count个数为0，则表示没有触发wqe下发，不需要下发ub db task
     if (IsDavidUbDma(taskAsyncBatch->u.memcpyAsyncTaskInfo.copyType) && !stm->GetBindFlag() 
@@ -157,13 +157,13 @@ rtError_t MemcopyBatchAsync(void** const dsts, const uint64_t* const destMaxs, v
     *realSize = taskAsyncBatch->u.memcpyAsyncTaskInfo.size;
     taskAsyncBatch->stmArgPos = static_cast<DavidStream *>(dstStm)->GetArgPos();
     error = DavidSendTask(taskAsyncBatch, dstStm);
-    ERROR_RETURN_MSG_INNER(error, "taskAsyncBatch task submit task failed, stream_id=%d, pos=%u, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Submit taskAsyncBatch task failed, stream_id=%d, pos=%u, retCode=%#x.",
         stm->Id_(), pos, static_cast<uint32_t>(error));
     tskErrRecycle.ReleaseGuard();
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->Id_(), taskAsyncBatch->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Post-processing of task submission failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
@@ -221,7 +221,7 @@ rtError_t MemcopyAsync(void * const dst, const uint64_t destMax, const void * co
     SaveTaskCommonInfo(rtMemcpyAsyncTask, dstStm, pos, sqeNum);
     ScopeGuard tskErrRecycle(errRecycle);
     error = MemcpyAsyncTaskInitV3(rtMemcpyAsyncTask, kind, src, dst, cpySize, cfgInfo, addrCfg);
-    ERROR_RETURN_MSG_INNER(error, "invoke MemcpyAsyncTask Init stream_id=%d error code:%#x", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Init MemcpyAsyncTask failed, stream_id=%d, retCode=%#x", stm->Id_(),
         static_cast<uint32_t>(error));
     *realSize = rtMemcpyAsyncTask->u.memcpyAsyncTaskInfo.size;
     if (guardMem != nullptr) {
@@ -239,7 +239,7 @@ rtError_t MemcopyAsync(void * const dst, const uint64_t destMax, const void * co
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), rtMemcpyAsyncTask->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Post-processing of task submission failed, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     return error;
 }

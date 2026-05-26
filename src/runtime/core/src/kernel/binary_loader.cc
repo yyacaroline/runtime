@@ -290,7 +290,7 @@ ElfProgram* BinaryLoader::LoadFromFile()
 
     ElfProgram *prog = new (std::nothrow) ElfProgram(kernelAttrType);
     if (prog == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "Malloc new ElfProgram failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(ElfProgram)));
         char_t *buffer = RtPtrToPtr<char_t *, void *>(binaryBuffer_);
         DELETE_A(buffer);
         return nullptr;
@@ -338,7 +338,7 @@ PlainProgram* BinaryLoader::LoadCpuKernelFromData()
 {
     PlainProgram *prog = new (std::nothrow) PlainProgram(RT_KERNEL_REG_TYPE_CPU, RT_KERNEL_ATTR_TYPE_AICPU);
     if (prog == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "Malloc new PlainProgram failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(PlainProgram)));
         return nullptr;
     }
 
@@ -359,7 +359,7 @@ ElfProgram* BinaryLoader::LoadFromData() const
 
     ElfProgram *prog = new (std::nothrow) ElfProgram(kernelAttrType);
     if (prog == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "malloc new ElfProgram failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(ElfProgram)));
         return nullptr;
     }
     RT_LOG(RT_LOG_INFO, "New ElfProgram ok, magic=%u, kernelAttrType=%d, Runtime_alloc_size=%zu",
@@ -368,7 +368,6 @@ ElfProgram* BinaryLoader::LoadFromData() const
     if (magic_ != 0) {
         prog->SetElfMagic(magic_);
     }
-
     const rtError_t ret = prog->Register(binaryBuffer_, static_cast<uint64_t>(binarySize_));
     if (ret != RT_ERROR_NONE) {
         RT_LOG_CALL_MSG(ERR_MODULE_GE, "program register failed");
@@ -392,7 +391,7 @@ PlainProgram* BinaryLoader::ParseJsonAndRegisterCpuKernel()
 {
     PlainProgram *prog = new (std::nothrow) PlainProgram(RT_KERNEL_REG_TYPE_CPU, RT_KERNEL_ATTR_TYPE_AICPU);
     if (prog == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "Malloc new PlainProgram failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(PlainProgram)));
         return nullptr;
     }
     RT_LOG(RT_LOG_INFO, "New PlainProgram ok, Runtime_alloc_size %zu", sizeof(PlainProgram));
