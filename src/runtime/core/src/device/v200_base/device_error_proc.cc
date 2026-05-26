@@ -12,7 +12,6 @@
 #include "runtime.hpp"
 #include "context.hpp"
 #include "task_recycle.hpp"
-#include "kernel.h"
 
  
 namespace cce {
@@ -42,17 +41,20 @@ uint16_t GetMteErrWaitCount()
     return 20U;
 }
 
-void DeviceErrorProc::MapFusionTaskErrorCode(TaskInfo* tsk, StarsOpExceptionInfo* report)
+void DeviceErrorProc::MapFusionTaskErrorCode(const TaskInfo* tsk, StarsOpExceptionInfo* report) const
 {
     if ((tsk->type != TS_TASK_TYPE_FUSION_KERNEL) || (report->sqeType != RT_DAVID_SQE_TYPE_FUSION)) {
         return;
     }
+    constexpr uint8_t SQE_SUB_TYPE_AICORE_BIT = 2U;
     const uint8_t sqeSubType = tsk->u.fusionKernelTask.sqeSubType;
     const bool isTimeout = (report->errorCode == TS_ERROR_TASK_TIMEOUT);
-    if ((sqeSubType & (1U << 2)) != 0U) { // has AICORE sub task
+    if ((sqeSubType & (1U << SQE_SUB_TYPE_AICORE_BIT)) != 0U) { // has AICORE sub task
         report->errorCode = isTimeout ? TS_ERROR_AICORE_TIMEOUT : TS_ERROR_AICORE_EXCEPTION;
     } else if (sqeSubType == 0x18U) { // only CCU sub task
         report->errorCode = isTimeout ? TS_ERROR_CCU_TIMEOUT : TS_ERROR_CCU_EXCEPTION;
+    } else if (sqeSubType == 0x01U) { // only AICPU sub task
+        report->errorCode = isTimeout ? TS_ERROR_AICPU_TIMEOUT : TS_ERROR_AICPU_EXCEPTION;
     }
 }
 

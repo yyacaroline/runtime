@@ -6195,7 +6195,7 @@ rtError_t ApiImpl::MemQueueCreate(const int32_t devId, const rtMemQueueAttr_t * 
 rtError_t ApiImpl::MemQueueExport(const int32_t devId, const uint32_t qid, const int32_t peerDevId,
         const char * const shareName)
 {
-    RT_LOG(RT_LOG_INFO, "Start to Export queue on drv devId [%d], qid [%d],peerDevId [%d] .", 
+    RT_LOG(RT_LOG_INFO, "Start to Export queue on drv devId [%d], qid [%u], peerDevId [%d].",
         devId, qid, peerDevId);
     COND_RETURN_ERROR(CheckCurCtxValid(devId) != RT_ERROR_NONE, RT_ERROR_CONTEXT_NULL,
                       "Current Context is null, drv devId[%d].", devId);
@@ -6204,7 +6204,7 @@ rtError_t ApiImpl::MemQueueExport(const int32_t devId, const uint32_t qid, const
 rtError_t ApiImpl::MemQueueUnExport(const int32_t devId, const uint32_t qid, const int32_t peerDevId,
         const char * const shareName)
 {
-    RT_LOG(RT_LOG_INFO, "Start to UnExport queue on drv devId [%d], qid [%d],peerDevId [%d] .", 
+    RT_LOG(RT_LOG_INFO, "Start to UnExport queue on drv devId [%d], qid [%u], peerDevId [%d].",
         devId, qid, peerDevId);
     COND_RETURN_ERROR(CheckCurCtxValid(devId) != RT_ERROR_NONE, RT_ERROR_CONTEXT_NULL,
                       "Current Context is null, drv devId[%d].", devId);
@@ -6224,7 +6224,7 @@ rtError_t ApiImpl::MemQueueImport(const int32_t devId, const int32_t peerDevId, 
 rtError_t ApiImpl::MemQueueUnImport(const int32_t devId, const uint32_t qid, const int32_t peerDevId, 
         const char * const shareName)
 {
-    RT_LOG(RT_LOG_INFO, "Start to UnImport queue on drv devId [%d], qid [%d],peerDevId [%d].", 
+    RT_LOG(RT_LOG_INFO, "Start to UnImport queue on drv devId [%d], qid [%u], peerDevId [%d].",
         devId, qid, peerDevId);
     COND_RETURN_ERROR(CheckCurCtxValid(devId) != RT_ERROR_NONE, RT_ERROR_CONTEXT_NULL,
                       "Current Context is null, drv devId[%d].", devId);

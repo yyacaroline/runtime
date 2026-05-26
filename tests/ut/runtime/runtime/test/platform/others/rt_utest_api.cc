@@ -7834,3 +7834,70 @@ TEST_F(ApiTest, rtMemsetD32Async_insufficient_destMax) {
     rtFree(devPtr);
     rtStreamDestroy(stream);
 }
+
+TEST_F(ApiTest, rtMemQueueImport_timeout_without_Export)
+{
+    MOCKER(halQueueImport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_RESUME));
+    const char *shareName = "timeout_test_queue";
+    uint32_t qid = 0;
+    rtError_t error = rtMemQueueImport(0, 1, shareName, &qid);
+    EXPECT_EQ(error, ACL_ERROR_RT_TIMEOUT);
+    GlobalMockObject::verify();
+}
+
+TEST_F(ApiTest, rtMemQueueExport_normal_path)
+{
+    MOCKER(halQueueExport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_NONE));
+    const char *shareName = "normal_export_queue";
+    rtError_t error = rtMemQueueExport(0, 0, 1, shareName);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    GlobalMockObject::verify();
+}
+
+TEST_F(ApiTest, rtMemQueueExport_drv_error)
+{
+    MOCKER(halQueueExport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_RESUME));
+    const char *shareName = "error_export_queue";
+    rtError_t error = rtMemQueueExport(0, 0, 1, shareName);
+    EXPECT_EQ(error, ACL_ERROR_RT_TIMEOUT);
+    GlobalMockObject::verify();
+}
+
+TEST_F(ApiTest, rtMemQueueUnExport_normal_path)
+{
+    MOCKER(halQueueUnexport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_NONE));
+    const char *shareName = "normal_unexport_queue";
+    rtError_t error = rtMemQueueUnExport(0, 0, 1, shareName);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    GlobalMockObject::verify();
+}
+
+TEST_F(ApiTest, rtMemQueueUnExport_drv_error)
+{
+    MOCKER(halQueueUnexport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_RESUME));
+    const char *shareName = "error_unexport_queue";
+    rtError_t error = rtMemQueueUnExport(0, 0, 1, shareName);
+    EXPECT_EQ(error, ACL_ERROR_RT_TIMEOUT);
+    GlobalMockObject::verify();
+}
+
+TEST_F(ApiTest, rtMemQueueUnImport_normal_path)
+{
+    MOCKER(halQueueUnimport)
+        .stubs()
+        .will(returnValue(DRV_ERROR_NONE));
+    const char *shareName = "normal_unimport_queue";
+    rtError_t error = rtMemQueueUnImport(0, 0, 1, shareName);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    GlobalMockObject::verify();
+}

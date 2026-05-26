@@ -5185,7 +5185,7 @@ TEST_F(DavidTaskTest, MapFusionTaskErrorCode_ccu_timeout)
     GlobalMockObject::verify();
 }
 
-TEST_F(DavidTaskTest, MapFusionTaskErrorCode_no_matching_sub_task)
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_aicpu_exception)
 {
     DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
     TaskInfo taskInfo = {};
@@ -5193,6 +5193,48 @@ TEST_F(DavidTaskTest, MapFusionTaskErrorCode_no_matching_sub_task)
     taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
     taskInfo.tid = 1U;
     taskInfo.u.fusionKernelTask.sqeSubType = 0x01U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_EXCEPTION;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_AICPU_EXCEPTION);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_aicpu_timeout)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = 0x01U;
+    InitByStream(&taskInfo, stream_);
+
+    StarsOpExceptionInfo report = {};
+    report.sqeType = RT_DAVID_SQE_TYPE_FUSION;
+    report.errorCode = TS_ERROR_TASK_TIMEOUT;
+
+    errorProc->MapFusionTaskErrorCode(&taskInfo, &report);
+    EXPECT_EQ(report.errorCode, TS_ERROR_AICPU_TIMEOUT);
+
+    delete errorProc;
+    GlobalMockObject::verify();
+}
+
+TEST_F(DavidTaskTest, MapFusionTaskErrorCode_no_matching_sub_task)
+{
+    DeviceErrorProc* errorProc = new DeviceErrorProc(dev_);
+    TaskInfo taskInfo = {};
+    memset_s(&taskInfo, sizeof(TaskInfo), 0, sizeof(TaskInfo));
+    taskInfo.type = TS_TASK_TYPE_FUSION_KERNEL;
+    taskInfo.tid = 1U;
+    taskInfo.u.fusionKernelTask.sqeSubType = 0x02U;
     InitByStream(&taskInfo, stream_);
 
     StarsOpExceptionInfo report = {};
