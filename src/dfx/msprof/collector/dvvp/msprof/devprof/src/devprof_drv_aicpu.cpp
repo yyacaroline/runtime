@@ -21,6 +21,7 @@
 #ifndef RC_MODE
 int __attribute__((weak)) halProfQueryAvailBufLen(unsigned int dev_id, unsigned int chan_id, unsigned int *buff_avail_len);
 #endif
+int __attribute__((weak)) halProfSampleRegisterEx(unsigned int dev_id, unsigned int chan_id, struct prof_sample_register_para *para);
 
 using namespace analysis::dvvp::common::error;
 using namespace analysis::dvvp::common::config;
