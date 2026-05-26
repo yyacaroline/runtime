@@ -11,7 +11,6 @@
 #ifndef __CCE_RUNTIME_STARS_COND_ISA_STRUCT_HPP__
 #define __CCE_RUNTIME_STARS_COND_ISA_STRUCT_HPP__
 
-#include "base.hpp"
 #include "stars_cond_isa_base_struct.hpp"
 #include "stars_cond_isa_para.hpp"
 #include "stars_cond_isa_mbuf_trace.hpp"
