@@ -13,7 +13,6 @@
 import os
 import re
 import urllib.request
-import ssl
 import logging
 
 # Configure logging
@@ -31,12 +30,8 @@ def download_file(url, target_dir):
         return
     logging.info(f"Downloading [{filename}] from {url} ...")
     try:
-        # Avoid SSL certificate verification issues
-        context = ssl.create_default_context()
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=context, timeout=60) as response, open(target_path, 'wb') as out_file:
+        with urllib.request.urlopen(req, timeout=60) as response, open(target_path, 'wb') as out_file:
             data = response.read()
             out_file.write(data)
         logging.info(f"Successfully downloaded [{filename}].")
