@@ -876,6 +876,8 @@ public:
     void ProgramSetMutexUnLock() override {
         programMtx_.unlock();
     }
+    void PushFftsPlusArgHandle(void *argHandle) override;
+    void FreeFftsPlusArgHandleCache() override;
 
     rtError_t SetQosCfg(const QosMasterConfigType& qosCfg, uint32_t index) override;
 
@@ -1071,6 +1073,8 @@ private:
     std::mutex programMtx_;
     std::unordered_set<Program *> programSet_;
     qos_master_config_t aicoreQosCfgs_;
+    std::vector<void *> fftsPlusArgHandleCache_;
+    std::mutex fftsPlusArgHandleMutex_;
     DeviceFaultInfo devFaultInfo_ = {};
 };
 }

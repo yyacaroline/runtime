@@ -410,7 +410,11 @@ void FftsPlusTaskUnInit(TaskInfo * const taskInfo)
         taskInfo->u.fftsPlusTask.errInfo = nullptr;
     }
     if (taskInfo->u.fftsPlusTask.argHandle != nullptr) {
-        (void)stm->Device_()->ArgLoader_()->Release(taskInfo->u.fftsPlusTask.argHandle);
+        if (stm->IsSeparateSendAndRecycle()) {
+            stm->Device_()->PushFftsPlusArgHandle(taskInfo->u.fftsPlusTask.argHandle);
+        } else {
+            (void)stm->Device_()->ArgLoader_()->Release(taskInfo->u.fftsPlusTask.argHandle);
+        }
         taskInfo->u.fftsPlusTask.descBuf = nullptr;
         taskInfo->u.fftsPlusTask.argHandle = nullptr;
     }
@@ -803,12 +807,57 @@ static void TaskFailCallBackForFftsPlusTask(TaskInfo* taskInfo, const uint32_t d
     TaskFailCallBackNotify(&exceptionInfo);
 }
 
+static void DumpContext(TaskInfo *taskInfo)
+{
+    FftsPlusTaskInfo *fftsPlusTask = &taskInfo->u.fftsPlusTask;
+    if ((fftsPlusTask->descAlignBuf == nullptr) || (fftsPlusTask->descBufLen == 0ULL)) {
+        return;
+    }
+    const uint32_t totalCtxNum = static_cast<uint32_t>(fftsPlusTask->descBufLen / CONTEXT_LEN);
+    const uint32_t printNum = (totalCtxNum < 10U) ? totalCtxNum : 10U;
+    const uint32_t copySize = printNum * CONTEXT_LEN;
+
+    RT_LOG(RT_LOG_ERROR, "=====dump contexts begin, stream_id=%d, task_id=%u, "
+        "total_ctx_num=%u, print_num=%u, descAlignBuf=%p, descBufLen=%llu=====",
+        taskInfo->stream->Id_(), taskInfo->id, totalCtxNum, printNum,
+        fftsPlusTask->descAlignBuf, fftsPlusTask->descBufLen);
+
+    std::vector<uint8_t> ctxBuf(copySize);
+    const rtError_t ret = taskInfo->stream->Device_()->Driver_()->MemCopySync(
+        ctxBuf.data(), copySize, fftsPlusTask->descAlignBuf, copySize, RT_MEMCPY_DEVICE_TO_HOST);
+    if (ret != RT_ERROR_NONE) {
+        RT_LOG(RT_LOG_ERROR, "MemCopySync failed, retCode=%#x.", ret);
+        return;
+    }
+
+    for (uint32_t ctxId = 0U; ctxId < printNum; ctxId++) {
+        const uint32_t *buf = RtPtrToPtr<const uint32_t *>(ctxBuf.data() + ctxId * CONTEXT_LEN);
+        const auto *comCtx = RtPtrToPtr<const rtFftsPlusComCtx_t *>(buf);
+        RT_LOG(RT_LOG_ERROR, "context[%u] stream_id=%d task_id=%u "
+            "context_id=%u contextType=%u successorNum=%u predCntInit=%u.",
+            ctxId, taskInfo->stream->Id_(), taskInfo->id, ctxId, comCtx->contextType,
+            comCtx->successorNum, comCtx->predCntInit);
+        for (uint32_t row = 0U; row < 4U; row++) {
+            const uint32_t start = row * 8U;
+            RT_LOG(RT_LOG_ERROR, "context[%u] buf[%02u-%02u]="
+                "%08x %08x %08x %08x %08x %08x %08x %08x",
+                ctxId, start, start + 7U,
+                buf[start], buf[start + 1U], buf[start + 2U], buf[start + 3U],
+                buf[start + 4U], buf[start + 5U], buf[start + 6U], buf[start + 7U]);
+        }
+    }
+
+    RT_LOG(RT_LOG_ERROR, "=====dump contexts end, stream_id=%d, task_id=%u=====",
+        taskInfo->stream->Id_(), taskInfo->id);
+}
+
 void PrintErrorInfoForFftsPlusTask(TaskInfo* taskInfo, const uint32_t devId)
 {
     const uint32_t taskId = taskInfo->id;
     const int32_t streamId = taskInfo->stream->Id_();
     rtExceptionExpandInfo_t expandInfo = {};
     FftsPlusTaskInfo *fftsPlusTask = &taskInfo->u.fftsPlusTask;
+    bool needDumpCtx = false;
     for (auto loop : *fftsPlusTask->errInfo) {
         if ((loop.errType == FFTS_PLUS_AICORE_ERROR) || (loop.errType == FFTS_PLUS_AIVECTOR_ERROR)) {
             PrintAicAivErrorInfoForFftsPlusTask(taskInfo, loop, devId);
@@ -826,11 +875,15 @@ void PrintErrorInfoForFftsPlusTask(TaskInfo* taskInfo, const uint32_t devId)
                 loop.contextId, loop.threadId, loop.errType, GetErrMsgStrForFftsPlusTask(loop.errType).c_str(),
                 taskInfo->errorCode);
             (void)ReportFftsPlusCurrentContextDetail(taskInfo, devId, loop);
+            needDumpCtx = true;
         }
         expandInfo.type = RT_EXCEPTION_FFTS_PLUS;
         expandInfo.u.fftsPlusInfo.contextId = static_cast<uint16_t>(loop.contextId);
         expandInfo.u.fftsPlusInfo.threadId = loop.threadId;
         TaskFailCallBackForFftsPlusTask(taskInfo, devId, &expandInfo, loop);
+    }
+    if (needDumpCtx) {
+        DumpContext(taskInfo);
     }
     if (unlikely(fftsPlusTask->errInfo->empty())) {
         rtExceptionExpandInfo_t expandTmpInfo = {};

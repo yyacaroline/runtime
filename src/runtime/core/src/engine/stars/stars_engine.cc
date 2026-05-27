@@ -1861,8 +1861,9 @@ void StarsEngine::RecycleThreadDo()
         ret = TaskReclaimForSeparatedStm(stream.get());
         stream.get()->StreamRecycleUnlock();
         stream.reset();
-        COND_PROC((ret != RT_ERROR_NONE), return ;);
+        COND_PROC((ret != RT_ERROR_NONE), continue);
     }
+    device_->FreeFftsPlusArgHandleCache();
 }
 void StarsEngine::RecycleTaskProcessForSeparatedStm(TaskInfo * const recycleTask, const uint32_t devId)
 {

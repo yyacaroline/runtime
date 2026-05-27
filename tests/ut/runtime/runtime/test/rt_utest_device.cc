@@ -2275,3 +2275,21 @@ TEST_F(DeviceTest, SetSupportHcomCpuFlagTest_01)
     uint32_t isSupportHcomcpu = dev.IsSupportHcomcpu();
     EXPECT_EQ(isSupportHcomcpu, 1);
 }
+
+TEST_F(DeviceTest, PushAndFlushFftsPlusArgHandle)
+{
+    RawDevice dev(0);
+    UmaArgLoader *argLoader = new UmaArgLoader(&dev);
+    dev.argLoader_ = argLoader;
+    MOCKER_CPP_VIRTUAL(*argLoader, &UmaArgLoader::Release).expects(exactly(2)).will(returnValue(RT_ERROR_NONE));
+
+    void *handle1 = reinterpret_cast<void *>(0x1U);
+    void *handle2 = reinterpret_cast<void *>(0x2U);
+
+    dev.PushFftsPlusArgHandle(handle1);
+    dev.PushFftsPlusArgHandle(handle2);
+    EXPECT_EQ(dev.fftsPlusArgHandleCache_.size(), 2U);
+
+    dev.FreeFftsPlusArgHandleCache();
+    EXPECT_EQ(dev.fftsPlusArgHandleCache_.size(), 0U);
+}

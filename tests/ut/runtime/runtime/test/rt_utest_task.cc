@@ -2494,6 +2494,34 @@ TEST_F(TaskTest, FftsPlusTaskForDevMemErr_2)
     free((void *)fftsPlusTaskInfo.descBuf);
 }
 
+TEST_F(TaskTest, FftsPlusTaskUnInit_SeparateSendAndRecycle)
+{
+    rtFftsPlusSqe_t fftsSqe = {{}, 0};
+    void *descBuf = nullptr;
+    uint32_t descBufLen = 0;
+    NpuDriver drv;
+    uint32_t flag = 0x10;
+
+    rtFftsPlusTaskInfo_t fftsPlusTaskInfo = {&fftsSqe, descBuf, descBufLen, {NULL, NULL, 0, 0}, 0, 1, NULL};
+    fftsPlusTaskInfo.descBuf = malloc(256);
+    fftsPlusTaskInfo.descBufLen = 256;
+    void *handleInfo[2] = {nullptr, nullptr};
+    fftsPlusTaskInfo.argsHandleInfoPtr = handleInfo;
+    TaskInfo fftsPlusTask = {};
+    InitByStream(&fftsPlusTask, stream_);
+
+    MOCKER_CPP_VIRTUAL(drv, &NpuDriver::MemCopySync).stubs().will(returnValue(RT_ERROR_NONE));
+    FftsPlusTaskInit(&fftsPlusTask, &fftsPlusTaskInfo, flag);
+    fftsPlusTask.u.fftsPlusTask.argHandle = reinterpret_cast<void *>(0x1U);
+
+    MOCKER_CPP(&Stream::IsSeparateSendAndRecycle).stubs().will(returnValue(true));
+    MOCKER_CPP_VIRTUAL(stream_->Device_(), &Device::PushFftsPlusArgHandle).expects(once());
+    FftsPlusTaskUnInit(&fftsPlusTask);
+    EXPECT_EQ(fftsPlusTask.u.fftsPlusTask.argHandle, nullptr);
+
+    free((void *)fftsPlusTaskInfo.descBuf);
+}
+
 TEST_F(TaskTest, ToConstructSqeForModelUpdateTask)
 {
     NpuDriver drv;
@@ -2791,10 +2819,10 @@ TEST_F(TaskTest, PrintErrorInfoForFftsPlusTaskUnknownErrTypeWithContextDetail)
 
     g_fftsMemCopySyncCallCount = 0U;
     MOCKER_CPP_VIRTUAL(stream_->Device_()->Driver_(), &Driver::MemCopySync)
-        .expects(once())
+        .expects(exactly(2))
         .will(invoke(FftsMemCopySyncMixCtxStub));
     PrintErrorInfoForFftsPlusTask(&taskInfo, stream_->Device_()->Id_());
-    EXPECT_EQ(g_fftsMemCopySyncCallCount, 1U);
+    EXPECT_EQ(g_fftsMemCopySyncCallCount, 2U);
 
     delete taskInfo.u.fftsPlusTask.errInfo;
     free(taskInfo.u.fftsPlusTask.descAlignBuf);
@@ -2848,7 +2876,60 @@ TEST_F(TaskTest, PrintErrorInfoForFftsPlusTaskSkipsContextCopyWhenContextOutOfRa
         .stubs()
         .will(invoke(FftsMemCopySyncMixCtxStub));
     PrintErrorInfoForFftsPlusTask(&taskInfo, stream_->Device_()->Id_());
+    EXPECT_EQ(g_fftsMemCopySyncCallCount, 1U);
+
+    delete taskInfo.u.fftsPlusTask.errInfo;
+    free(taskInfo.u.fftsPlusTask.descAlignBuf);
+}
+
+TEST_F(TaskTest, PrintErrorInfoForFftsPlusTask_DumpContextEarlyReturnWhenNullDescAlignBuf)
+{
+    TaskInfo taskInfo = {};
+    InitByStream(&taskInfo, stream_);
+    taskInfo.id = 12U;
+    taskInfo.errorCode = 0x77U;
+    taskInfo.u.fftsPlusTask.descAlignBuf = nullptr;
+    taskInfo.u.fftsPlusTask.descBufLen = kFftsContextLenForTest;
+    taskInfo.u.fftsPlusTask.errInfo = new std::vector<rtFftsPlusTaskErrInfo_t>();
+
+    rtFftsPlusTaskErrInfo_t info = {};
+    info.contextId = 0U;
+    info.threadId = 1U;
+    info.errType = ERROR_TYPE_BUTT + 3U;
+    taskInfo.u.fftsPlusTask.errInfo->push_back(info);
+
+    g_fftsMemCopySyncCallCount = 0U;
+    MOCKER_CPP_VIRTUAL(stream_->Device_()->Driver_(), &Driver::MemCopySync)
+        .stubs()
+        .will(invoke(FftsMemCopySyncMixCtxStub));
+    PrintErrorInfoForFftsPlusTask(&taskInfo, stream_->Device_()->Id_());
     EXPECT_EQ(g_fftsMemCopySyncCallCount, 0U);
+
+    delete taskInfo.u.fftsPlusTask.errInfo;
+}
+
+TEST_F(TaskTest, PrintErrorInfoForFftsPlusTask_DumpContextMemCopySyncFail)
+{
+    TaskInfo taskInfo = {};
+    InitByStream(&taskInfo, stream_);
+    taskInfo.id = 13U;
+    taskInfo.errorCode = 0x88U;
+    taskInfo.u.fftsPlusTask.descAlignBuf = malloc(kFftsContextLenForTest);
+    taskInfo.u.fftsPlusTask.descBufLen = kFftsContextLenForTest;
+    taskInfo.u.fftsPlusTask.errInfo = new std::vector<rtFftsPlusTaskErrInfo_t>();
+
+    rtFftsPlusTaskErrInfo_t info = {};
+    info.contextId = 0U;
+    info.threadId = 2U;
+    info.errType = ERROR_TYPE_BUTT + 4U;
+    taskInfo.u.fftsPlusTask.errInfo->push_back(info);
+
+    g_fftsMemCopySyncCallCount = 0U;
+    MOCKER_CPP_VIRTUAL(stream_->Device_()->Driver_(), &Driver::MemCopySync)
+        .stubs()
+        .will(invoke(FftsMemCopySyncFailStub));
+    PrintErrorInfoForFftsPlusTask(&taskInfo, stream_->Device_()->Id_());
+    EXPECT_EQ(g_fftsMemCopySyncCallCount, 2U);
 
     delete taskInfo.u.fftsPlusTask.errInfo;
     free(taskInfo.u.fftsPlusTask.descAlignBuf);
