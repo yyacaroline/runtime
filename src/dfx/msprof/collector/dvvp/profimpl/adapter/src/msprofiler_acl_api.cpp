@@ -385,6 +385,9 @@ aclError ProfSetConfig(aclprofConfigType configType, const char *config, size_t 
     int32_t ret = ProfAclMgr::instance()->MsprofSetConfig(configType, configStr);
     if (ret != PROFILING_SUCCESS) {
         MSPROF_LOGE("[aclprofSetConfig]Fail to set profiling config.");
+        if (configType == ACL_PROF_NTS_METRICS) {
+            return ACL_ERROR_INVALID_PARAM;
+        }
         return ACL_ERROR_INVALID_PROFILING_CONFIG;
     }
     return ACL_SUCCESS;

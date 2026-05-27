@@ -13,6 +13,7 @@
 #include <google/protobuf/util/json_util.h>
 #include "errno/error_code.h"
 #include "msprof_dlog.h"
+#include "osal.h"
 #include "socket/local_socket.h"
 #include "utils/utils.h"
 
@@ -37,18 +38,18 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Create) {
     EXPECT_EQ(LocalSocket::Create(key, backlog), PROFILING_FAILED);
 
     key = "create";
-    MOCKER(mmSocket)
+    MOCKER(OsalSocket)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
     EXPECT_EQ(LocalSocket::Create(key, backlog), PROFILING_FAILED);
 
-    MOCKER(mmBind)
+    MOCKER(OsalBind)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
-    MOCKER(mmGetErrorCode)
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
+    MOCKER(OsalGetErrorCode)
         .stubs()
         .will(returnValue(0))
         .then(returnValue(EADDRINUSE));
@@ -58,14 +59,14 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Create) {
     EXPECT_EQ(LocalSocket::Create(key, backlog), PROFILING_FAILED);
     EXPECT_EQ(LocalSocket::Create(key, backlog), SOCKET_ERR_EADDRINUSE);
 
-    MOCKER(mmChmod)
+    MOCKER(OsalChmod)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
-    MOCKER(mmListen)
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
+    MOCKER(OsalListen)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
     EXPECT_EQ(LocalSocket::Create(key, backlog), PROFILING_FAILED);
     EXPECT_EQ(LocalSocket::Create(key, backlog), PROFILING_FAILED);
 
@@ -74,10 +75,10 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Create) {
 
 TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Open) {
     GlobalMockObject::verify();
-    MOCKER(mmSocket)
+    MOCKER(OsalSocket)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
     int ret = LocalSocket::Open();
     EXPECT_EQ(ret, PROFILING_FAILED);
     ret = LocalSocket::Open();
@@ -89,12 +90,12 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Accept) {
     int fd = -1;
     EXPECT_EQ(LocalSocket::Accept(fd), PROFILING_FAILED);
     fd = 1;
-    MOCKER(mmAccept)
+    MOCKER(OsalAccept)
         .stubs()
         .will(returnValue(-1))
         .then(returnValue(-1))
         .then(returnValue(10));
-    MOCKER(mmGetErrorCode)
+    MOCKER(OsalGetErrorCode)
         .stubs()
         .will(returnValue(0))
         .then(returnValue(EAGAIN));
@@ -112,13 +113,10 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Connect) {
     EXPECT_EQ(ret, PROFILING_FAILED);
 
     key = "socket";
-    MOCKER(mmConnect)
+    MOCKER(OsalConnect)
         .stubs()
-        .will(returnValue(EN_ERROR))
-        .then(returnValue(EN_OK));
-    MOCKER_CPP(&LocalSocket::Close)
-        .stubs()
-        .will(ignoreReturnValue());
+        .will(returnValue(OSAL_EN_ERROR))
+        .then(returnValue(OSAL_EN_OK));
     ret = LocalSocket::Connect(fd, key);
     EXPECT_EQ(ret, PROFILING_FAILED);
     ret = LocalSocket::Connect(fd, key);
@@ -163,12 +161,12 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Recv) {
     EXPECT_EQ(ret, PROFILING_FAILED);
 
     len = 1;
-    MOCKER(mmSocketRecv)
+    MOCKER(OsalSocketRecv)
         .stubs()
         .will(returnValue(-1))
         .then(returnValue(-1))
         .then(returnValue(10));
-    MOCKER(mmGetErrorCode)
+    MOCKER(OsalGetErrorCode)
         .stubs()
         .will(returnValue(0))
         .then(returnValue(EAGAIN));
@@ -185,12 +183,12 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Send) {
     EXPECT_EQ(ret, PROFILING_FAILED);
 
     len = 1;
-    MOCKER(mmSocketSend)
+    MOCKER(OsalSocketSend)
         .stubs()
         .will(returnValue(-1))
         .then(returnValue(-1))
         .then(returnValue(0));
-    MOCKER(mmGetErrorCode)
+    MOCKER(OsalGetErrorCode)
         .stubs()
         .will(returnValue(0))
         .then(returnValue(EAGAIN));
@@ -202,9 +200,9 @@ TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Send) {
 TEST_F(LOCAL_SOCKET_UTEST, LocalSocket_Close) {
     GlobalMockObject::verify();
     int fd = 0;
-    MOCKER(mmClose)
+    MOCKER(OsalClose)
         .stubs()
-        .will(returnValue(EN_ERROR));
+        .will(returnValue(OSAL_EN_ERROR));
     LocalSocket::Close(fd);
     EXPECT_EQ(fd, -1);
 }

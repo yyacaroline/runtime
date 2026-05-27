@@ -39,6 +39,7 @@ constexpr char INTERFACE_SMMU_EVENT[] = "0x2,0x8a,0x8b,0x8c,0x8d";
 constexpr char INTERFACE_L2CACHE[] = "0x500,0x502,0x504,0x506,0x508,0x50a";
 constexpr char INTERFACE_L2CACHEEVENT[] = "0xF6,0xFB,0xFC,0xBF,0x90,0x91,0x9C,0x9D";
 constexpr char INTERFACE_MEMORYACCESS[] = "0x32,0x3d,0x3e,0x206,0x20c,0x50c,0x50d,0x50e";
+constexpr char INTERFACE_NTS_PIPEUTILIZATION[] = "";
 constexpr char EMPTY_FREQUENCY[] = "";
 
 enum PlatformTypeEnum {
@@ -142,6 +143,7 @@ enum PlatformFeature {
     PLATFORM_MC2,
     PLATFORM_AICPU_HCCL,
     PLATFORM_ACLAPI_SETDEVICE_ENABLE,
+    PLATFORM_TASK_NTS,
     // MAX
     PLATFORM_COLLECTOR_TYPES_MAX
 };
@@ -159,6 +161,10 @@ const std::map<std::string, PlatformFeature> METRIC_FEATURE_MAP = {
     {"L2Cache",                    PLATFORM_TASK_L2_CACHE_PMU},
     {"ScalarRatio",                PLATFORM_TASK_SCALAR_RATIO_PMU},
     {"MemoryAccess",               PLATFORM_TASK_MEMORY_ACCESS_PMU}
+};
+
+const std::map<std::string, PlatformFeature> NTS_METRIC_FEATURE_MAP = {
+    {"PipeUtilization",             PLATFORM_TASK_NTS}
 };
 
 const std::map<std::string, std::vector<PlatformFeature>> PLATFORM_FEATURE_MAP = {
@@ -188,7 +194,8 @@ const std::map<std::string, std::vector<PlatformFeature>> PLATFORM_FEATURE_MAP =
     {"dvpp_freq",                   {PLATFORM_SYS_DEVICE_DVPP, PLATFORM_SYS_DEVICE_DVPP_EX}},
     {"host_sys",                    {PLATFORM_SYS_HOST_SYS_CPU, PLATFORM_SYS_HOST_SYS_MEM}},
     {"host_sys_usage",              {PLATFORM_SYS_HOST_ALL_PID_CPU, PLATFORM_SYS_HOST_ALL_PID_MEM}},
-    {"host_sys_usage_freq",         {PLATFORM_SYS_HOST_ALL_PID_CPU, PLATFORM_SYS_HOST_ALL_PID_MEM}}
+    {"host_sys_usage_freq",         {PLATFORM_SYS_HOST_ALL_PID_CPU, PLATFORM_SYS_HOST_ALL_PID_MEM}},
+    {"nts_metrics",                 {PLATFORM_TASK_NTS}}
 };
 
 const std::map<uint64_t, PlatformFeature> PLATFORM_BITE_MAP = {
@@ -233,6 +240,8 @@ public:
     virtual void SetSubscribeFeature();
     virtual ProfAicoreMetrics GetDefaultAicoreMetrics() const;
     virtual uint64_t GetDefaultDataTypeConfig() const;
+    virtual std::string GetNtsEvents(const std::string &metrics);
+    virtual PlatformFeature NtsMetricsToFeature(const std::string &key) const;
 
 protected:
     virtual std::string GetMetricsValue(const PlatformFeature feature);
@@ -248,6 +257,7 @@ protected:
     virtual std::string GetL2CacheMetrics();
     virtual std::string GetScalarMetrics();
     virtual std::string GetMemoryAccessMetrics();
+    virtual std::string GetNtsPipeUtilizationMetrics();
     std::set<PlatformFeature> supportedFeature_;
     SHARED_PTR_ALIA<BaseAnalyzer> analyzer_;
 };

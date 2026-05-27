@@ -15,6 +15,7 @@
 #include "ai_drv_dev_api.h"
 #include "ascend_inpackage_hal.h"
 #include "json_parser.h"
+#include "validation/nts_metrics_validation.h"
 namespace analysis {
 namespace dvvp {
 namespace driver {
@@ -538,6 +539,71 @@ int32_t DrvL2CacheTaskStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel,
     MSPROF_EVENT("Succeeded to start profiling DrvL2CacheTaskStart, profDeviceId=%d, profChannel=%d", profDeviceId,
                  static_cast<int32_t>(profChannel));
 
+    return PROFILING_SUCCESS;
+}
+
+int32_t DrvNtsPmuStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel,
+    const std::vector<std::string> &profEvents)
+{
+    if (profEvents.size() > NTS_PMU_EVENT_MAX_NUM) {
+        MSPROF_LOGE("Failed to start profiling DrvNtsPmuStart, event num:%zu is greater than max:%u",
+            profEvents.size(), NTS_PMU_EVENT_MAX_NUM);
+        return PROFILING_FAILED;
+    }
+
+    NTSPMUConfig config = {};
+    config.eventNum = static_cast<uint32_t>(profEvents.size());
+    std::string eventStr;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(profEvents.size()); i++) {
+        if (!analysis::dvvp::common::validation::ParseNtsPmuEvent(profEvents[i], config.event[i])) {
+            MSPROF_LOGE("Failed to start profiling DrvNtsPmuStart, invalid event:%s", profEvents[i].c_str());
+            return PROFILING_FAILED;
+        }
+        (void)eventStr.append(profEvents[i] + ",");
+        MSPROF_LOGI("Receive DrvNtsPmuEvent EventId=%d, EventCode=0x%x", i, config.event[i]);
+    }
+    MSPROF_EVENT("Begin to start profiling DrvNtsPmuStart, profDeviceId=%d, profChannel=%d", profDeviceId,
+                 static_cast<int32_t>(profChannel));
+    MSPROF_EVENT("DrvNtsPmuStart, eventNum=%d, events=%s", config.eventNum, eventStr.c_str());
+    struct prof_start_para profStartPara;
+    profStartPara.sample_period = 0;
+    profStartPara.real_time = PROFILE_REAL_TIME;
+    profStartPara.user_data = &config;
+    profStartPara.user_data_size = sizeof(NTSPMUConfig);
+    profStartPara.channel_type = PROF_TS_TYPE;
+    const int32_t ret = DrvStart(static_cast<uint32_t>(profDeviceId), profChannel, &profStartPara);
+    if (ret != PROF_OK) {
+        MSPROF_LOGE("Failed to start profiling DrvNtsPmuStart, profDeviceId=%d,"
+                    " profChannel=%d, ret=%d",
+                    profDeviceId, static_cast<int32_t>(profChannel), ret);
+        return PROFILING_FAILED;
+    }
+
+    MSPROF_EVENT("Succeeded to start profiling DrvNtsPmuStart, profDeviceId=%d, profChannel=%d", profDeviceId,
+                 static_cast<int32_t>(profChannel));
+    return PROFILING_SUCCESS;
+}
+
+int32_t DrvNtsTaskStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel)
+{
+    MSPROF_EVENT("Begin to start profiling DrvNtsTaskStart, profDeviceId=%d, profChannel=%d", profDeviceId,
+                 static_cast<int32_t>(profChannel));
+    struct prof_start_para profStartPara;
+    profStartPara.sample_period = 0;
+    profStartPara.real_time = PROFILE_REAL_TIME;
+    profStartPara.user_data = nullptr;
+    profStartPara.user_data_size = 0;
+    profStartPara.channel_type = PROF_TS_TYPE;
+    const int32_t ret = DrvStart(static_cast<uint32_t>(profDeviceId), profChannel, &profStartPara);
+    if (ret != PROF_OK) {
+        MSPROF_LOGE("Failed to start profiling DrvNtsTaskStart, profDeviceId=%d,"
+                    " profChannel=%d, ret=%d",
+                    profDeviceId, static_cast<int32_t>(profChannel), ret);
+        return PROFILING_FAILED;
+    }
+
+    MSPROF_EVENT("Succeeded to start profiling DrvNtsTaskStart, profDeviceId=%d, profChannel=%d", profDeviceId,
+                 static_cast<int32_t>(profChannel));
     return PROFILING_SUCCESS;
 }
 

@@ -66,6 +66,8 @@ struct ProfileParams : public BaseInfo {
     std::string aiv_metrics;
     std::string aiv_profiling_mode;
     std::string npuEvents;
+    std::string ntsMetrics;
+    std::string ntsPmuEvents;
 
     // rts
     std::string ai_core_status;
@@ -218,7 +220,8 @@ struct ProfileParams : public BaseInfo {
         : msprofBinPid(MSVP_PROCESS), isCancel(false), profiling_period(-1),
           profiling_options(""), profMode(""),
           aicore_sampling_interval(DEFAULT_PROFILING_INTERVAL_10MS), ai_core_lpm("off"),
-          aiv_sampling_interval(DEFAULT_PROFILING_INTERVAL_10MS), npuEvents(""), taskTsfw("off"), sysLp("on"),
+          aiv_sampling_interval(DEFAULT_PROFILING_INTERVAL_10MS), npuEvents(""), ntsMetrics(""),
+          ntsPmuEvents(""), taskTsfw("off"), sysLp("on"),
           sysLpFreq(DEFAULT_PROFILING_INTERVAL_10000US), aicScale("all"), ccuInstr("off"), cpu_profiling("off"),
           cpu_sampling_interval(DEFAULT_PROFILING_INTERVAL_20MS),
           hscb("off"), aiCtrlCpuProfiling("off"), tsCpuProfiling("off"),
@@ -320,62 +323,8 @@ struct ProfileParams : public BaseInfo {
 
     void ToObjectPartOne(NanoJson::Json &object)
     {
-        SET_VALUE(object, result_dir);
-        SET_VALUE(object, storageLimit);
-        SET_VALUE(object, profiling_mode);
-        SET_VALUE(object, devices);
-        SET_VALUE(object, ai_ctrl_cpu_profiling_events);
-        SET_VALUE(object, ts_cpu_profiling_events);
-        SET_VALUE(object, app_dir);
-        SET_VALUE(object, app_parameters);
-        SET_VALUE(object, app_location);
-        SET_VALUE(object, app_env);
-        // ai core
-        SET_VALUE(object, ai_core_profiling);
-        SET_VALUE(object, ai_core_profiling_mode);
-        SET_VALUE(object, ai_core_profiling_events);
-        SET_VALUE(object, ai_core_metrics);
-        SET_VALUE(object, ai_core_status);
-        SET_VALUE(object, ai_core_lpm);
-        // aiv
-        SET_VALUE(object, aiv_profiling);
-        SET_VALUE(object, aiv_sampling_interval);
-        SET_VALUE(object, aiv_profiling_events);
-        SET_VALUE(object, aiv_metrics);
-        SET_VALUE(object, aiv_profiling_mode);
-        SET_VALUE(object, isCancel);
-        SET_VALUE(object, profiling_options);
-        SET_VALUE(object, jobInfo);
-        SET_VALUE(object, npuEvents);
-        // system trace
-        SET_VALUE(object, cpu_profiling);
-        SET_VALUE(object, hscb);
-        SET_VALUE(object, aiCtrlCpuProfiling);
-        SET_VALUE(object, tsCpuProfiling);
-        SET_VALUE(object, cpu_sampling_interval);
-        SET_VALUE(object, sys_profiling);
-        SET_VALUE(object, sys_sampling_interval);
-        SET_VALUE(object, pid_profiling);
-        SET_VALUE(object, pid_sampling_interval);
-        SET_VALUE(object, hardware_mem);
-        SET_VALUE(object, hardware_mem_sampling_interval);
-        SET_VALUE(object, memServiceflow);
-        SET_VALUE(object, io_profiling);
-        SET_VALUE(object, io_sampling_interval);
-        SET_VALUE(object, interconnection_profiling);
-        SET_VALUE(object, interconnection_sampling_interval);
-        SET_VALUE(object, dvpp_profiling);
-        SET_VALUE(object, ai_core_profiling_metrics);
-        SET_VALUE(object, aiv_profiling_metrics);
-        SET_VALUE(object, ts_cpu_hot_function);
-        SET_VALUE(object, nicProfiling);
-        SET_VALUE(object, roceProfiling);
-        // host system
-        SET_VALUE(object, hostProfiling);
-        SET_VALUE(object, host_cpu_profiling);
-        SET_VALUE(object, host_mem_profiling);
-        SET_VALUE(object, host_network_profiling);
-        SET_VALUE(object, pureCpu);
+        ToObjectCoreOptions(object);
+        ToObjectSystemOptions(object);
     }
 
     void ToObjectPartTwo(NanoJson::Json &object)
@@ -486,119 +435,14 @@ struct ProfileParams : public BaseInfo {
 
     void FromObjectPartOne(NanoJson::Json &object)
     {
-        FROM_STRING_VALUE(object, result_dir);
-        FROM_STRING_VALUE(object, storageLimit);
-        FROM_STRING_VALUE(object, profiling_mode);
-        FROM_STRING_VALUE(object, devices);
-        FROM_STRING_VALUE(object, ai_ctrl_cpu_profiling_events);
-        FROM_STRING_VALUE(object, ts_cpu_profiling_events);
-        FROM_STRING_VALUE(object, app_dir);
-        FROM_STRING_VALUE(object, app_parameters);
-        FROM_STRING_VALUE(object, app_location);
-        FROM_STRING_VALUE(object, app_env);
-        // ai core
-        FROM_STRING_VALUE(object, ai_core_profiling);
-        FROM_STRING_VALUE(object, ai_core_profiling_mode);
-        FROM_STRING_VALUE(object, ai_core_profiling_events);
-        FROM_STRING_VALUE(object, ai_core_metrics);
-        FROM_STRING_VALUE(object, ai_core_status);
-        FROM_STRING_VALUE(object, ai_core_lpm);
-        // AIV
-        FROM_STRING_VALUE(object, aiv_profiling);
-        FROM_INT_VALUE(object, aiv_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, aiv_metrics);
-        FROM_STRING_VALUE(object, aiv_profiling_mode);
-        FROM_STRING_VALUE(object, aiv_profiling_events);
-        FROM_BOOL_VALUE(object, isCancel);
-        FROM_STRING_VALUE(object, profiling_options);
-        FROM_STRING_VALUE(object, jobInfo);
-        FROM_STRING_VALUE(object, npuEvents);
-        // system trace
-        FROM_STRING_VALUE(object, cpu_profiling);
-        FROM_STRING_VALUE(object, hscb);
-        FROM_STRING_VALUE(object, aiCtrlCpuProfiling);
-        FROM_STRING_VALUE(object, tsCpuProfiling);
-        FROM_INT_VALUE(object, cpu_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, sys_profiling);
-        FROM_INT_VALUE(object, sys_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, pid_profiling);
-        FROM_INT_VALUE(object, pid_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, hardware_mem);
-        FROM_INT_VALUE(object, hardware_mem_sampling_interval, DEFAULT_PROFILING_INTERVAL_20000US);
-        FROM_STRING_VALUE(object, memServiceflow);
-        FROM_STRING_VALUE(object, io_profiling);
-        FROM_INT_VALUE(object, io_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, interconnection_profiling);
-        FROM_INT_VALUE(object, interconnection_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, dvpp_profiling);
-        FROM_STRING_VALUE(object, nicProfiling);
-        FROM_STRING_VALUE(object, roceProfiling);
-        FROM_INT_VALUE(object, dvpp_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_INT_VALUE(object, aicore_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_STRING_VALUE(object, pcSampling);
-        FROM_STRING_VALUE(object, instrProfiling);
-        FROM_INT_VALUE(object, instrProfilingFreq, DEFAULT_PROFILING_INTERVAL_1000MS);
-        FROM_STRING_VALUE(object, ai_core_profiling_metrics);
-        FROM_STRING_VALUE(object, aiv_profiling_metrics);
-        // host system
-        FROM_BOOL_VALUE(object, hostProfiling);
-        FROM_STRING_VALUE(object, host_cpu_profiling);
-        FROM_STRING_VALUE(object, pureCpu);
+        FromObjectCoreOptions(object);
+        FromObjectSystemOptions(object);
     }
 
     void FromObjectPartTwo(NanoJson::Json &object)
     {
-        FROM_STRING_VALUE(object, ts_cpu_hot_function);
-        FROM_STRING_VALUE(object, acl);
-        FROM_STRING_VALUE(object, runtimeApi);
-        FROM_STRING_VALUE(object, aicpuTrace);
-        FROM_STRING_VALUE(object, runtimeTrace);
-        FROM_STRING_VALUE(object, hcclTrace);
-        FROM_STRING_VALUE(object, msprof);
-        FROM_STRING_VALUE(object, msproftx);
-        FROM_STRING_VALUE(object, mstxDomainInclude);
-        FROM_STRING_VALUE(object, mstxDomainExclude);
-        FROM_STRING_VALUE(object, taskTrace);
-        FROM_STRING_VALUE(object, taskTime);
-        FROM_STRING_VALUE(object, taskMemory);
-        FROM_STRING_VALUE(object, prof_level);
-        FROM_STRING_VALUE(object, geApi);
-        FROM_STRING_VALUE(object, opType);
-        FROM_STRING_VALUE(object, job_id);
-        FROM_STRING_VALUE(object, app);
-        FROM_STRING_VALUE(object, ts_task_track);
-        FROM_STRING_VALUE(object, ts_task_time);
-        FROM_STRING_VALUE(object, ts_cpu_usage);
-        FROM_STRING_VALUE(object, ts_timeline);
-        FROM_STRING_VALUE(object, ts_memcpy);
-        FROM_STRING_VALUE(object, ts_keypoint);
-        FROM_STRING_VALUE(object, ai_vector_status);
-        FROM_STRING_VALUE(object, taskTsfw);
-        FROM_STRING_VALUE(object, ts_fw_training);
-        FROM_STRING_VALUE(object, hwts_log);
-        FROM_STRING_VALUE(object, hwts_log1);
-        FROM_STRING_VALUE(object, stars_acsq_task);
-        FROM_STRING_VALUE(object, taskBlock);
-        FROM_STRING_VALUE(object, taskBlockShink);
-        FROM_STRING_VALUE(object, sysLp);
-        FROM_INT_VALUE(object, sysLpFreq, DEFAULT_PROFILING_INTERVAL_10000US);
-        FROM_STRING_VALUE(object, aicScale);
-        FROM_STRING_VALUE(object, ccuInstr);
-        FROM_STRING_VALUE(object, l2CacheTaskProfiling);
-        FROM_STRING_VALUE(object, l2CacheTaskProfilingEvents);
-        FROM_STRING_VALUE(object, hccsProfiling);
-        FROM_INT_VALUE(object, hccsInterval, DEFAULT_PROFILING_INTERVAL_100MS);
-        FROM_STRING_VALUE(object, pcieProfiling);
-        FROM_INT_VALUE(object, pcieInterval, DEFAULT_PROFILING_INTERVAL_100MS);
-        FROM_STRING_VALUE(object, ubProfiling);
-        FROM_INT_VALUE(object, ubInterval, DEFAULT_PROFILING_INTERVAL_20MS);
-        FROM_INT_VALUE(object, roceInterval, DEFAULT_PROFILING_INTERVAL_10MS);
-        FROM_INT_VALUE(object, nicInterval, DEFAULT_PROFILING_INTERVAL_10MS);
-        // llc
-        FROM_STRING_VALUE(object, llc_profiling);
-        FROM_STRING_VALUE(object, msprof_llc_profiling);
-        FROM_STRING_VALUE(object, llc_profiling_events);
-        FROM_INT_VALUE(object, llc_interval, DEFAULT_PROFILING_INTERVAL_100MS);
+        FromObjectTraceOptions(object);
+        FromObjectDeviceOptions(object);
     }
 
     void FromObjectPartThree(NanoJson::Json &object)
@@ -647,6 +491,201 @@ struct ProfileParams : public BaseInfo {
         FromObjectPartTwo(object);
         FromObjectPartThree(object);
     }
+
+private:
+    void ToObjectCoreOptions(NanoJson::Json &object)
+    {
+        SET_VALUE(object, result_dir);
+        SET_VALUE(object, storageLimit);
+        SET_VALUE(object, profiling_mode);
+        SET_VALUE(object, devices);
+        SET_VALUE(object, ai_ctrl_cpu_profiling_events);
+        SET_VALUE(object, ts_cpu_profiling_events);
+        SET_VALUE(object, app_dir);
+        SET_VALUE(object, app_parameters);
+        SET_VALUE(object, app_location);
+        SET_VALUE(object, app_env);
+        // ai core
+        SET_VALUE(object, ai_core_profiling);
+        SET_VALUE(object, ai_core_profiling_mode);
+        SET_VALUE(object, ai_core_profiling_events);
+        SET_VALUE(object, ai_core_metrics);
+        SET_VALUE(object, ai_core_status);
+        SET_VALUE(object, ai_core_lpm);
+        // aiv
+        SET_VALUE(object, aiv_profiling);
+        SET_VALUE(object, aiv_sampling_interval);
+        SET_VALUE(object, aiv_profiling_events);
+        SET_VALUE(object, aiv_metrics);
+        SET_VALUE(object, aiv_profiling_mode);
+        SET_VALUE(object, isCancel);
+        SET_VALUE(object, profiling_options);
+        SET_VALUE(object, jobInfo);
+        SET_VALUE(object, npuEvents);
+        SET_VALUE(object, ntsMetrics);
+        SET_VALUE(object, ntsPmuEvents);
+    }
+
+    void ToObjectSystemOptions(NanoJson::Json &object)
+    {
+        // system trace
+        SET_VALUE(object, cpu_profiling);
+        SET_VALUE(object, hscb);
+        SET_VALUE(object, aiCtrlCpuProfiling);
+        SET_VALUE(object, tsCpuProfiling);
+        SET_VALUE(object, cpu_sampling_interval);
+        SET_VALUE(object, sys_profiling);
+        SET_VALUE(object, sys_sampling_interval);
+        SET_VALUE(object, pid_profiling);
+        SET_VALUE(object, pid_sampling_interval);
+        SET_VALUE(object, hardware_mem);
+        SET_VALUE(object, hardware_mem_sampling_interval);
+        SET_VALUE(object, memServiceflow);
+        SET_VALUE(object, io_profiling);
+        SET_VALUE(object, io_sampling_interval);
+        SET_VALUE(object, interconnection_profiling);
+        SET_VALUE(object, interconnection_sampling_interval);
+        SET_VALUE(object, dvpp_profiling);
+        SET_VALUE(object, ai_core_profiling_metrics);
+        SET_VALUE(object, aiv_profiling_metrics);
+        SET_VALUE(object, ts_cpu_hot_function);
+        SET_VALUE(object, nicProfiling);
+        SET_VALUE(object, roceProfiling);
+        // host system
+        SET_VALUE(object, hostProfiling);
+        SET_VALUE(object, host_cpu_profiling);
+        SET_VALUE(object, host_mem_profiling);
+        SET_VALUE(object, host_network_profiling);
+        SET_VALUE(object, pureCpu);
+    }
+
+    void FromObjectCoreOptions(NanoJson::Json &object)
+    {
+        FROM_STRING_VALUE(object, result_dir);
+        FROM_STRING_VALUE(object, storageLimit);
+        FROM_STRING_VALUE(object, profiling_mode);
+        FROM_STRING_VALUE(object, devices);
+        FROM_STRING_VALUE(object, ai_ctrl_cpu_profiling_events);
+        FROM_STRING_VALUE(object, ts_cpu_profiling_events);
+        FROM_STRING_VALUE(object, app_dir);
+        FROM_STRING_VALUE(object, app_parameters);
+        FROM_STRING_VALUE(object, app_location);
+        FROM_STRING_VALUE(object, app_env);
+        // ai core
+        FROM_STRING_VALUE(object, ai_core_profiling);
+        FROM_STRING_VALUE(object, ai_core_profiling_mode);
+        FROM_STRING_VALUE(object, ai_core_profiling_events);
+        FROM_STRING_VALUE(object, ai_core_metrics);
+        FROM_STRING_VALUE(object, ai_core_status);
+        FROM_STRING_VALUE(object, ai_core_lpm);
+        // AIV
+        FROM_STRING_VALUE(object, aiv_profiling);
+        FROM_INT_VALUE(object, aiv_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, aiv_metrics);
+        FROM_STRING_VALUE(object, aiv_profiling_mode);
+        FROM_STRING_VALUE(object, aiv_profiling_events);
+        FROM_BOOL_VALUE(object, isCancel);
+        FROM_STRING_VALUE(object, profiling_options);
+        FROM_STRING_VALUE(object, jobInfo);
+        FROM_STRING_VALUE(object, npuEvents);
+        FROM_STRING_VALUE(object, ntsMetrics);
+        FROM_STRING_VALUE(object, ntsPmuEvents);
+    }
+
+    void FromObjectSystemOptions(NanoJson::Json &object)
+    {
+        // system trace
+        FROM_STRING_VALUE(object, cpu_profiling);
+        FROM_STRING_VALUE(object, hscb);
+        FROM_STRING_VALUE(object, aiCtrlCpuProfiling);
+        FROM_STRING_VALUE(object, tsCpuProfiling);
+        FROM_INT_VALUE(object, cpu_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, sys_profiling);
+        FROM_INT_VALUE(object, sys_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, pid_profiling);
+        FROM_INT_VALUE(object, pid_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, hardware_mem);
+        FROM_INT_VALUE(object, hardware_mem_sampling_interval, DEFAULT_PROFILING_INTERVAL_20000US);
+        FROM_STRING_VALUE(object, memServiceflow);
+        FROM_STRING_VALUE(object, io_profiling);
+        FROM_INT_VALUE(object, io_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, interconnection_profiling);
+        FROM_INT_VALUE(object, interconnection_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, dvpp_profiling);
+        FROM_STRING_VALUE(object, nicProfiling);
+        FROM_STRING_VALUE(object, roceProfiling);
+        FROM_INT_VALUE(object, dvpp_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_INT_VALUE(object, aicore_sampling_interval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_STRING_VALUE(object, pcSampling);
+        FROM_STRING_VALUE(object, instrProfiling);
+        FROM_INT_VALUE(object, instrProfilingFreq, DEFAULT_PROFILING_INTERVAL_1000MS);
+        FROM_STRING_VALUE(object, ai_core_profiling_metrics);
+        FROM_STRING_VALUE(object, aiv_profiling_metrics);
+        // host system
+        FROM_BOOL_VALUE(object, hostProfiling);
+        FROM_STRING_VALUE(object, host_cpu_profiling);
+        FROM_STRING_VALUE(object, pureCpu);
+    }
+
+    void FromObjectTraceOptions(NanoJson::Json &object)
+    {
+        FROM_STRING_VALUE(object, ts_cpu_hot_function);
+        FROM_STRING_VALUE(object, acl);
+        FROM_STRING_VALUE(object, runtimeApi);
+        FROM_STRING_VALUE(object, aicpuTrace);
+        FROM_STRING_VALUE(object, runtimeTrace);
+        FROM_STRING_VALUE(object, hcclTrace);
+        FROM_STRING_VALUE(object, msprof);
+        FROM_STRING_VALUE(object, msproftx);
+        FROM_STRING_VALUE(object, mstxDomainInclude);
+        FROM_STRING_VALUE(object, mstxDomainExclude);
+        FROM_STRING_VALUE(object, taskTrace);
+        FROM_STRING_VALUE(object, taskTime);
+        FROM_STRING_VALUE(object, taskMemory);
+        FROM_STRING_VALUE(object, prof_level);
+        FROM_STRING_VALUE(object, geApi);
+        FROM_STRING_VALUE(object, opType);
+        FROM_STRING_VALUE(object, job_id);
+        FROM_STRING_VALUE(object, app);
+        FROM_STRING_VALUE(object, ts_task_track);
+        FROM_STRING_VALUE(object, ts_task_time);
+        FROM_STRING_VALUE(object, ts_cpu_usage);
+        FROM_STRING_VALUE(object, ts_timeline);
+        FROM_STRING_VALUE(object, ts_memcpy);
+        FROM_STRING_VALUE(object, ts_keypoint);
+        FROM_STRING_VALUE(object, ai_vector_status);
+        FROM_STRING_VALUE(object, taskTsfw);
+        FROM_STRING_VALUE(object, ts_fw_training);
+        FROM_STRING_VALUE(object, hwts_log);
+        FROM_STRING_VALUE(object, hwts_log1);
+    }
+
+    void FromObjectDeviceOptions(NanoJson::Json &object)
+    {
+        FROM_STRING_VALUE(object, stars_acsq_task);
+        FROM_STRING_VALUE(object, taskBlock);
+        FROM_STRING_VALUE(object, taskBlockShink);
+        FROM_STRING_VALUE(object, sysLp);
+        FROM_INT_VALUE(object, sysLpFreq, DEFAULT_PROFILING_INTERVAL_10000US);
+        FROM_STRING_VALUE(object, aicScale);
+        FROM_STRING_VALUE(object, ccuInstr);
+        FROM_STRING_VALUE(object, l2CacheTaskProfiling);
+        FROM_STRING_VALUE(object, l2CacheTaskProfilingEvents);
+        FROM_STRING_VALUE(object, hccsProfiling);
+        FROM_INT_VALUE(object, hccsInterval, DEFAULT_PROFILING_INTERVAL_100MS);
+        FROM_STRING_VALUE(object, pcieProfiling);
+        FROM_INT_VALUE(object, pcieInterval, DEFAULT_PROFILING_INTERVAL_100MS);
+        FROM_STRING_VALUE(object, ubProfiling);
+        FROM_INT_VALUE(object, ubInterval, DEFAULT_PROFILING_INTERVAL_20MS);
+        FROM_INT_VALUE(object, roceInterval, DEFAULT_PROFILING_INTERVAL_10MS);
+        FROM_INT_VALUE(object, nicInterval, DEFAULT_PROFILING_INTERVAL_10MS);
+        // llc
+        FROM_STRING_VALUE(object, llc_profiling);
+        FROM_STRING_VALUE(object, msprof_llc_profiling);
+        FROM_STRING_VALUE(object, llc_profiling_events);
+        FROM_INT_VALUE(object, llc_interval, DEFAULT_PROFILING_INTERVAL_100MS);
+    }
+
 };
 }  // namespace message
 }  // namespace dvvp

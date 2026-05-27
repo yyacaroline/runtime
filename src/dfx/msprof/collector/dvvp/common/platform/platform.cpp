@@ -412,6 +412,14 @@ std::string Platform::GetSmmuEventStr() const
     return platform_->GetSmmuEventStr();
 }
 
+std::string Platform::GetNtsEvents(const std::string &metrics) const
+{
+    if (platform_ == nullptr) {
+        return "";
+    }
+    return platform_->GetNtsEvents(metrics);
+}
+
 int32_t Platform::HalEschedQueryInfo(uint32_t devId, ESCHED_QUERY_TYPE type,
     struct esched_input_info *inPut, struct esched_output_info *outPut) const
 {

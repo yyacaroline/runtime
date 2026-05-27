@@ -9,7 +9,6 @@
  */
 
 #include "prof_params_adapter.h"
-#include <algorithm>
 #include "json/json.h"
 #include "acl/acl_prof.h"
 #include "errno/error_code.h"
@@ -31,6 +30,7 @@ using namespace Analysis::Dvvp::Common::Config;
 using namespace analysis::dvvp::common::utils;
 using namespace Analysis::Dvvp::Common::Platform;
 using namespace analysis::dvvp::common::validation;
+
 ProfParamsAdapter::ProfParamsAdapter(): aclApiSetDeviceEnable_(false) {}
 
 ProfParamsAdapter::~ProfParamsAdapter() {}
@@ -210,7 +210,8 @@ int32_t ProfParamsAdapter::CheckApiConfigSupport(aclprofConfigType type) const
         {ACL_PROF_HOST_SYS_USAGE_FREQ,      {PLATFORM_SYS_HOST_ALL_PID_CPU, PLATFORM_SYS_HOST_ALL_PID_MEM}},
         {ACL_PROF_LOW_POWER_FREQ,           {PLATFORM_SYS_DEVICE_LOW_POWER}},
         {ACL_PROF_SYS_MEM_SERVICEFLOW,      {PLATFORM_SYS_MEM_SERVICEFLOW}},
-        {ACL_PROF_OPTYPE,                   {PLATFORM_TASK_SCALE}}
+        {ACL_PROF_OPTYPE,                   {PLATFORM_TASK_SCALE}},
+        {ACL_PROF_NTS_METRICS,              {PLATFORM_TASK_NTS}}
     };
     if (type == ACL_PROF_STORAGE_LIMIT) {
         return PROFILING_SUCCESS;
@@ -221,6 +222,10 @@ int32_t ProfParamsAdapter::CheckApiConfigSupport(aclprofConfigType type) const
                 return PROFILING_SUCCESS;
             }
         }
+    }
+    if (type == ACL_PROF_NTS_METRICS) {
+        MSPROF_INPUT_ERROR("EK0005", std::vector<std::string>({"param"}),
+            std::vector<std::string>({NtsMetricsConfigName()}));
     }
     MSPROF_LOGE("The api config of type [%d] is not support.", static_cast<int32_t>(type));
     return PROFILING_FAILED;
@@ -394,6 +399,16 @@ int32_t ProfParamsAdapter::CheckApiConfigIsValidThree(SHARED_PTR_ALIA<analysis::
                 return PROFILING_SUCCESS;
             }
             break;
+        case ACL_PROF_NTS_METRICS: {
+            std::string ntsPmuEvents;
+            if (CheckNtsMetricsConfigValid(config, ntsPmuEvents)) {
+                params->ntsMetrics = config;
+                params->ntsPmuEvents = ntsPmuEvents;
+                return PROFILING_SUCCESS;
+            }
+            MSPROF_LOGE("ACL_PROF_NTS_METRICS config is invalid.");
+            break;
+        }
         default:
             MSPROF_LOGE("Not support type: %d", static_cast<int32_t>(type));
     }

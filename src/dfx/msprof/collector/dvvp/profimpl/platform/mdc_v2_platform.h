@@ -29,6 +29,7 @@ protected:
     std::string GetResourceConflictRatioMetrics() override;
     std::string GetL2CacheMetrics() override;
     std::string GetL2CacheEvents() override;
+    std::string GetNtsPipeUtilizationMetrics() override;
     uint16_t GetQosMonitorNumber() const override;
 
 private:

@@ -75,6 +75,8 @@ enum ProfCollectionJobE {
     HOST_CCA_MS_JOB,
     // diagnostic collection
     DIAGNOSTIC_COLLECTION_JOB,
+    NTS_PMU_COLLECTION_JOB,
+    NTS_TASK_COLLECTION_JOB,
     NR_MAX_COLLECTION_JOB
 };
 

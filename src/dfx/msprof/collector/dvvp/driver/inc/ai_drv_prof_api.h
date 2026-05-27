@@ -15,6 +15,7 @@
 #include <string>
 #include "message/prof_params.h"
 #include "ascend_hal.h"
+#include "validation/nts_metrics_validation.h"
 #include "utils/utils.h"
 #include "singleton/singleton.h"
 
@@ -149,6 +150,8 @@ enum AI_DRV_CHANNEL {
     PROF_CHANNEL_CCU_INSTR_CCU1,
     PROF_CHANNEL_STARS_NANO_PROFILE     = CHANNEL_STARS_NANO_PROFILE,        // 150
     PROF_CHANNEL_CCU_STAT_CCU1,
+    PROF_CHANNEL_NTS_TASK               = CHANNEL_NTS_TASK,                  // 152
+    PROF_CHANNEL_NTS_PMU                = CHANNEL_NTS_PMU,                   // 153
     PROF_CHANNEL_MAX                    = CHANNEL_NUM,                       // 160
 };
 
@@ -193,6 +196,7 @@ using PROF_POLL_INFO_PTR = struct prof_poll_info *;
 constexpr uint16_t PMU_EVENT_MAX_NUM = 8;
 constexpr uint16_t PMU_EVENT_NOC_MAX_NUM = 4;
 constexpr uint16_t ACC_PMU_EVENT_MAX_NUM = 10;
+constexpr uint16_t NTS_PMU_EVENT_MAX_NUM = analysis::dvvp::common::validation::NTS_PMU_EVENT_MAX_NUM;
 template<typename T>
 using TEMPLATE_T_PTR = T *;
 
@@ -376,6 +380,11 @@ struct TagTsL2CacheProfileConfig {
     uint32_t event[0];
 };
 
+struct NTSPMUConfig {
+    uint32_t eventNum;
+    uint16_t event[NTS_PMU_EVENT_MAX_NUM];
+};
+
 enum class SocPmuTlvType {
     SOC_PMU_PARAM_DESC = 0,
     SOC_PMU_HA_CFG = 1,
@@ -466,6 +475,11 @@ void DrvPackSocPmuParam(const std::string &socPmuEvents, void *configP, size_t c
 
 int32_t DrvL2CacheTaskStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel,
     const std::vector<std::string> &profEvents);
+
+int32_t DrvNtsPmuStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel,
+    const std::vector<std::string> &profEvents);
+
+int32_t DrvNtsTaskStart(int32_t profDeviceId, AI_DRV_CHANNEL profChannel);
 
 int32_t DrvSetTsCommandType(TsTsFwProfileConfigT &configP,
     const SHARED_PTR_ALIA<analysis::dvvp::message::ProfileParams> profileParams);

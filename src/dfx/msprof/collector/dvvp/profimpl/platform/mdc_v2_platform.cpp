@@ -20,6 +20,7 @@ constexpr char MDC_V2_AIRTHMETICUTILIZATION[] = "0x323,0x324";
 constexpr char MDC_V2_RESOURCECONFLICTRATIO[] = "0x540,0x556,0x502,0x528";
 constexpr char MDC_V2_L2CACHE[] = "0x424,0x425,0x426,0x42a,0x42b,0x42c";
 constexpr char MDC_V2_L2CACHEEVENT[] = "0x00,0x81,0x82,0x83,0x74,0x75";
+constexpr char MDC_V2_NTS_PIPEUTILIZATION[] = "0x301,0x312,0x315,0x316,0x32e,0x701,0x202,0x203,0x1,0x35";
 constexpr uint16_t MAX_QOS_MONITOR_NUM = 8;
 
 PLATFORM_REGISTER(CHIP_MDC_V2, MdcV2Platform);
@@ -49,6 +50,7 @@ MdcV2Platform::MdcV2Platform()
         PLATFORM_TASK_BLOCK,
         PLATFORM_TASK_DELAY_DURATION,
         PLATFORM_TASK_INSTR_PROFILING,
+        PLATFORM_TASK_NTS,
         // PMU
         PLATFORM_TASK_AU_PMU,
         PLATFORM_TASK_PU_PMU,
@@ -121,6 +123,11 @@ std::string MdcV2Platform::GetL2CacheMetrics()
 std::string MdcV2Platform::GetL2CacheEvents()
 {
     return MDC_V2_L2CACHEEVENT;
+}
+
+std::string MdcV2Platform::GetNtsPipeUtilizationMetrics()
+{
+    return MDC_V2_NTS_PIPEUTILIZATION;
 }
 
 void MdcV2Platform::InsertSysFeature()

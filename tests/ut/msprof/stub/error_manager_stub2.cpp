@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "error_manager.h"
+#include "error_manager_stub2.h"
 
 namespace {
 const char *const kErrorCodePath = "../conf/error_manager/error_code.json";
@@ -16,7 +17,20 @@ const char *const kErrCode = "ErrCode";
 const char *const kErrMessage = "ErrMessage";
 const char *const kArgList = "Arglist";
 const uint64_t kLength = 2;
+std::string g_msprofLastInputErrorCode;
 }  // namespace
+
+namespace MsprofUtestStub {
+void ResetMsprofLastInputErrorCode()
+{
+  g_msprofLastInputErrorCode.clear();
+}
+
+const std::string &GetMsprofLastInputErrorCode()
+{
+  return g_msprofLastInputErrorCode;
+}
+} // namespace MsprofUtestStub
 
 ///
 /// @brief Obtain ErrorManager instance
@@ -88,9 +102,9 @@ int ErrorManager::ReadJsonFile(const std::string &/* file_path */, void */* hand
 /// @param [in] vector parameter ky, vector parameter value
 /// @return int 0(success) -1(fail)
 ///
-void ErrorManager::ATCReportErrMessage(std::string /* error_code */, const std::vector<std::string> &/* ky */,
+void ErrorManager::ATCReportErrMessage(std::string error_code, const std::vector<std::string> &/* ky */,
                                        const std::vector<std::string> &/* value */) {
-
+  g_msprofLastInputErrorCode = error_code;
 }
 
 ///

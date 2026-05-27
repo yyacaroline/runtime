@@ -31,12 +31,19 @@ class SigintHandlerUtest : public testing::Test {
 protected:
     void SetUp() override
     {
+        savedSigintHandler_ = signal(SIGINT, SIG_IGN);
+        signal(SIGINT, savedSigintHandler_);
         ProfAclMgr::instance()->UnInit();
     }
     void TearDown() override
     {
         GlobalMockObject::verify();
+        ProfAclMgr::instance()->UnInit();
+        signal(SIGINT, savedSigintHandler_);
     }
+
+private:
+    ProfSignalHandler savedSigintHandler_ = SIG_DFL;
 };
 
 static void CustomerSigHandler(int signum)
@@ -96,7 +103,6 @@ TEST_F(SigintHandlerUtest, SigintWatcherThreadCallsMsprofFinalize)
     EXPECT_TRUE(g_customSigHandlerCalled) << "CustomerSigHandlerWithFlag was not called within 200ms";
 
     mgr->UnInit();
-    signal(SIGINT, SIG_DFL);
 }
 
 TEST_F(SigintHandlerUtest, UnregisterSigalHandlerRestoresOldHandler)
@@ -122,7 +128,6 @@ TEST_F(SigintHandlerUtest, SigintWatcherThreadExitsOnUnregister)
     mgr->UnInit();
 
     SUCCEED();
-    signal(SIGINT, SIG_DFL);
 }
 
 TEST_F(SigintHandlerUtest, ProfNotifySetDeviceSkipsCmdlineRestartWhenSigintShuttingDown)
@@ -143,7 +148,6 @@ TEST_F(SigintHandlerUtest, ProfNotifySetDeviceSkipsCmdlineRestartWhenSigintShutt
     EXPECT_EQ(MSPROF_ERROR_NONE, Analysis::Dvvp::ProfilerCommon::ProfNotifySetDevice(0, 0, true));
 
     mgr->UnInit();
-    signal(SIGINT, SIG_DFL);
 }
 
 TEST_F(SigintHandlerUtest, UnregisterSignalHandlerRestoresSIGIGN)

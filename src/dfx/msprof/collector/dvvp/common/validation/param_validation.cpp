@@ -822,6 +822,40 @@ bool ParamValidation::CheckProfilingParams(SHARED_PTR_ALIA<analysis::dvvp::messa
         MSPROF_LOGE("[CheckProfilingParams]profiling ai_core_metrics is illegal");
         return false;
     }
+    if (!CheckNtsMetricsIsValid(params)) {
+        MSPROF_LOGE("[CheckProfilingParams]nts_metrics is illegal");
+        return false;
+    }
+    return true;
+}
+
+bool ParamValidation::CheckNtsMetricsIsValid(SHARED_PTR_ALIA<analysis::dvvp::message::ProfileParams> params) const
+{
+    if (params == nullptr || params->ntsMetrics.empty()) {
+        return true;
+    }
+    if (!Platform::instance()->CheckIfSupport(PLATFORM_TASK_NTS)) {
+        MSPROF_INPUT_ERROR("EK0005", std::vector<std::string>({"param"}),
+            std::vector<std::string>({NtsMetricsConfigName()}));
+        MSPROF_LOGE("Argument [%s] is not supported.", NtsMetricsConfigName().c_str());
+        return false;
+    }
+    std::string ntsPmuEvents;
+    if (!CheckNtsMetricsConfigValid(params->ntsMetrics, ntsPmuEvents)) {
+        MSPROF_LOGE("Argument [%s] is invalid.", NtsMetricsConfigName().c_str());
+        return false;
+    }
+    if (params->ntsMetrics == NtsPipeUtilization()) {
+        params->ntsPmuEvents = Platform::instance()->GetNtsEvents(params->ntsMetrics);
+        if (params->ntsPmuEvents.empty()) {
+            MSPROF_INPUT_ERROR("EK0005", std::vector<std::string>({"param"}),
+                std::vector<std::string>({NtsMetricsConfigName()}));
+            MSPROF_LOGE("Argument [%s] is not supported.", NtsMetricsConfigName().c_str());
+            return false;
+        }
+        return true;
+    }
+    params->ntsPmuEvents = ntsPmuEvents;
     return true;
 }
 

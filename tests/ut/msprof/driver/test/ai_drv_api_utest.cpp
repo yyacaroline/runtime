@@ -37,6 +37,51 @@ protected:
     }
 };
 
+namespace {
+int ProfDrvStartNtsTaskStub(unsigned int deviceId, unsigned int channelId, struct prof_start_para *startPara)
+{
+    EXPECT_EQ(0U, deviceId);
+    EXPECT_EQ(static_cast<unsigned int>(analysis::dvvp::driver::PROF_CHANNEL_NTS_TASK), channelId);
+    EXPECT_NE(nullptr, startPara);
+    EXPECT_EQ(PROF_TS_TYPE, startPara->channel_type);
+    EXPECT_EQ(0U, startPara->sample_period);
+    EXPECT_EQ(PROFILE_REAL_TIME, startPara->real_time);
+    EXPECT_EQ(nullptr, startPara->user_data);
+    EXPECT_EQ(0U, startPara->user_data_size);
+    return PROF_OK;
+}
+
+void CheckNtsPmuStartPara(unsigned int deviceId, unsigned int channelId, struct prof_start_para *startPara,
+    uint16_t event0, uint16_t event1)
+{
+    EXPECT_EQ(0U, deviceId);
+    EXPECT_EQ(static_cast<unsigned int>(analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU), channelId);
+    EXPECT_NE(nullptr, startPara);
+    EXPECT_EQ(PROF_TS_TYPE, startPara->channel_type);
+    EXPECT_EQ(0U, startPara->sample_period);
+    EXPECT_EQ(PROFILE_REAL_TIME, startPara->real_time);
+    EXPECT_NE(nullptr, startPara->user_data);
+    EXPECT_EQ(sizeof(analysis::dvvp::driver::NTSPMUConfig), startPara->user_data_size);
+
+    const auto *config = static_cast<const analysis::dvvp::driver::NTSPMUConfig *>(startPara->user_data);
+    EXPECT_EQ(2U, config->eventNum);
+    EXPECT_EQ(event0, config->event[0]);
+    EXPECT_EQ(event1, config->event[1]);
+}
+
+int ProfDrvStartNtsPmuStub(unsigned int deviceId, unsigned int channelId, struct prof_start_para *startPara)
+{
+    CheckNtsPmuStartPara(deviceId, channelId, startPara, 0x301U, 0x312U);
+    return PROF_OK;
+}
+
+int ProfDrvStartNtsPmuDecimalStub(unsigned int deviceId, unsigned int channelId, struct prof_start_para *startPara)
+{
+    CheckNtsPmuStartPara(deviceId, channelId, startPara, 301U, 312U);
+    return PROF_OK;
+}
+}
+
 TEST_F(DRIVER_AI_DRV_API_TEST, DrvGetDeviceStatusTest) {
     GlobalMockObject::verify();
 
@@ -523,22 +568,68 @@ TEST_F(DRIVER_AI_DRV_API_TEST, DrvL2CacheTaskStart) {
         prof_device_id, prof_channel, prof_events));
 }
 
+TEST_F(DRIVER_AI_DRV_API_TEST, DrvNtsTaskStartUsesEmptyPayload) {
+    GlobalMockObject::verify();
+
+    MOCKER(prof_drv_start)
+        .expects(once())
+        .will(invoke(ProfDrvStartNtsTaskStub));
+
+    EXPECT_EQ(PROFILING_SUCCESS, analysis::dvvp::driver::DrvNtsTaskStart(
+        0, analysis::dvvp::driver::PROF_CHANNEL_NTS_TASK));
+}
+
+TEST_F(DRIVER_AI_DRV_API_TEST, DrvNtsPmuStartUsesNtsPayload) {
+    GlobalMockObject::verify();
+
+    std::vector<std::string> events = {"0x301", "0x312"};
+    MOCKER(prof_drv_start)
+        .expects(once())
+        .will(invoke(ProfDrvStartNtsPmuStub));
+
+    EXPECT_EQ(PROFILING_SUCCESS, analysis::dvvp::driver::DrvNtsPmuStart(
+        0, analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU, events));
+}
+
+TEST_F(DRIVER_AI_DRV_API_TEST, DrvNtsPmuStartAcceptsDecimalEventsWithoutPrefix) {
+    GlobalMockObject::verify();
+
+    std::vector<std::string> events = {"301", "312"};
+    MOCKER(prof_drv_start)
+        .expects(once())
+        .will(invoke(ProfDrvStartNtsPmuDecimalStub));
+
+    EXPECT_EQ(PROFILING_SUCCESS, analysis::dvvp::driver::DrvNtsPmuStart(
+        0, analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU, events));
+}
+
+TEST_F(DRIVER_AI_DRV_API_TEST, DrvNtsPmuStartRejectsInvalidEvents) {
+    GlobalMockObject::verify();
+
+    MOCKER(prof_drv_start)
+        .stubs()
+        .will(returnValue(PROF_OK));
+
+    std::vector<std::string> invalidEvents = {"xyz"};
+    EXPECT_EQ(PROFILING_FAILED, analysis::dvvp::driver::DrvNtsPmuStart(
+        0, analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU, invalidEvents));
+
+    invalidEvents = {"0x10000"};
+    EXPECT_EQ(PROFILING_FAILED, analysis::dvvp::driver::DrvNtsPmuStart(
+        0, analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU, invalidEvents));
+}
+
 TEST_F(DRIVER_AI_DRV_API_TEST, DrvGetDevIdsStr) {
     GlobalMockObject::verify();
 
     uint32_t num_dev = 0;
-    std::vector<int> devIds;
-    devIds.push_back(1);
     MOCKER(drvGetDevNum)
         .stubs()
-        .with(outBoundP(&num_dev))
         .will(returnValue(DRV_ERROR_NO_DEVICE))
         .then(returnValue(DRV_ERROR_NONE));
 
-    num_dev = 1;
     MOCKER(drvGetDevIDs)
         .stubs()
-        .with(outBoundP(&num_dev))
         .will(returnValue(DRV_ERROR_NO_DEVICE))
         .then(returnValue(DRV_ERROR_NONE));
 

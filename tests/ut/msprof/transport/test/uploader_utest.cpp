@@ -28,6 +28,7 @@ protected:
         _transport->perfCount_ = std::shared_ptr<PerfCount> (new PerfCount("test"));
     }
     virtual void TearDown() {
+        GlobalMockObject::reset();
         _transport.reset();
     }
 public:
@@ -106,6 +107,7 @@ TEST_F(UPLOADER_TEST, run_no_data) {
     auto errorContext = MsprofErrorManager::instance()->GetErrorManagerContext();
     uploader->Run(errorContext);
     uploader.reset();
+    GlobalMockObject::reset();
 }
 
 TEST_F(UPLOADER_TEST, run_with_data) {
@@ -125,6 +127,7 @@ TEST_F(UPLOADER_TEST, run_with_data) {
     auto errorContext = MsprofErrorManager::instance()->GetErrorManagerContext();
     uploader->Run(errorContext);
     uploader.reset();
+    GlobalMockObject::reset();
 }
 
 TEST_F(UPLOADER_TEST, Flush) {

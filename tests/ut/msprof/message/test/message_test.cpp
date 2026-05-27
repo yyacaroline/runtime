@@ -207,6 +207,23 @@ TEST_F(MESSAGE_MESSAGE_PROFILEPARAMS_TEST, FromString) {
     EXPECT_TRUE(params1.FromString(params.ToString()));
 }
 
+TEST_F(MESSAGE_MESSAGE_PROFILEPARAMS_TEST, NtsMetricsSerialization) {
+    GlobalMockObject::verify();
+
+    ProfileParams params;
+    params.ntsMetrics = "PipeUtilization";
+    params.ntsPmuEvents = "0x301,0x312";
+
+    std::string serializedParams = params.ToString();
+    EXPECT_NE(std::string::npos, serializedParams.find("\"ntsPmuEvents\":\"0x301,0x312\""));
+    EXPECT_EQ(std::string::npos, serializedParams.find("ntsPmuProfilingEvents"));
+
+    ProfileParams params1;
+    EXPECT_TRUE(params1.FromString(serializedParams));
+    EXPECT_EQ("PipeUtilization", params1.ntsMetrics);
+    EXPECT_EQ("0x301,0x312", params1.ntsPmuEvents);
+}
+
 ///////////////////////////////////////////////////////////////////
 class MESSAGE_MESSAGE_JOBCONTEXT_TEST: public testing::Test {
 protected:

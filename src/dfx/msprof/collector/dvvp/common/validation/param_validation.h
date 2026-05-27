@@ -11,6 +11,7 @@
 #define ANALYSIS_DVVP_COMMON_PARAM_VALIDATION_H
 
 #include <string>
+#include "nts_metrics_validation.h"
 #include "message/prof_params.h"
 #include "singleton/singleton.h"
 #include "utils/utils.h"
@@ -83,6 +84,7 @@ public:
     bool CheckSocPmuEventsSizeValid(ProfSocPmuType type, uint32_t eventSize, int32_t &maxEvent) const;
     bool CheckOpTypeIsValid(const std::string &opTypeInput, std::string &opType, std::string &errInfo) const;
     bool CheckTaskBlockValid(const std::string &switchName, const std::string &config) const;
+    bool CheckNtsMetricsIsValid(SHARED_PTR_ALIA<analysis::dvvp::message::ProfileParams> params) const;
 
 private:
     bool CheckControlSwitchProfiling(SHARED_PTR_ALIA<analysis::dvvp::message::ProfileParams> params);
@@ -98,4 +100,3 @@ private:
 }
 }
 #endif
-

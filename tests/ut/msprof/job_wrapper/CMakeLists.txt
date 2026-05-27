@@ -152,6 +152,7 @@ set(localSrcFiles
     ../stub/error_manager_stub2.cpp
     ../stub/tsd_stub.cpp
     test/prof_job_utest.cpp
+    test/prof_job_ccu_utest.cpp
     test/prof_peripheral_job_utest.cpp
     test/prof_timer_utest.cpp
     test/collection_register_utest.cpp
@@ -284,5 +285,4 @@ set_target_properties(job_wrapper
     OUTPUT_NAME job_wrapper
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
-
 

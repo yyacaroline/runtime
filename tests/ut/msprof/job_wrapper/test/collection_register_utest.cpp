@@ -130,3 +130,14 @@ TEST_F(JOB_WRAPPER_COLLECTION_REGISTRT_UTEST, CollectionJobRun) {
     mgr.CollectionJobRegisterAndRun(0, Analysis::Dvvp::JobWrapper::AICPU_COLLECTION_JOB, instance);
     EXPECT_EQ(PROFILING_SUCCESS, mgr.CollectionJobRun(0, Analysis::Dvvp::JobWrapper::AICPU_COLLECTION_JOB));
 }
+
+TEST_F(JOB_WRAPPER_COLLECTION_REGISTRT_UTEST, CollectionJobFilenameMatchesJobTag) {
+    EXPECT_EQ("", Analysis::Dvvp::JobWrapper::COLLECTION_JOB_FILENAME[
+        Analysis::Dvvp::JobWrapper::HOST_CCA_MS_JOB]);
+    EXPECT_EQ("", Analysis::Dvvp::JobWrapper::COLLECTION_JOB_FILENAME[
+        Analysis::Dvvp::JobWrapper::DIAGNOSTIC_COLLECTION_JOB]);
+    EXPECT_EQ("data/nts_pmu.data", Analysis::Dvvp::JobWrapper::COLLECTION_JOB_FILENAME[
+        Analysis::Dvvp::JobWrapper::NTS_PMU_COLLECTION_JOB]);
+    EXPECT_EQ("data/nts_task.data", Analysis::Dvvp::JobWrapper::COLLECTION_JOB_FILENAME[
+        Analysis::Dvvp::JobWrapper::NTS_TASK_COLLECTION_JOB]);
+}

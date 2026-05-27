@@ -170,6 +170,46 @@ TEST_F(TRANSPORT_PROF_CHANNELREADER_UTEST, FlushDrvBuff) {
     reader->CheckIfSendFlush(0);
 }
 
+TEST_F(TRANSPORT_PROF_CHANNELREADER_UTEST, FlushDrvBuffDoesNotSupportNtsPmu) {
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&analysis::dvvp::transport::ChannelReader::UploadData)
+        .stubs();
+    uint32_t flushsize = 0;
+    MOCKER(&analysis::dvvp::driver::DrvProfFlush)
+        .expects(never())
+        .with(eq(0U), eq(static_cast<uint32_t>(analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU)), outBound(flushsize))
+        .will(returnValue(PROFILING_SUCCESS));
+
+    std::shared_ptr<analysis::dvvp::transport::ChannelReader> reader(
+        new analysis::dvvp::transport::ChannelReader(
+            0, analysis::dvvp::driver::PROF_CHANNEL_NTS_PMU, "data/nts_pmu.data",
+            _job_ctx));
+    EXPECT_EQ(PROFILING_SUCCESS, reader->Init());
+    EXPECT_FALSE(reader->IsSupportFlushDrvBuff());
+    reader->FlushDrvBuff();
+}
+
+TEST_F(TRANSPORT_PROF_CHANNELREADER_UTEST, FlushDrvBuffDoesNotSupportNtsTask) {
+    GlobalMockObject::verify();
+
+    MOCKER_CPP(&analysis::dvvp::transport::ChannelReader::UploadData)
+        .stubs();
+    uint32_t flushsize = 0;
+    MOCKER(&analysis::dvvp::driver::DrvProfFlush)
+        .expects(never())
+        .with(eq(0U), eq(static_cast<uint32_t>(analysis::dvvp::driver::PROF_CHANNEL_NTS_TASK)), outBound(flushsize))
+        .will(returnValue(PROFILING_SUCCESS));
+
+    std::shared_ptr<analysis::dvvp::transport::ChannelReader> reader(
+        new analysis::dvvp::transport::ChannelReader(
+            0, analysis::dvvp::driver::PROF_CHANNEL_NTS_TASK, "data/nts_task.data",
+            _job_ctx));
+    EXPECT_EQ(PROFILING_SUCCESS, reader->Init());
+    EXPECT_FALSE(reader->IsSupportFlushDrvBuff());
+    reader->FlushDrvBuff();
+}
+
 void *ThreadRun(void *data)
 {
     auto reader = reinterpret_cast<analysis::dvvp::transport::ChannelReader *>(data);

@@ -111,6 +111,7 @@ public:
     void L2CacheAdaptor(std::string &npuEvents, std::string &l2Switch, std::string &l2Events) const;
     std::string GetL2CacheEvents() const;
     std::string GetSmmuEventStr() const;
+    std::string GetNtsEvents(const std::string &metrics) const;
     int32_t HalEschedQueryInfo(uint32_t devId, ESCHED_QUERY_TYPE type,
         struct esched_input_info *inPut, struct esched_output_info *outPut) const;
     int32_t HalEschedCreateGrpEx(uint32_t devId, struct esched_grp_para *grpPara, uint32_t *grpId) const;
@@ -133,4 +134,3 @@ private:
 }
 }
 #endif
-

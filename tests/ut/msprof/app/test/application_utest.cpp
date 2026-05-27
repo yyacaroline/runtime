@@ -189,6 +189,8 @@ TEST_F(PROF_APPLICATION_TEST, LaunchApp) {
 
 
 TEST_F(PROF_APPLICATION_TEST, SetAppEnv) {
+    constexpr size_t envCount = 6;
+    constexpr size_t dynProfCliEnvCount = 12;
     GlobalMockObject::verify();
     std::shared_ptr<analysis::dvvp::message::ProfileParams> params(
         new analysis::dvvp::message::ProfileParams());
@@ -196,19 +198,17 @@ TEST_F(PROF_APPLICATION_TEST, SetAppEnv) {
     params->app_env = "LD_LIBRARY_PATH=123;asd=1;PATH=123;PROFILING_MODE=true";
 	params->delayTime = "1";
     analysis::dvvp::app::Application::SetAppEnv(params, envs);
-	EXPECT_EQ(envs.size(), 6);
-	if (envs.size() == 6) {
+	EXPECT_EQ(envs.size(), envCount);
+	if (envs.size() == envCount) {
 		EXPECT_EQ(envs[0], "LD_LIBRARY_PATH=123");
-		EXPECT_EQ(envs[5], "PROFILING_MODE=delay_or_duration");
+		EXPECT_EQ(envs[envCount - 1], "PROFILING_MODE=delay_or_duration");
 	}
-    MOCKER(&DynProfCliMgr::IsDynProfCliEnable)
-        .stubs()
-        .will(returnValue(true));
+    DynProfCliMgr::instance()->EnableDynProfCli();
     analysis::dvvp::app::Application::SetAppEnv(params, envs);
-	EXPECT_EQ(envs.size(), 12);
-	if (envs.size() == 11) {
-		EXPECT_EQ(envs[6], "LD_LIBRARY_PATH=123");
-		EXPECT_EQ(envs[11], "PROFILING_MODE=delay_or_duration");
+	EXPECT_EQ(envs.size(), dynProfCliEnvCount);
+	if (envs.size() == dynProfCliEnvCount) {
+		EXPECT_EQ(envs[envCount], "LD_LIBRARY_PATH=123");
+		EXPECT_EQ(envs[dynProfCliEnvCount - 1], "PROFILING_MODE=delay_or_duration");
 	}
 }
 

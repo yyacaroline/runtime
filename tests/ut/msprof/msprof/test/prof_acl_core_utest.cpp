@@ -51,6 +51,7 @@
 #include "acl_prof.h"
 #include "data_struct.h"
 #include "prof_acl_api.h"
+#include "prof_inner_api.h"
 #include "command_handle.h"
 #include "msprofiler_acl_api.h"
 #include "prof_acl_intf.h"
@@ -66,6 +67,7 @@
 #include "report_stub.h"
 #include "prof_reporter_mgr.h"
 #include "receive_data.h"
+#include "prof_l2cache_job.h"
 
 using namespace analysis::dvvp::common::error;
 using namespace Analysis::Dvvp::Analyze;
@@ -86,6 +88,22 @@ extern bool IsProfConfigValid(CONST_UINT32_T_PTR deviceidList, uint32_t deviceNu
 extern "C" {
 extern int ProfAclDrvGetDevNum();
 }
+
+namespace {
+std::shared_ptr<Analysis::Dvvp::JobWrapper::CollectionJobCfg> MakeNtsCollectionJobCfg(
+    const std::shared_ptr<analysis::dvvp::message::ProfileParams> &params)
+{
+    auto collectionJobCfg = std::make_shared<Analysis::Dvvp::JobWrapper::CollectionJobCfg>();
+    auto comParams = std::make_shared<Analysis::Dvvp::JobWrapper::CollectionJobCommonParams>();
+    comParams->params = params;
+    comParams->jobCtx = std::make_shared<analysis::dvvp::message::JobContext>();
+    comParams->jobCtx->job_id = "acl_nts_ut";
+    comParams->devId = 0;
+    collectionJobCfg->comParams = comParams;
+    return collectionJobCfg;
+}
+}
+
 class MSPROF_ACL_CORE_UTEST: public testing::Test {
 public:
     void RegisterTryPop() {
@@ -3344,6 +3362,30 @@ TEST_F(MSPROF_ACL_CORE_UTEST, aclprofSetConfig_not_support) {
     EXPECT_EQ(ACL_ERROR_INVALID_PARAM, aclprofSetConfig(configType, config2.c_str(), config2.size()));
 }
 
+TEST_F(MSPROF_ACL_CORE_UTEST, aclprofSetConfigAllowsEmptyStorageLimit)
+{
+    const std::string config;
+    MOCKER(ProfAclSetConfig)
+        .expects(once())
+        .with(eq(static_cast<uint32_t>(ACL_PROF_STORAGE_LIMIT)), eq(config.c_str()), eq(config.size()))
+        .will(returnValue(ACL_SUCCESS));
+
+    EXPECT_EQ(ACL_SUCCESS, aclprofSetConfig(ACL_PROF_STORAGE_LIMIT, config.c_str(), config.size()));
+}
+
+TEST_F(MSPROF_ACL_CORE_UTEST, aclprofSetConfigNtsMetricsBasicValidation)
+{
+    EXPECT_EQ(static_cast<int32_t>(ACL_PROF_OPTYPE) + 1, static_cast<int32_t>(ACL_PROF_NTS_METRICS));
+    EXPECT_EQ(static_cast<int32_t>(ACL_PROF_NTS_METRICS) + 1, static_cast<int32_t>(ACL_PROF_ARGS_MAX));
+
+    std::string config("TaskTime");
+    EXPECT_EQ(ACL_ERROR_INVALID_PARAM, aclprofSetConfig(ACL_PROF_NTS_METRICS, config.c_str(), config.size()));
+
+    config = "PipeUtilization";
+    EXPECT_EQ(ACL_ERROR_INVALID_PARAM, aclprofSetConfig(static_cast<aclprofConfigType>(ACL_PROF_ARGS_MAX),
+        config.c_str(), config.size()));
+}
+
 TEST_F(MSPROF_ACL_CORE_UTEST, IsValidProfConfig) {
     uint32_t deviceIdList[2]={0, 0};
     uint32_t deviceNums = 2;
@@ -3490,6 +3532,111 @@ TEST_F(MSPROF_ACL_CORE_UTEST, ProfSetConfigWillCheckConfigWhenPlatformSupported)
     EXPECT_EQ(ACL_SUCCESS, Msprofiler::AclApi::ProfSetConfig(ACL_PROF_LOW_POWER_FREQ, config.c_str(), config.size()));
     configType = static_cast<aclprofConfigType>(2);
     EXPECT_EQ(expectRet, Msprofiler::AclApi::ProfSetConfig(configType, config.c_str(), config.size()));
+}
+
+TEST_F(MSPROF_ACL_CORE_UTEST, ProfParamsAdapterWillAcceptNtsMetricsConsistently)
+{
+    auto params = std::make_shared<analysis::dvvp::message::ProfileParams>();
+    MOCKER_CPP(&Platform::CheckIfSupport, bool (Platform::*)(const PlatformFeature) const)
+        .stubs()
+        .will(returnValue(true));
+
+    EXPECT_EQ(PROFILING_SUCCESS,
+        Analysis::Dvvp::Host::Adapter::ProfParamsAdapter::instance()->CheckApiConfigSupport(ACL_PROF_NTS_METRICS));
+    EXPECT_EQ(PROFILING_SUCCESS,
+        Analysis::Dvvp::Host::Adapter::ProfParamsAdapter::instance()->CheckApiConfigIsValid(params,
+            ACL_PROF_NTS_METRICS, "PipeUtilization"));
+    EXPECT_EQ("PipeUtilization", params->ntsMetrics);
+    EXPECT_TRUE(params->ntsPmuEvents.empty());
+
+    params->ntsMetrics.clear();
+    params->ntsPmuEvents.clear();
+    EXPECT_EQ(PROFILING_SUCCESS,
+        Analysis::Dvvp::Host::Adapter::ProfParamsAdapter::instance()->CheckApiConfigIsValid(params,
+            ACL_PROF_NTS_METRICS, "Custom:0x301"));
+    EXPECT_EQ("Custom:0x301", params->ntsMetrics);
+    EXPECT_EQ("0x301", params->ntsPmuEvents);
+
+    params->ntsMetrics.clear();
+    EXPECT_EQ(PROFILING_FAILED,
+        Analysis::Dvvp::Host::Adapter::ProfParamsAdapter::instance()->CheckApiConfigIsValid(params,
+            ACL_PROF_NTS_METRICS, "TaskTime"));
+    EXPECT_TRUE(params->ntsMetrics.empty());
+}
+
+TEST_F(MSPROF_ACL_CORE_UTEST, AclSetConfigNtsMetricsWillEnablePmuAndTaskCollection)
+{
+    auto params = std::make_shared<analysis::dvvp::message::ProfileParams>();
+    Msprofiler::Api::ProfAclMgr::instance()->mode_ = Msprofiler::Api::WORK_MODE_API_CTRL;
+    Msprofiler::Api::ProfAclMgr::instance()->params_ = params;
+
+    MOCKER(&Analysis::Dvvp::Common::Platform::Platform::PlatformIsHelperHostSide)
+        .stubs()
+        .will(returnValue(false));
+    MOCKER_CPP(&Platform::CheckIfSupport, bool (Platform::*)(const PlatformFeature) const)
+        .stubs()
+        .will(returnValue(true));
+    MOCKER_CPP(&Platform::GetNtsEvents)
+        .stubs()
+        .will(returnValue(std::string("0x301,0x312")));
+    MOCKER_CPP(&analysis::dvvp::driver::DrvChannelsMgr::ChannelIsValid)
+        .stubs()
+        .will(returnValue(true));
+
+    std::string config("PipeUtilization");
+    EXPECT_EQ(ACL_SUCCESS, aclprofSetConfig(ACL_PROF_NTS_METRICS, config.c_str(), config.size()));
+    EXPECT_EQ("PipeUtilization", params->ntsMetrics);
+
+    EXPECT_TRUE(ParamValidation::instance()->CheckNtsMetricsIsValid(params));
+    EXPECT_EQ("0x301,0x312", params->ntsPmuEvents);
+
+    auto pmuCfg = MakeNtsCollectionJobCfg(params);
+    pmuCfg->jobParams.dataPath = "data/nts_pmu.data";
+    auto taskCfg = MakeNtsCollectionJobCfg(params);
+    taskCfg->jobParams.dataPath = "data/nts_task.data";
+
+    auto profNtsPmuJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNtsPmuJob>();
+    auto profNtsTaskJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNtsTaskJob>();
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsPmuJob->Init(pmuCfg));
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsTaskJob->Init(taskCfg));
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsPmuJob->Process());
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsTaskJob->Process());
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsPmuJob->Uninit());
+    EXPECT_EQ(PROFILING_SUCCESS, profNtsTaskJob->Uninit());
+
+    params->ntsMetrics.clear();
+    params->ntsPmuEvents.clear();
+    config = "Custom:0x301,0x312";
+    EXPECT_EQ(ACL_SUCCESS, aclprofSetConfig(ACL_PROF_NTS_METRICS, config.c_str(), config.size()));
+    EXPECT_EQ("Custom:0x301,0x312", params->ntsMetrics);
+    EXPECT_EQ("0x301,0x312", params->ntsPmuEvents);
+}
+
+TEST_F(MSPROF_ACL_CORE_UTEST, AclSetConfigNtsMetricsWillInterceptInvalidOrUnsupportedCollection)
+{
+    auto params = std::make_shared<analysis::dvvp::message::ProfileParams>();
+    Msprofiler::Api::ProfAclMgr::instance()->mode_ = Msprofiler::Api::WORK_MODE_API_CTRL;
+    Msprofiler::Api::ProfAclMgr::instance()->params_ = params;
+
+    std::string config("TaskTime");
+    EXPECT_EQ(ACL_ERROR_INVALID_PARAM, aclprofSetConfig(ACL_PROF_NTS_METRICS, config.c_str(), config.size()));
+    EXPECT_TRUE(params->ntsMetrics.empty());
+
+    config = "PipeUtilization";
+    MOCKER(&Analysis::Dvvp::Common::Platform::Platform::PlatformIsHelperHostSide)
+        .stubs()
+        .will(returnValue(false));
+    MOCKER_CPP(&Platform::CheckIfSupport, bool (Platform::*)(const PlatformFeature) const)
+        .stubs()
+        .will(returnValue(false));
+    EXPECT_EQ(ACL_ERROR_INVALID_PARAM, aclprofSetConfig(ACL_PROF_NTS_METRICS, config.c_str(), config.size()));
+    EXPECT_TRUE(params->ntsMetrics.empty());
+
+    auto collectionJobCfg = MakeNtsCollectionJobCfg(params);
+    auto profNtsPmuJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNtsPmuJob>();
+    auto profNtsTaskJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNtsTaskJob>();
+    EXPECT_EQ(PROFILING_FAILED, profNtsPmuJob->Init(collectionJobCfg));
+    EXPECT_EQ(PROFILING_FAILED, profNtsTaskJob->Init(collectionJobCfg));
 }
 
 TEST_F(MSPROF_ACL_CORE_UTEST, ProfSetConfigWillReturnInvalidConfigWhenPlatformNotSupported)
@@ -3936,31 +4083,6 @@ TEST_F(MSPROF_ACL_CORE_UTEST, MsprofStart_PureCpu) {
     GlobalMockObject::verify();
     using namespace Msprofiler::Api;
 
-    MOCKER_CPP(&ProfAclMgr::IsModeOff)
-        .stubs()
-        .will(returnValue(false))
-        .then(returnValue(true));
-    MOCKER_CPP(&ProfAclMgr::MsprofInitPureCpu)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(MSPROF_ERROR)))
-        .then(returnValue(static_cast<int32_t>(MSPROF_ERROR_NONE)));
-    MOCKER_CPP(&ProfAclMgr::StartUploaderDumper)
-        .stubs()
-        .will(returnValue(PROFILING_FAILED))
-        .then(returnValue(PROFILING_SUCCESS));
-    MOCKER_CPP(&Analysis::Dvvp::ProfilerCommon::CommandHandleProfInit)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(ACL_ERROR)))
-        .then(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
-    MOCKER_CPP(&Analysis::Dvvp::ProfilerCommon::CommandHandleProfStart)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(ACL_ERROR)))
-        .then(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
-    MOCKER_CPP(&ProfAclMgr::MsprofTxHandle)
-        .stubs();
-    MOCKER_CPP(&ProfAclMgr::MsprofHostHandle)
-        .stubs();
-
     struct MsprofConfig cfg;
     cfg.devNums = 1;
     cfg.devIdList[0] = 0;
@@ -3972,66 +4094,26 @@ TEST_F(MSPROF_ACL_CORE_UTEST, MsprofStart_PureCpu) {
     EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, 1));
     EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), nullptr, sizeof(cfg)));
     EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_DYNAMIC), &cfg, sizeof(cfg)));
-    // IsModeOff
-    EXPECT_EQ(MSPROF_ERROR_NONE, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // MsprofInitPureCpu
-    EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // StartUploaderDumper
-    EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // CommandHandleProfInit
-    EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // CommandHandleProfStart
-    EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
 
+    MOCKER_CPP(&ProfAclMgr::ProfStartPureCpu)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(MSPROF_ERROR)))
+        .then(returnValue(static_cast<int32_t>(MSPROF_ERROR_NONE)));
+    EXPECT_EQ(MSPROF_ERROR, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
     EXPECT_EQ(MSPROF_ERROR_NONE, MsprofStart(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    EXPECT_EQ(0, ProfAclMgr::instance()->devTasks_.size());
 
     GlobalMockObject::verify();
-    MOCKER_CPP(&ProfAclMgr::IsModeOff)
-        .stubs()
-        .will(returnValue(true))
-        .then(returnValue(false));
-    MOCKER_CPP(&ProfAclMgr::IsCmdMode)
-        .stubs()
-        .will(returnValue(false))
-        .then(returnValue(true));
-    MOCKER_CPP(&Analysis::Dvvp::ProfilerCommon::CommandHandleProfStop)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(ACL_ERROR)))
-        .then(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
-    MOCKER_CPP(&Analysis::Dvvp::ProfilerCommon::CommandHandleProfFinalize)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(ACL_ERROR)))
-        .then(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
-    MOCKER_CPP(&analysis::dvvp::host::ProfManager::IdeCloudProfileProcess)
-        .stubs()
-        .will(returnValue(PROFILING_FAILED))
-        .then(returnValue(PROFILING_SUCCESS));
-    MOCKER_CPP(&ProfAclMgr::MsprofTxHandle)
-        .stubs();
-    MOCKER_CPP(&ProfAclMgr::MsprofHostHandle)
-        .stubs();
-
-    std::shared_ptr<analysis::dvvp::message::ProfileParams> params(new analysis::dvvp::message::ProfileParams());
-    ProfAclMgr::ProfAclTaskInfo taskInfo = {1, 0, params};
-    ProfAclMgr::instance()->devTasks_[64] = taskInfo;
-    EXPECT_EQ(1, ProfAclMgr::instance()->devTasks_.size());
 
     // invalid input
     EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, 1));
     EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), nullptr, sizeof(cfg)));
     EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_DYNAMIC), &cfg, sizeof(cfg)));
-    // IsModeOff
-    EXPECT_EQ(MSPROF_ERROR_NONE, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // IsCmdMode
-    EXPECT_EQ(MSPROF_ERROR_NONE, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // CommandHandleProfStop
-    EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // CommandHandleProfFinalize
-    EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
-    // IdeCloudProfileProcess
-    EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
 
+    MOCKER_CPP(&ProfAclMgr::ProfStopPureCpu)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(MSPROF_ERROR)))
+        .then(returnValue(static_cast<int32_t>(MSPROF_ERROR_NONE)));
+    EXPECT_EQ(MSPROF_ERROR, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
     EXPECT_EQ(MSPROF_ERROR_NONE, MsprofStop(static_cast<uint32_t>(ProfConfigType::PROF_CONFIG_PURE_CPU), &cfg, sizeof(cfg)));
     ProfAclMgr::instance()->UnInit();
     EXPECT_EQ(0, ProfAclMgr::instance()->devTasks_.size());

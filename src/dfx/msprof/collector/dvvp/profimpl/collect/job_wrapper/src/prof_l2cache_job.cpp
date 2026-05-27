@@ -102,6 +102,145 @@ int32_t ProfL2CacheTaskJob::Uninit()
     return PROFILING_SUCCESS;
 }
 
+ProfNtsPmuJob::ProfNtsPmuJob() {}
+
+ProfNtsPmuJob::~ProfNtsPmuJob() {}
+
+int32_t ProfNtsPmuJob::Init(const SHARED_PTR_ALIA<CollectionJobCfg> cfg)
+{
+    CHECK_JOB_COMMON_PARAM_RET(cfg, return PROFILING_FAILED);
+    if (cfg->comParams->params->hostProfiling) {
+        return PROFILING_FAILED;
+    }
+
+    collectionJobCfg_ = cfg;
+    if (collectionJobCfg_->comParams->params->ntsPmuEvents.empty() ||
+        !Platform::instance()->CheckIfSupport(PLATFORM_TASK_NTS)) {
+        MSPROF_LOGI("ProfNtsPmuJob Not Enabled");
+        return PROFILING_FAILED;
+    }
+
+    SHARED_PTR_ALIA<std::vector<std::string>> ntsPmuEvents;
+    MSVP_MAKE_SHARED0(ntsPmuEvents, std::vector<std::string>, return PROFILING_FAILED);
+    *ntsPmuEvents = analysis::dvvp::common::utils::Utils::Split(
+        collectionJobCfg_->comParams->params->ntsPmuEvents, false, "", ",");
+    if (!CheckNtsPmuEventsValid(*ntsPmuEvents)) {
+        MSPROF_LOGE("ProfNtsPmuJob Exits Invalid Events");
+        return PROFILING_FAILED;
+    }
+
+    collectionJobCfg_->jobParams.events = ntsPmuEvents;
+    return PROFILING_SUCCESS;
+}
+
+int32_t ProfNtsPmuJob::Process()
+{
+    CHECK_JOB_EVENT_PARAM_RET(collectionJobCfg_, return PROFILING_FAILED);
+    if (!DrvChannelsMgr::instance()->ChannelIsValid(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_PMU)) {
+        MSPROF_LOGW("Channel is invalid, devId:%d, channelId:%d", collectionJobCfg_->comParams->devId,
+            PROF_CHANNEL_NTS_PMU);
+        return PROFILING_SUCCESS;
+    }
+
+    std::string eventsStr = GetEventsStr(*collectionJobCfg_->jobParams.events);
+    MSPROF_LOGI("Begin to start profiling NTS PMU, events:%s", eventsStr.c_str());
+    std::string filePath = BindFileWithChannel(collectionJobCfg_->jobParams.dataPath);
+
+    AddReader(collectionJobCfg_->comParams->params->job_id, collectionJobCfg_->comParams->devId,
+        PROF_CHANNEL_NTS_PMU, filePath);
+    const int32_t ret = DrvNtsPmuStart(
+        collectionJobCfg_->comParams->devId,
+        PROF_CHANNEL_NTS_PMU,
+        *collectionJobCfg_->jobParams.events);
+    MSPROF_LOGI("start profiling NTS PMU, events:%s, ret=%d", eventsStr.c_str(), ret);
+
+    if (ret != PROFILING_SUCCESS) {
+        RemoveReader(collectionJobCfg_->comParams->params->job_id, collectionJobCfg_->comParams->devId,
+            PROF_CHANNEL_NTS_PMU);
+        return ret;
+    }
+    return ret;
+}
+
+int32_t ProfNtsPmuJob::Uninit()
+{
+    CHECK_JOB_EVENT_PARAM_RET(collectionJobCfg_, return PROFILING_SUCCESS);
+    if (!DrvChannelsMgr::instance()->ChannelIsValid(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_PMU)) {
+        MSPROF_LOGW("Channel is invalid, devId:%d, channelId:%d", collectionJobCfg_->comParams->devId,
+            PROF_CHANNEL_NTS_PMU);
+        return PROFILING_SUCCESS;
+    }
+    std::string eventsStr = GetEventsStr(*collectionJobCfg_->jobParams.events);
+
+    const int32_t ret = DrvStop(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_PMU);
+
+    MSPROF_LOGI("stop Profiling NTS PMU, events:%s, ret=%d", eventsStr.c_str(), ret);
+
+    RemoveReader(collectionJobCfg_->comParams->params->job_id, collectionJobCfg_->comParams->devId,
+        PROF_CHANNEL_NTS_PMU);
+    collectionJobCfg_->jobParams.events.reset();
+    return PROFILING_SUCCESS;
+}
+
+ProfNtsTaskJob::ProfNtsTaskJob() {}
+
+ProfNtsTaskJob::~ProfNtsTaskJob() {}
+
+int32_t ProfNtsTaskJob::Init(const SHARED_PTR_ALIA<CollectionJobCfg> cfg)
+{
+    CHECK_JOB_COMMON_PARAM_RET(cfg, return PROFILING_FAILED);
+    if (cfg->comParams->params->hostProfiling) {
+        return PROFILING_FAILED;
+    }
+
+    collectionJobCfg_ = cfg;
+    if (collectionJobCfg_->comParams->params->ntsMetrics.empty() ||
+        !Platform::instance()->CheckIfSupport(PLATFORM_TASK_NTS)) {
+        MSPROF_LOGI("ProfNtsTaskJob Not Enabled");
+        return PROFILING_FAILED;
+    }
+
+    return PROFILING_SUCCESS;
+}
+
+int32_t ProfNtsTaskJob::Process()
+{
+    CHECK_JOB_COMMON_PARAM_RET(collectionJobCfg_, return PROFILING_FAILED);
+    if (!DrvChannelsMgr::instance()->ChannelIsValid(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_TASK)) {
+        MSPROF_LOGW("Channel is invalid, devId:%d, channelId:%d", collectionJobCfg_->comParams->devId,
+            PROF_CHANNEL_NTS_TASK);
+        return PROFILING_SUCCESS;
+    }
+
+    MSPROF_LOGI("Begin to start profiling NTS task");
+    std::string filePath = BindFileWithChannel(collectionJobCfg_->jobParams.dataPath);
+    AddReader(collectionJobCfg_->comParams->params->job_id, collectionJobCfg_->comParams->devId,
+        PROF_CHANNEL_NTS_TASK, filePath);
+    const int32_t ret = DrvNtsTaskStart(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_TASK);
+    MSPROF_LOGI("start profiling NTS task, ret=%d", ret);
+
+    FUNRET_CHECK_RET_VAL(ret != PROFILING_SUCCESS);
+    return ret;
+}
+
+int32_t ProfNtsTaskJob::Uninit()
+{
+    CHECK_JOB_COMMON_PARAM_RET(collectionJobCfg_, return PROFILING_SUCCESS);
+    if (!DrvChannelsMgr::instance()->ChannelIsValid(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_TASK)) {
+        MSPROF_LOGW("Channel is invalid, devId:%d, channelId:%d", collectionJobCfg_->comParams->devId,
+            PROF_CHANNEL_NTS_TASK);
+        return PROFILING_SUCCESS;
+    }
+
+    const int32_t ret = DrvStop(collectionJobCfg_->comParams->devId, PROF_CHANNEL_NTS_TASK);
+
+    MSPROF_LOGI("stop Profiling NTS Task, ret=%d", ret);
+
+    RemoveReader(collectionJobCfg_->comParams->params->job_id, collectionJobCfg_->comParams->devId,
+        PROF_CHANNEL_NTS_TASK);
+    return PROFILING_SUCCESS;
+}
+
 }
 }
 }

@@ -27,6 +27,24 @@ public:
     int32_t Uninit() override;
 };
 
+class ProfNtsPmuJob : public ProfDrvJob {
+public:
+    ProfNtsPmuJob();
+    ~ProfNtsPmuJob() override;
+    int32_t Init(const SHARED_PTR_ALIA<CollectionJobCfg> cfg) override;
+    int32_t Process() override;
+    int32_t Uninit() override;
+};
+
+class ProfNtsTaskJob : public ProfDrvJob {
+public:
+    ProfNtsTaskJob();
+    ~ProfNtsTaskJob() override;
+    int32_t Init(const SHARED_PTR_ALIA<CollectionJobCfg> cfg) override;
+    int32_t Process() override;
+    int32_t Uninit() override;
+};
+
 }
 }
 }

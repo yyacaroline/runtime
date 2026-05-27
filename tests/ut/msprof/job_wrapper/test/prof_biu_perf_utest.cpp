@@ -53,11 +53,10 @@ public:
 
 TEST_F(JOB_WRAPPER_PROF_BIU_PERF_JOB_TEST, Launch) {
     GlobalMockObject::verify();
-    MOCKER_CPP(&Analysis::Dvvp::Common::Platform::Platform::GetPlatformType)
+    MOCKER_CPP(&Analysis::Dvvp::Common::Platform::Platform::CheckIfSupport,
+        bool (Analysis::Dvvp::Common::Platform::Platform::*)(const Dvvp::Collect::Platform::PlatformFeature) const)
         .stubs()
-        .will(returnValue(14));
-    Platform::instance()->Uninit();
-    Platform::instance()->Init();
+        .will(returnValue(true));
     auto profBiuPerfJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfBiuPerfJob>();
     do {
         EXPECT_NE(profBiuPerfJob, nullptr);

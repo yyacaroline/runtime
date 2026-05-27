@@ -272,7 +272,6 @@ aclError aclprofSetConfig(aclprofConfigType configType, const char *config, size
         MSPROF_LOGE("[aclprofSetConfig]Input value is nullptr or its length does not equal to given length.");
         return ACL_ERROR_INVALID_PARAM;
     }
-
     return ProfAclSetConfig(configType, config, configLength);
 }
 

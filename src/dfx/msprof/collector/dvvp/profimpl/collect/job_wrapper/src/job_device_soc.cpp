@@ -526,6 +526,10 @@ int32_t JobDeviceSoc::CreateTsCollectionJobArray()
         collectionJobV_[INSTR_PROFILING_COLLECTION_JOB].collectionJob, ProfInstrPerfJob, return PROFILING_FAILED);
     MSVP_MAKE_SHARED0(
         collectionJobV_[BIU_PERF_COLLECTION_JOB].collectionJob, ProfBiuPerfJob, return PROFILING_FAILED);
+    MSVP_MAKE_SHARED0(
+        collectionJobV_[NTS_PMU_COLLECTION_JOB].collectionJob, ProfNtsPmuJob, return PROFILING_FAILED);
+    MSVP_MAKE_SHARED0(
+        collectionJobV_[NTS_TASK_COLLECTION_JOB].collectionJob, ProfNtsTaskJob, return PROFILING_FAILED);
 
     return PROFILING_SUCCESS;
 }
