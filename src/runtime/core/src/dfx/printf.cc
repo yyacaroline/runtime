@@ -309,7 +309,7 @@ void ParsePrintToLog(const char *format, const uint8_t *paramBegin, const uint32
                 format++;
                 continue;
             }
-            RT_LOG(RT_LOG_ERROR, "Print fomat [%%%s] is illegal.", tempFormat.c_str());
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "The print format [%%%s] is illegal.", tempFormat.c_str());
             if (tempFormat[0] != '\0') {  // 正文末尾不是%的处理
                 printInfo += tempFormat;
                 format += tempFormat.size();
@@ -319,7 +319,8 @@ void ParsePrintToLog(const char *format, const uint8_t *paramBegin, const uint32
 
         paramIndex++;
         if (paramIndex > paramNum) {
-            RT_LOG(RT_LOG_ERROR, "Illegal dump print fomatting num[>=%u], which expected[%u].", paramIndex, paramNum);
+            RT_LOG_INNER_MSG(RT_LOG_ERROR,
+                "There are too many placeholders (>=%u). The actual number of parameters is %u.", paramIndex, paramNum);
             break;
         }
         (iter->second)(paramBegin, printInfo, paramIndex);
@@ -371,8 +372,9 @@ void PrintSimtDump(const DumpInfoHead *dumpHead)
 void PrintDumpTimestamp(const DumpInfoHead *dumpHead, const uint32_t blockId,
     std::vector<MsprofAicTimeStampInfo> &timeStampInfo)
 {
-    COND_RETURN_VOID((dumpHead->infoLen < sizeof(DumpTimeStampInfoMsg)),
-        "dumpHead infoLen(%u) is less than %u", dumpHead->infoLen, sizeof(MsprofAicTimeStampInfo));
+    COND_RETURN_VOID_AND_MSG_INNER(dumpHead->infoLen < sizeof(DumpTimeStampInfoMsg),
+        "The value of dumpHead->infoLen %u must be greater than or equal to that of DumpTimeStampInfoMsg %zu.",
+        dumpHead->infoLen, sizeof(DumpTimeStampInfoMsg));
     
     MsprofAicTimeStampInfo timeInfo;
 
@@ -423,11 +425,9 @@ void ReportTimeStampInfo(const std::vector<MsprofAicTimeStampInfo> &timeStampInf
         additionInfo.dataLen = static_cast<uint32_t>(sizeToCopy);
         const errno_t err = memcpy_s(additionInfo.data, static_cast<size_t>MSPROF_ADDTIONAL_INFO_DATA_LENGTH,
             &timeStampInfo[i], sizeToCopy);
-        if (err != EOK) {
-            RT_LOG(RT_LOG_ERROR, "Failed to memcpy timestamp additional info, data is %p, timeStampInfo is %p, dataLen is %u",
-                additionInfo.data, &timeStampInfo[i], additionInfo.dataLen);
-            return;
-        }
+        COND_RETURN_VOID_AND_MSG_INNER(err != EOK, "Failed to call memcpy_s to copy timeStampInfo[%zu],"
+            " src=%p, dest=%p, dest_max=%d, count=%u, retCode=%#x.", i, &timeStampInfo[i], additionInfo.data,
+            MSPROF_ADDTIONAL_INFO_DATA_LENGTH, additionInfo.dataLen, err);
         RT_LOG(RT_LOG_INFO, "Report dataLen is %u.", additionInfo.dataLen);
         (void)MsprofReportAdditionalInfo(
             static_cast<uint32_t>(true), &additionInfo, static_cast<uint32_t>(sizeof(MsprofAdditionalInfo)));
@@ -654,12 +654,9 @@ const std::unordered_map<uint32_t,
 
 void GetDumpShape(const DumpInfoHead *dumpHead, std::vector<size_t> &shape)
 {
-    if (static_cast<size_t>(dumpHead->infoLen) < sizeof(DumpShapeInfo)) {
-        RT_LOG(RT_LOG_ERROR,
-            "dump info length %u bytes is less than required of DumpShapeInfo (%zu bytes).",
-            dumpHead->infoLen, sizeof(DumpShapeInfo));
-        return;
-    }
+    COND_RETURN_VOID_AND_MSG_INNER(static_cast<size_t>(dumpHead->infoLen) < sizeof(DumpShapeInfo),
+        "The value of dumpHead->infoLen %u must be greater than or equal to that of DumpShapeInfo %zu.",
+        dumpHead->infoLen, sizeof(DumpShapeInfo));
     const DumpShapeInfo *const shapeHead = RtPtrToPtr<const DumpShapeInfo *>(dumpHead->infoMsg);
     for (size_t i = 0U; i < shapeHead->dim; i++) {
         shape.push_back(shapeHead->shape[i]);
@@ -745,16 +742,11 @@ void PrintTensorWithShape(
     size_t totalNum = 1U;
     std::string shapeStr = "[";
     for (size_t i = 0U; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-            RT_LOG(RT_LOG_ERROR, "Dump tensor error: shape[%zu] is zero", i);
-            return;
-        }
-        if (totalNum > (std::numeric_limits<size_t>::max() / shape[i])) {
-            RT_LOG(RT_LOG_ERROR,
-                "Dump tensor error: Multiply all numbers in shape exceeds max size_t=%zu",
-                std::numeric_limits<size_t>::max());
-            return;
-        }
+        COND_RETURN_VOID_AND_MSG_INNER(shape[i] == 0,
+            "Value 0 for parameter shape[%zu] is invalid. Expected value: not equal to 0.", i);
+        COND_RETURN_VOID_AND_MSG_INNER(totalNum > (std::numeric_limits<size_t>::max() / shape[i]),
+            "The accumulated product of dimensions in the shape exceeds the maximum value %zu of size_t.",
+            std::numeric_limits<size_t>::max());
         totalNum *= shape[i];
         shapeStr += std::to_string(shape[i]);
         if (i + 1U < shape.size()) {
@@ -788,20 +780,15 @@ void PrintTensorWithoutShape(const DumpTensorInfo *const tensorHead, const size_
 void PrintDumpTensor(const DumpInfoHead *dumpHead, const uint32_t coreType, std::vector<size_t> &shape)
 {
     RT_LOG(RT_LOG_INFO, "Dump tensor length %u bytes.", dumpHead->infoLen);
-    if (static_cast<size_t>(dumpHead->infoLen) < sizeof(DumpTensorInfo)) {
-        RT_LOG(RT_LOG_ERROR,
-            "Dump tensor length %u bytes is less than the size of DumpTensorInfo (%zu bytes).",
-            dumpHead->infoLen, sizeof(DumpTensorInfo));
-        return;
-    }
+    COND_RETURN_VOID_AND_MSG_INNER(static_cast<size_t>(dumpHead->infoLen) < sizeof(DumpTensorInfo),
+        "The value of dumpHead->infoLen %u must be greater than or equal to that of DumpTensorInfo %zu.",
+        dumpHead->infoLen, sizeof(DumpTensorInfo));
     const DumpTensorInfo *const tensorHead = RtPtrToPtr<const DumpTensorInfo *>(dumpHead->infoMsg);
     uint16_t dataTypeSize = 0U;
     const uint32_t dataType = tensorHead->dataType;
     const std::string dtype = DataTypeToString(dataType);
-    if (!GetDataTypeSize(dataType, dataTypeSize)) {
-        RT_LOG(RT_LOG_ERROR, "Dump tensor doesn't support dtype of %s.", dtype.c_str());
-        return;
-    }
+    COND_RETURN_VOID_AND_MSG_INNER(!GetDataTypeSize(dataType, dataTypeSize),
+        "The %s data type does not support the dump tensor.", dtype.c_str());
  
     const std::string addrToHex = ToHex(tensorHead->addr);
     const auto &positionIter = POSITION_MAP.find(tensorHead->position);
@@ -1012,14 +999,14 @@ void PrintBlockInfo(const uint8_t *blockData, const uint32_t blockId, const uint
 uint64_t GetDebugAddrForCore(uint32_t deviceId, uint16_t coreId)
 {
     if (&halGetMaxResMapType == nullptr) {
-        RT_LOG(RT_LOG_WARNING, "[drv api] halGetMaxResMapType does not exist, device_id=%u", deviceId);
+        RT_LOG(RT_LOG_WARNING, "[drv api] halGetMaxResMapType does not exist, device_id=%u.", deviceId);
         return 0;
     }
 
     uint32_t const maxResMapType = halGetMaxResMapType();
     if (maxResMapType < RES_DBG_ADDR) {
         RT_LOG(RT_LOG_WARNING,
-            "[drv api] halGetMaxResMapType returned %u, less than RES_DBG_ADDR(0x10), device_id=%u",
+            "[drv api] halGetMaxResMapType returned %u, less than RES_DBG_ADDR(0x10), device_id=%u.",
             maxResMapType, deviceId);
         return 0;
     }
@@ -1131,12 +1118,14 @@ rtError_t ParsePrintf(void *addr, const size_t blockSize, Driver *curDrv)
 
         // 校验readIdx和writeIdx在合法的范围内
         const BlockInfo *blockInfo = RtPtrToPtr<const BlockInfo *>(blockAddr);
-        COND_RETURN_ERROR((readInfo->readIdx > blockInfo->remainLen), RT_ERROR_INVALID_VALUE,
-            "Read idx %llu is invalid, cannot be greater than %u.", readInfo->readIdx, blockInfo->remainLen);
-        COND_RETURN_ERROR((writeInfo->writeIdx > blockInfo->remainLen), RT_ERROR_INVALID_VALUE,
-            "Write idx %llu is invalid, cannot be greater than %u.", writeInfo->writeIdx, blockInfo->remainLen);
+        COND_RETURN_AND_MSG_INNER((readInfo->readIdx > blockInfo->remainLen), RT_ERROR_INVALID_VALUE,
+            "Read idx %" PRIu64 " is invalid. The value of readIdx must be less than or equal to that of remainLen %u.",
+            readInfo->readIdx, blockInfo->remainLen);
+        COND_RETURN_AND_MSG_INNER((writeInfo->writeIdx > blockInfo->remainLen), RT_ERROR_INVALID_VALUE,
+            "Write idx %" PRIu64 " is invalid. The value of writeIdx must be less than or equal to that of remainLen %u.",
+            writeInfo->writeIdx, blockInfo->remainLen);
         if (readInfo->readIdx == writeInfo->writeIdx) { // 表示没有信息更新
-            RT_LOG(RT_LOG_DEBUG, "Block info[%zu] writeIdx %llu has no info updates.", i, writeInfo->writeIdx);
+            RT_LOG(RT_LOG_DEBUG, "Block info[%zu] writeIdx %" PRIu64 " has no info updates.", i, writeInfo->writeIdx);
             continue;
         }
 
@@ -1203,11 +1192,12 @@ rtError_t ParseSimtPrintf(void *addr, const size_t blockSize, Driver *curDrv, co
     const BlockWriteInfo *writeInfo =
     RtPtrToPtr<const BlockWriteInfo *>(blockAddr + blockSize - sizeof(BlockWriteInfo));
     // 校验readIdx和writeIdx在合法的范围内
-    COND_RETURN_ERROR((readInfo->readIdx > writeInfo->writeIdx), RT_ERROR_INVALID_VALUE,
-        "Read idx %llu cannot be greater than write idx %llu.", readInfo->readIdx, writeInfo->writeIdx);
+    COND_RETURN_AND_MSG_INNER((readInfo->readIdx > writeInfo->writeIdx), RT_ERROR_INVALID_VALUE,
+        "The value of readIdx %" PRIu64 " must be less than or equal to that of writeIdx %" PRIu64 ".",
+        readInfo->readIdx, writeInfo->writeIdx);
     // 表示没有信息更新
     if (readInfo->readIdx == writeInfo->writeIdx) {
-        RT_LOG(RT_LOG_DEBUG, "Block info writeIdx %llu has no info updates.", writeInfo->writeIdx);
+        RT_LOG(RT_LOG_DEBUG, "Block info writeIdx %" PRIu64 " has no info updates.", writeInfo->writeIdx);
         return RT_ERROR_NONE;
     }
 

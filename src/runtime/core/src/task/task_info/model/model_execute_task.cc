@@ -203,7 +203,7 @@ rtError_t AllocFuncCallMemForModelExecuteTask(TaskInfo * const taskInfo, rtStars
 
     model->SetFuncCallHostMem(malloc(funCallMemSize));
     COND_RETURN_AND_MSG_OUTER(model->GetFuncCallHostMem() == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-        std::to_string(funCallMemSize));
+        funCallMemSize);
 
     RT_LOG(RT_LOG_INFO, "funcCallHostMem=%#" PRIx64 ", funCallMemSize=%#" PRIx64, model->GetFuncCallHostMem(),
            model->GetFunCallMemSize());
@@ -446,7 +446,7 @@ void PrintErrorModelExecuteTaskFuncCall(TaskInfo *const task)
     RT_LOG(RT_LOG_ERROR, "funcCallSvmMem=0x%llx, funCallMemSize=%u.", model->GetFuncCallSvmMem(), model->GetFunCallMemSize());
     uint8_t *starsModelExefuncCall = new (std::nothrow) uint8_t[model->GetFunCallMemSize()];
     if (starsModelExefuncCall == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(uint8_t) * (model->GetFunCallMemSize())));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(uint8_t) * (model->GetFunCallMemSize()));
         return;
     }
     const auto ret = task->stream->Device_()->Driver_()->MemCopySync(starsModelExefuncCall,

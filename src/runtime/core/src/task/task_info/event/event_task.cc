@@ -440,9 +440,9 @@ void PrintErrorInfoForEventWaitTask(TaskInfo * const taskInfo, const uint32_t de
     }
 
     if (taskInfo->errorCode == TS_ERROR_AICPU_TIMEOUT) {
-        RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "Aicpu execute fail, "
+        RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "AI CPU execution failed, "
             "device_id=%u, stream_id=%d", devId, streamId);
-        STREAM_REPORT_ERR_MSG(reportStream, ERR_MODULE_AICPU_TIMEOUT, "Task execution failed, "
+        STREAM_REPORT_ERR_MSG(reportStream, ERR_MODULE_AICPU_TIMEOUT, "The task execution failed, "
             "device_id=%u, stream_id=%d, %s=%hu, flip_num=%hu, task_type=%d(%s), event_flag=%#" PRIx64 ". ",
             devId, streamId, TaskIdDesc(), taskInfo->id, taskInfo->flipNum,
             static_cast<int32_t>(taskInfo->type), taskInfo->typeName, flag);

@@ -36,11 +36,11 @@ rtError_t DavinciMultipleTaskInit(TaskInfo* taskInfo, const void *const multiple
     multiTaskInfo->cmdListVec = new (std::nothrow) std::vector<void *>();
     multiTaskInfo->flag = flag;
     COND_RETURN_AND_MSG_OUTER(multiTaskInfo->cmdListVec == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-        std::to_string(sizeof(std::vector<void *>)));
+        sizeof(std::vector<void *>));
 
     multiTaskInfo->argHandleVec = new (std::nothrow) std::vector<void *>();
     COND_PROC_RETURN_AND_MSG_OUTER(multiTaskInfo->argHandleVec == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-        DELETE_O(multiTaskInfo->cmdListVec), std::to_string(sizeof(std::vector<void *>)));
+        DELETE_O(multiTaskInfo->cmdListVec), sizeof(std::vector<void *>));
 
     return RT_ERROR_NONE;
 }

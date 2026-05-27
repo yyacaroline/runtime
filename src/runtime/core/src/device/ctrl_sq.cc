@@ -35,8 +35,7 @@ rtError_t CtrlSQ::Setup()
     RegCtrlMsgInitFunc();
     // alloc resource: sq cq stream id
     stream_ = StreamFactory::CreateStream(device_, 0U, RT_STREAM_PRIMARY_DEFAULT);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, stream_ == nullptr, RT_ERROR_STREAM_NEW,
-        "CtrlSQ Setup failed.");
+    COND_RETURN_AND_MSG_OUTER(stream_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
     RT_LOG(RT_LOG_INFO, "CtrlSQ create success, stream_id=%d.", stream_->Id_());
     stream_->SetCtrlSQStream();
     const rtError_t error = stream_->Setup();
@@ -148,10 +147,10 @@ rtError_t CtrlSQ::SendStreamClearMsg(const Stream * const stm, rtClearStep_t ste
     param.commonCmdParam = { CMD_STREAM_CLEAR, streamId, step, 0U};
     param.sendParam.callback = callback;
     rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_STREAM_CLEAR, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
@@ -162,7 +161,7 @@ rtError_t CtrlSQ::SendStreamRecycleMsg(const RtMaintainceParam &maintenanceParam
     param.maintenanceParam = maintenanceParam;
     uint32_t taskId = 0U;
     const rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_STREAM_RECYCLE, param, &taskId);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     task = device_->GetTaskFactory()->GetTask(GetStream()->Id_(), taskId);
     return RT_ERROR_NONE;
 }
@@ -175,10 +174,10 @@ rtError_t CtrlSQ::SendNotifyResetMsg(uint32_t notifyId)
     param.commonCmdParam.cmdType = CMD_NOTIFY_RESET;
     param.commonCmdParam.notifyId = notifyId;
     rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_NOTIFY_RESET, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
@@ -190,13 +189,13 @@ rtError_t CtrlSQ::SendModelUnbindMsg(Model * const mdl, Stream * const streamIn,
     rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_MODEL_UNBIND_STREAM, param);
     if ((!force) && (error != RT_ERROR_NONE)) {
         mdl->ModelPushFrontStream(streamIn);
-        ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+        ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
         return error;
     }
     error = WaitComplete();
     if (error != RT_ERROR_NONE) {
         mdl->ModelPushFrontStream(streamIn);
-        ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+        ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     }
     streamIn->SetIsTsBind(false);
     return RT_ERROR_NONE;
@@ -214,10 +213,10 @@ rtError_t CtrlSQ::SendModelBindMsg(Model * const mdl, Stream * const streamIn, c
     if ((error != RT_ERROR_NONE) && device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_TASK_ALLOC_FROM_STREAM_POOL)) {
         mdl->ModelRemoveStream(streamIn);
     }
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     streamIn->SetIsTsBind(true);
     return RT_ERROR_NONE;
 }
@@ -229,10 +228,10 @@ rtError_t CtrlSQ::SendModelAbortMsg(Model * const mdl)
     param.modelMaintenanceParam = { MMT_MODEL_ABORT, mdl, GetStream(), RT_MODEL_HEAD_STREAM, 0U };
     
     rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_MODEL_ABORT, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
@@ -244,7 +243,7 @@ rtError_t CtrlSQ::SendModelLoadCompleteMsg(const Model * const mdl, uint32_t fir
     param.modelMaintenanceParam = { MMT_MODEL_PRE_PROC, RtPtrToUnConstPtr<Model *>(mdl), GetStream(), RT_MODEL_HEAD_STREAM, firstTaskId };
     
     const rtError_t error = CreateCtrlMsg(RtCtrlMsgType::RT_CTRL_MSG_MODEL_LOAD_COMPLETE, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
@@ -255,10 +254,10 @@ rtError_t CtrlSQ::SendAicpuModelMsg(RtCtrlMsgType msgType, const RtAicpuModelPar
     param.aicpuModelParam = aicpuModelParam;
     
     rtError_t error = CreateCtrlMsg(msgType, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 }
@@ -271,10 +270,10 @@ rtError_t CtrlSQ::SendDataDumpLoadInfoMsg(
     param.datadumpLoadInfoParam = datadumpLoadInfoParam;
     param.sendParam.callback = callback;
     rtError_t error = CreateCtrlMsg(msgType, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 }
@@ -287,10 +286,10 @@ rtError_t CtrlSQ::SendAicpuInfoLoadMsg(
     param.aicpuInfoLoadParam = aicpuInfoLoadParam;
     param.sendParam.callback = callback;
     rtError_t error = CreateCtrlMsg(msgType, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 }
@@ -304,10 +303,10 @@ rtError_t CtrlSQ::SendDebugRegisterMsg(RtCtrlMsgType msgType, const RtDebugRegis
     param.sendParam.callback = callback;
 
     rtError_t error = CreateCtrlMsg(msgType, param, flipTaskId);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 }
@@ -320,10 +319,10 @@ rtError_t CtrlSQ::SendDebugUnRegisterMsg(
     param.debugUnRegisterParam = debugUnRegisterParam;
     param.sendParam.callback = callback;
     rtError_t error = CreateCtrlMsg(msgType, param);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 }
@@ -336,7 +335,7 @@ rtError_t CtrlSQ::SendOverflowSwitchSetMsg(RtCtrlMsgType msgType, const RtOverfl
     param.overflowSwitchSetParam = overflowSwitchSetParam;
     param.sendParam.callback = callback;
     const rtError_t error = CreateCtrlMsg(msgType, param, flipTaskId);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
@@ -347,9 +346,9 @@ rtError_t CtrlSQ::SendSetStreamTagMsg(RtCtrlMsgType msgType, const RtSetStreamTa
     param.setStreamTagParam = setStreamTagParam;
     param.sendParam.callback = callback;
     rtError_t error = CreateCtrlMsg(msgType, param, flipTaskId);
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg send failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to send ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     error = WaitComplete();
-    ERROR_RETURN_MSG_INNER(error, "Ctrl msg wait failed, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to wait for ctrl msg, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 }

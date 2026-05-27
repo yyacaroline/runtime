@@ -155,8 +155,8 @@ rtError_t RawDevice::SetCurGroupInfo(void)
 {
     rtError_t error = RT_ERROR_NONE;
     Context *ctx = nullptr;
-    COND_RETURN_ERROR((GetDevRunningState() == static_cast<uint32_t>(DEV_RUNNING_DOWN)), RT_ERROR_DRV_ERR,
-        "deviceId=%u is down", Id_());
+    COND_RETURN_ERROR_MSG_INNER((GetDevRunningState() == static_cast<uint32_t>(DEV_RUNNING_DOWN)), RT_ERROR_DRV_ERR,
+        "Device %u is unavailable.", Id_());
  
     if (deviceErrorProc_ != nullptr) {
         error = deviceErrorProc_->SendTaskToStopUseRingBuffer();
@@ -181,15 +181,14 @@ rtError_t RawDevice::SetCurGroupInfo(void)
     }
 
     primaryStream_ = StreamFactory::CreateStream(this, 0U, stmFlag);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, primaryStream_ == nullptr, RT_ERROR_STREAM_NEW,
-        "SetCurGroupInfo, new default stream failed");
+    COND_RETURN_AND_MSG_OUTER(primaryStream_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
     if (ctx != nullptr) {
         ctx->SetDefaultStream(primaryStream_);
     }
 
     error = primaryStream_->Setup();
     COND_PROC_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), error, DeleteStream(primaryStream_);,
-        "Setup primary stream failed, errorcode = 0x%x.", static_cast<uint32_t>(error));
+        "The primary stream setup failed, retCode=0x%x.", static_cast<uint32_t>(error));
 
     RT_LOG(RT_LOG_INFO, "new primary Stream ok, Runtime_alloc_size %zu(bytes), stream_id=%d.",
         sizeof(Stream), primaryStream_->Id_());
@@ -211,7 +210,7 @@ rtError_t RawDevice::InitRawDriver()
     NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
 
     rtError_t error = devDrv->DeviceOpen(deviceId_, tsId_, &SSID_);
-    ERROR_RETURN_MSG_INNER(error, "Failed to open device, retCode=%#x, deviceId=%u.",
+    ERROR_RETURN(error, "Failed to open device, retCode=%#x, device_id=%u.",
                            static_cast<uint32_t>(error), deviceId_);
 
     // fix drvMemGetAttribute bug
@@ -547,11 +546,11 @@ rtError_t RawDevice::Init()
     RefreshTaskFuncPointer(chipType);
 
     error = GET_CHIP_FEATURE_SET(chipType, featureSet_);
-    ERROR_RETURN_MSG_INNER(error, "Failed to get feature, chipType=%d, device_id=%u, retCode=%#x", chipType,
+    ERROR_RETURN_MSG_INNER(error, "Failed to get feature, chipType=%d, device_id=%u, retCode=%#x.", chipType,
         deviceId_, static_cast<uint32_t>(error));
 
     error = GET_DEV_PROPERTIES(chipType, properties_);
-    ERROR_RETURN_MSG_INNER(error, "Failed to get properties, chipType=%d, device_id=%u, retCode=%#x", chipType,
+    ERROR_RETURN_MSG_INNER(error, "GetDevProperties failed, chipType=%d, device_id=%u, retCode=%#x.", chipType,
         deviceId_, static_cast<uint32_t>(error));
 
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_OVERFLOW_MODE)) {
@@ -575,8 +574,8 @@ rtError_t RawDevice::Init()
 
     if (GetDevProperties().starsBaseMethod == StarsBaseMethod::STARS_BASE_CALCULATE_BY_DRIVER) {
         error = driver_->GetStarsInfo(deviceId_, tsId_, starsRegBaseAddr_);
-        RT_LOG(RT_LOG_INFO, "starsRegBaseAddr_=0x%llx.", starsRegBaseAddr_);       
-        ERROR_RETURN_MSG_INNER(error, "Failed to get stars info, retCode=%#x, deviceId=%u.",
+        RT_LOG(RT_LOG_INFO, "starsRegBaseAddr_=0x%llx.", starsRegBaseAddr_);
+        ERROR_RETURN(error, "Failed to get stars info, retCode=%#x, device_id=%u.",
                                static_cast<uint32_t>(error), deviceId_);
         int64_t dieNum = 0;
         error = driver_->GetDevInfo(deviceId_, MODULE_TYPE_AICORE, INFO_TYPE_DIE_NUM, &dieNum);
@@ -596,7 +595,7 @@ rtError_t RawDevice::Init()
     GlobalContainer::SetHardwareSocVersion(Runtime::Instance()->GetRawSocVersion());
     halCapabilityInfo capabilityInfo;
     error = driver_->GetChipCapability(deviceId_, &capabilityInfo);
-    ERROR_GOTO_MSG_INNER(error, L2_FREE, "Failed to init dev capability, retCode=%#x, deviceId=%u.",
+    ERROR_GOTO(error, L2_FREE, "Failed to init dev capability, retCode=%#x, device_id=%u.",
                          static_cast<uint32_t>(error), deviceId_);
     devCapInfo_.sdma_reduce_support = capabilityInfo.sdma_reduce_support;
     devCapInfo_.memory_support = capabilityInfo.memory_support;
@@ -606,13 +605,13 @@ rtError_t RawDevice::Init()
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_GROUP_DOT_RECORD_GROUPINFO) ||
         IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_GROUP_THREAD_LOCAL)) {
         error = GroupInfoSetup();
-        ERROR_GOTO_MSG_INNER(error, L2_FREE, "Failed to get group info");
+        ERROR_GOTO(error, L2_FREE, "Failed to get group info.");
         driver_->vfId_ = GetVfId();
     }
 
     if (IsStarsPlatform()) {
         error = AllocMemForSqVirtualArr();
-        ERROR_GOTO_MSG_INNER(error, SQ_VIRTUAL_ADDR_FREE, "AllocMemForSqVirtualArr failed, retCode=%#x!",
+        ERROR_GOTO(error, SQ_VIRTUAL_ADDR_FREE, "AllocMemForSqVirtualArr failed, retCode=%#x.",
                              static_cast<uint32_t>(error));
         error = Driver_()->GetDevInfo(deviceId_, static_cast<int32_t>(MODULE_TYPE_SYSTEM),
                                       static_cast<int32_t>(INFO_TYPE_PHY_CHIP_ID), &phyChipId_);
@@ -631,100 +630,99 @@ rtError_t RawDevice::Init()
     }
 
     engine_ = EngineFactory::CreateEngine(chipType, this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, engine_ == nullptr, SQ_VIRTUAL_ADDR_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New memory for engine_ failed.");
+    COND_GOTO_ERROR(engine_ == nullptr, SQ_VIRTUAL_ADDR_FREE, error,
+        RT_ERROR_MEMORY_ALLOCATION, "CreateEngine failed.");
 
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_SPM_POOL)) {
         spmPool_ = new (std::nothrow) SpmPool(this);
-        COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, spmPool_ == nullptr, ENGINE_FREE, error,
-                                            RT_ERROR_MEMORY_ALLOCATION, "New memory for spmPool_ failed.");
+        COND_GOTO_MSG_OUTER(spmPool_ == nullptr, ENGINE_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+            ErrorCode::EE1013, sizeof(SpmPool));
         RT_LOG(RT_LOG_INFO, "new SpmPool ok, Runtime_alloc_size %zu(bytes)", sizeof(SpmPool));
 
         error = spmPool_->Init();
-        ERROR_GOTO_MSG_INNER(error, SPM_FREE, "Failed to init spm pool, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_GOTO(error, SPM_FREE, "Failed to init spm pool, retCode=%#x.", static_cast<uint32_t>(error));
     } else {
         RT_LOG(RT_LOG_INFO, "AS31XM1X not support spm.");
     }
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_EVENT_POOL) &&
         (runMode == RT_RUN_MODE_ONLINE)) {
         eventPool_ = new (std::nothrow) EventPool(this, tsId_);
-        COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, eventPool_ == nullptr, SPM_FREE, error,
-                                            RT_ERROR_MEMORY_ALLOCATION, "new eventPool failed.");
+        COND_GOTO_MSG_OUTER(eventPool_ == nullptr, SPM_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+            ErrorCode::EE1013, sizeof(EventPool));
     }
 
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DFX_PROCESS_SNAPSHOT)) {
         deviceSnapshot_ = new (std::nothrow) DeviceSnapshot(this);
-        COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, deviceSnapshot_ == nullptr, EVENT_FREE,
-            error, RT_ERROR_MEMORY_ALLOCATION, "New memory for deviceSnapshot_ failed.");
+        COND_GOTO_MSG_OUTER(deviceSnapshot_ == nullptr, EVENT_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+            ErrorCode::EE1013, sizeof(DeviceSnapshot));
     }
 
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_TASK_VALUE_WAIT)) {
         eventExpandingPool_ = new (std::nothrow) EventExpandingPool(this);
-        COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, eventExpandingPool_ == nullptr, SNAPSHOT_FREE, error,
-                                            RT_ERROR_MEMORY_ALLOCATION, "new eventPool failed.");
+        COND_GOTO_MSG_OUTER(eventExpandingPool_ == nullptr, SNAPSHOT_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+            ErrorCode::EE1013, sizeof(EventExpandingPool));
     }
 
     argLoader_ = new (std::nothrow) UmaArgLoader(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, argLoader_ == nullptr, EVENT_EXE_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New UmaArgLoader failed.");
+    COND_GOTO_MSG_OUTER(argLoader_ == nullptr, EVENT_EXE_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(UmaArgLoader));
     RT_LOG(RT_LOG_INFO, "new UmaArgLoader ok, Runtime_alloc_size %zu(bytes)", sizeof(UmaArgLoader));
 
     error = argLoader_->Init();
-    ERROR_GOTO_MSG_INNER(error, LOADER_FREE, "Failed to init argLoader, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO(error, LOADER_FREE, "Failed to init argLoader, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = UbArgLoaderInit();
-    ERROR_GOTO_MSG_INNER(error, LOADER_FREE, "Failed to init ubArgLoader, retCode=%#x.",
+    ERROR_GOTO(error, LOADER_FREE, "Failed to init ubArgLoader, retCode=%#x.",
             static_cast<uint32_t>(error));
 
     streamSqCqManage_ = new (std::nothrow) StreamSqCqManage(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, streamSqCqManage_ == nullptr, LOADER_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New StreamSqCqManage failed.");
+    COND_GOTO_MSG_OUTER(streamSqCqManage_ == nullptr, LOADER_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(StreamSqCqManage));
     RT_LOG(RT_LOG_INFO, "new StreamSqCqManage ok, Runtime_alloc_size %zu(bytes)", sizeof(StreamSqCqManage));
 
     taskFactory_ = new (std::nothrow) TaskFactory(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, taskFactory_ == nullptr, STREAM_TABLE_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New TaskFactory failed.");
+    COND_GOTO_MSG_OUTER(taskFactory_ == nullptr, STREAM_TABLE_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(TaskFactory));
     RT_LOG(RT_LOG_INFO, "New taskFactory ok, Runtime_alloc_size %zu(bytes)", sizeof(TaskFactory));
 
     error = taskFactory_->Init();
-    ERROR_GOTO_MSG_INNER(error, TASK_FACTORY_FREE, "Fail to init task factory, retCode=%#x.",
+    ERROR_GOTO(error, TASK_FACTORY_FREE, "Failed to init task factory, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     kernelMemPoolMng_ = new (std::nothrow) MemoryPoolManager(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, kernelMemPoolMng_ == nullptr, TASK_FACTORY_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New MemoryPoolManager failed.");
+    COND_GOTO_MSG_OUTER(kernelMemPoolMng_ == nullptr, TASK_FACTORY_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(MemoryPoolManager));
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_KERNEL_MEMORY_POOL)) {
         error = kernelMemPoolMng_->Init();
-        ERROR_GOTO_MSG_INNER(error, KERNEL_POOL_FREE, "Fail to init MemoryPoolManager, retCode=%#x.",
+        ERROR_GOTO(error, KERNEL_POOL_FREE, "Failed to init MemoryPoolManager, retCode=%#x.",
                             static_cast<uint32_t>(error));
     }
 
     modulesAllocator_ = new (std::nothrow) ObjAllocator<RefObject<Module *>>(DEFAULT_PROGRAM_NUMBER,
                                                                              Runtime::maxProgramNum_);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, modulesAllocator_ == nullptr, KERNEL_POOL_FREE,
-                                        error, RT_ERROR_MODULE_NEW,
-                                        "Init raw device failed, new ObjAllocator failed.");
+    COND_GOTO_MSG_OUTER(modulesAllocator_ == nullptr, KERNEL_POOL_FREE, error, RT_ERROR_MODULE_NEW,
+        ErrorCode::EE1013, sizeof(ObjAllocator<RefObject<Module *>>));
 
     error = modulesAllocator_->Init();
     ERROR_GOTO_MSG_INNER(error, MODULES_ALLOC_FREE,
-                         "Init raw device failed, init moduleAllocator_ failed, retCode=%#x.",
+                         "Failed to init moduleAllocator_, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     deviceSqCqPool_ = new (std::nothrow) DeviceSqCqPool(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, deviceSqCqPool_ == nullptr, MODULES_ALLOC_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New DeviceSqCqPool failed.");
+    COND_GOTO_MSG_OUTER(deviceSqCqPool_ == nullptr, MODULES_ALLOC_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(DeviceSqCqPool));
     RT_LOG(RT_LOG_INFO, "new DeviceSqCqPool ok, Runtime_alloc_size %zu(bytes)", sizeof(DeviceSqCqPool));
     error = deviceSqCqPool_->Init();
-    ERROR_GOTO_MSG_INNER(error, DEVICE_SQ_CQ_FREE,
+    ERROR_GOTO(error, DEVICE_SQ_CQ_FREE,
                          "Init raw device failed, init deviceSqCqPool_ failed, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     sqAddrMemoryOrder_ = new (std::nothrow) SqAddrMemoryOrder(this);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, sqAddrMemoryOrder_ == nullptr, DEVICE_SQ_CQ_FREE, error,
-                                        RT_ERROR_MEMORY_ALLOCATION, "New SqAddrMemoryOrder failed.");
+    COND_GOTO_MSG_OUTER(sqAddrMemoryOrder_ == nullptr, DEVICE_SQ_CQ_FREE, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(SqAddrMemoryOrder));
     RT_LOG(RT_LOG_INFO, "new SqAddrMemoryOrder ok, Runtime_alloc_size %zu(bytes)", sizeof(SqAddrMemoryOrder));
     error = sqAddrMemoryOrder_->Init();
-    ERROR_GOTO_MSG_INNER(error, SQ_ADDR_MEMORY_FREE,
+    ERROR_GOTO(error, SQ_ADDR_MEMORY_FREE,
                          "Init raw device failed, init sqAddrMemoryOrder_ failed, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
@@ -896,10 +894,9 @@ rtError_t RawDevice::AllocCustomerStackPhyBase()
     }
 
     auto props = GetDevProperties();
-    COND_RETURN_ERROR(customerStackSize > props.maxCustomerStackSize,
-            RT_ERROR_INVALID_VALUE,
-            "Custom stack size is larger than max stack size, chipType=%u, custom stack size=%u, max stack size=%u.",
-            rt->GetChipType(), customerStackSize, props.maxCustomerStackSize);
+    COND_RETURN_AND_MSG_OUTER(customerStackSize > props.maxCustomerStackSize, RT_ERROR_INVALID_VALUE, ErrorCode::EE1011, __func__, 
+        std::to_string(customerStackSize), "customerStackSize", "The AI Core stack size " + std::to_string(customerStackSize) +
+        " set by calling rtDeviceSetLimit must be less than or equal to " + std::to_string(props.maxCustomerStackSize));
 
     const uint64_t totalCoreNum = static_cast<uint64_t>(props.aicNum + props.aivNum);
     const uint64_t stackPhySize = totalCoreNum * customerStackSize;
@@ -1019,13 +1016,13 @@ rtError_t RawDevice::Start()
         stmFlag = RT_STREAM_PRIMARY_FIRST_DEFAULT | RT_STREAM_PRIMARY_DEFAULT | RT_STREAM_FAST_LAUNCH | RT_STREAM_FAST_SYNC;
     }
     primaryStream_ = StreamFactory::CreateStream(this, 0U, stmFlag);
-    COND_PROC_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, primaryStream_ == nullptr, RT_ERROR_STREAM_NEW,
-        static_cast<void>(FreeSimtStackPhyBase()), "Start raw device failed, new stream failed.");
+    COND_PROC_RETURN_AND_MSG_OUTER(primaryStream_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
+        static_cast<void>(FreeSimtStackPhyBase()), sizeof(Stream));
     error = primaryStream_->Setup();
     if (error != RT_ERROR_NONE) {
         DeleteStream(primaryStream_);
         static_cast<void>(FreeSimtStackPhyBase());
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Setup primary stream failed.");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The primary stream setup failed.");
         return error;
     }
 
@@ -1033,13 +1030,13 @@ rtError_t RawDevice::Start()
         sizeof(Stream), primaryStream_->Id_());
 
     error = TschStreamSetup();
-    ERROR_GOTO_MSG_INNER(error, ERROR_FREE, "Setup tsch stream failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_FREE, "Tsch stream setup failed, retCode=%#x.", static_cast<uint32_t>(error));
 
     if (IsStarsPlatform()) {
         error = AllocStackPhyBase();
         ERROR_GOTO_MSG_INNER(error, ERROR_FREE, "alloc stack phy failed, retCode=%#x.", static_cast<uint32_t>(error));
         error = AllocCustomerStackPhyBase();
-        ERROR_GOTO_MSG_INNER(
+        ERROR_GOTO(
             error, ERROR_FREE, "alloc customer stack phy failed, retCode=%#x.", static_cast<uint32_t>(error));
     }
 
@@ -1047,13 +1044,13 @@ rtError_t RawDevice::Start()
     ERROR_GOTO_MSG_INNER(error, ERROR_FREE, "Start runtime engine failed, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = SetSupportHcomcpuFlag();
-    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Set support hcom cpu flag failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_STOP, "Failed to set support HCOM CPU flag, retCode=%#x.", static_cast<uint32_t>(error));
     
     error = InitCtrlSQ();
-    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Ctrl SQ init failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Failed to init Ctrl SQ, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = GetStarsVersion();
-    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Get Stars version failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Failed to get Stars version, retCode=%#x.", static_cast<uint32_t>(error));
 
     RT_LOG(RT_LOG_INFO, "Get TschVersion, tschVersion=%u.", GetTschVersion());
 
@@ -1067,9 +1064,8 @@ rtError_t RawDevice::Start()
 #ifndef CFG_DEV_PLATFORM_PC
     if (GetDevProperties().ringbufSize != 0) {
         deviceErrorProc_ = new (std::nothrow) DeviceErrorProc(this, GetDevProperties().ringbufSize);
-        COND_PROC_GOTO_MSG_CALL(ERR_MODULE_SYSTEM, deviceErrorProc_ == nullptr, ERROR_STOP,
-                                error = RT_ERROR_MEMORY_ALLOCATION;,
-                                "Start raw device failed, new DeviceErrorProc failed.");
+        COND_GOTO_MSG_OUTER(deviceErrorProc_ == nullptr, ERROR_STOP, error, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+            sizeof(DeviceErrorProc));
         error = deviceErrorProc_->CreateDeviceRingBufferAndSendTask();
         COND_PROC_GOTO_MSG_INNER((error != RT_ERROR_NONE) && (error != RT_ERROR_DRV_MEMORY), ERROR_STOP, ;,
             "Failed to create ring buffer, error_code=%#x.", static_cast<uint32_t>(error));
@@ -1078,7 +1074,7 @@ rtError_t RawDevice::Start()
             "Failed to create fast ring buffer, error_code=%#x.", static_cast<uint32_t>(error));
         if (NpuDriver::CheckIsSupportFeature(deviceId_, FEATURE_DMS_GET_QOS_MASTER_CONFIG)) {
             error = InitQosCfg();
-            ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "get acc qos cfg failed, retCode=%#x, drv deviceId=%u.",
+            ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Failed to get acc qos config, retCode=%#x, drv device_id=%u.",
                 static_cast<uint32_t>(error), deviceId_);
         } else {
             RT_LOG(RT_LOG_WARNING, "Driver does not support FEATURE_DMS_GET_QOS_MASTER_CONFIG.");
@@ -1086,27 +1082,26 @@ rtError_t RawDevice::Start()
     }
     if (!IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_AICPUSD_LATER_PROCEDURE)) {
         error = SendTopicMsgVersionToAicpu();
-        ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "send topic msg version to aicpu failed, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Failed to send topic message version to AI CPU, retCode=%#x.", static_cast<uint32_t>(error));
     }
 
     if (IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DFX_AICPU_ERROR_MESSAGE)) {
         errMsgObj_ = new (std::nothrow) AicpuErrMsg(this);
-        COND_PROC_GOTO_MSG_CALL(ERR_MODULE_SYSTEM, errMsgObj_ == nullptr, ERROR_STOP,
-                                error = RT_ERROR_MEMORY_ALLOCATION;,
-                                "Start raw device failed, new errMsgObj_ failed.");
+        COND_GOTO_MSG_OUTER(errMsgObj_ == nullptr, ERROR_STOP, error, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+            sizeof(AicpuErrMsg));
         errMsgObj_->SetErrMsgBufAddr();
     }
     error = TschStreamAllocDsaAddr();
     if (error != RT_ERROR_NONE) {
         error = TschStreamAllocDsaAddr();
     }
-    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "alloc dsa addr failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "Failed to allocate dsa addr, retCode=%#x.", static_cast<uint32_t>(error));
 #else
     Runtime::Instance()->RtTimeoutConfigInit();
 #endif
 
     error = AllocProfSwitchAddr();
-    ERROR_GOTO_MSG_INNER(error, ERROR_STOP, "alloc prof switch addr failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_STOP, "Failed to allocate the prof switch address, retCode=%#x.", static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 
@@ -1146,7 +1141,8 @@ uint64_t RawDevice::AllocSqIdMemAddr(void)
         sqIdMemAddrPool_ = new (std::nothrow) BufferAllocator(
             sizeof(uint64_t), SQ_ID_MEM_POOL_INIT_COUNT, GetDevProperties().maxAllocStreamNum, BufferAllocator::LINEAR,
             &MallocBufferForSqIdMem, &FreeBufferForSqIdMem, this);
-        COND_RETURN_WARN(sqIdMemAddrPool_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, "alloc sq mem pool failed");
+        COND_RETURN_AND_MSG_OUTER(sqIdMemAddrPool_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+            sizeof(BufferAllocator));
     }
     auto id = sqIdMemAddrPool_->AllocId(true);
     return RtPtrToValue(sqIdMemAddrPool_->GetItemById(id));
@@ -1380,7 +1376,7 @@ rtError_t RawDevice::UpdateTimeoutConfig()
     if (props.timeoutUpdateMethod == TimeoutUpdateMethod::TIMEOUT_SET_WITH_AICPU) {
         // set op exec time out depend on aicpu in AS31XM1X
         ERROR_RETURN_MSG_INNER(Runtime::Instance()->StartAicpuSd(this),
-            "Update timeout config failed, check and start tsd open aicpu sd error.");
+            "Failed to update timeout configuration. Failed to check and start TsdOpenAicpuSd.");
     }
     if (props.timeoutUpdateMethod == TimeoutUpdateMethod::TIMEOUT_WITHOUT_UPDATE) {
         return UpdateTimeoutConfigTaskSubmitDavid(stm, timeoutConfig);
@@ -1408,7 +1404,7 @@ rtError_t RawDevice::UpdateTimeoutConfig()
     }
 
     rtError_t error = SubmitTask(timeoutTask);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit TaskTimeoutSetTask, retCode=%#x",
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit TaskTimeoutSetTask, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     if (stm->IsCtrlStream()) {
@@ -1416,7 +1412,7 @@ rtError_t RawDevice::UpdateTimeoutConfig()
     } else {
         error = stm->Synchronize();
     }
-    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize stream[%d], retCode=%#x.", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize stream, stream_id=%d, retCode=%#x.", stm->Id_(),
                            static_cast<uint32_t>(error));
 
     return error;
@@ -1441,7 +1437,7 @@ Module *RawDevice::ModuleAlloc(Program * const prog)
     }
 
     Module *mdl = new (std::nothrow) Module(this);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, mdl == nullptr, nullptr, "Alloc module failed, new module failed.");
+    COND_RETURN_AND_MSG_OUTER(mdl == nullptr, nullptr, ErrorCode::EE1013, sizeof(Module));
     if (mdl->Load(prog) != RT_ERROR_NONE) {
         refObj->ResetValForAbort();
         delete mdl;
@@ -1490,7 +1486,7 @@ bool RawDevice::ModuleRelease(Module *mdl)
     }
 
     if (!refObj->TryDecRef(needReset)) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Release module failed, try to double free module in raw device");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The module is being double freed on the raw device.");
         return false;
     }
 
@@ -1561,10 +1557,10 @@ rtError_t RawDevice::AllocMemForSqVirtualArr()
 {
     const uint64_t allocSize = static_cast<uint64_t>(GetDevProperties().rtsqDepth * sizeof(uint64_t));
     rtError_t error = driver_->DevMemAlloc(&sqVirtualArrBaseAddr_, allocSize, RT_MEMORY_DDR, deviceId_);
-    ERROR_RETURN_MSG_INNER(error, "Device mem alloc for sq virtual addr failed, retCode=%#x, deviceId=%u, "
+    ERROR_RETURN(error, "Device memory allocation for SQ virtual addr failed, retCode=%#x, device_id=%u, "
                                   "size = %#" PRIx64 "(bytes).", static_cast<uint32_t>(error), deviceId_, allocSize);
     error = driver_->MemSetSync(sqVirtualArrBaseAddr_, allocSize, 0U, allocSize);
-    ERROR_RETURN_MSG_INNER(error, "Memset value failed, size=%#" PRIx64 "(bytes), retCode=%#x!", allocSize,
+    ERROR_RETURN(error, "Failed to memset value, size=%#" PRIx64 "(bytes), retCode=%#x.", allocSize,
                            static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
@@ -1652,10 +1648,8 @@ void RawDevice::CreateMessageQueue()
         (Driver_()->GetRunMode() == RT_RUN_MODE_ONLINE)) {
         const uint32_t arraySize = messageQueueSize_;
         messageQueue_ = new (std::nothrow) uint64_t[arraySize]();
-        if (messageQueue_ == nullptr) {
-            RT_LOG(RT_LOG_ERROR, "malloc message queue failed");
-            return;
-        }
+        COND_RETURN_VOID_AND_MSG_OUTER(messageQueue_ == nullptr, ErrorCode::EE1013,
+            arraySize * sizeof(uint64_t));
 
         (void)memset_s(messageQueue_, arraySize * sizeof(uint64_t), 0x0, arraySize * sizeof(uint64_t));
     }
@@ -1666,10 +1660,8 @@ void RawDevice::CreateFreeEventQueue()
     constexpr uint32_t arraySize = FREE_EVENT_QUEUE_SIZE;
 
     freeEvent_ = new (std::nothrow) int32_t[arraySize]();
-    if (freeEvent_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "malloc free event queue failed");
-        return;
-    }
+    COND_RETURN_VOID_AND_MSG_OUTER(freeEvent_ == nullptr, ErrorCode::EE1013,
+        arraySize * sizeof(int32_t));
 
     (void)memset_s(freeEvent_, arraySize * sizeof(int32_t), 0x0, arraySize * sizeof(int32_t));
 }
@@ -1799,7 +1791,7 @@ rtError_t RawDevice::FreeEventIdFromDrv(const int32_t eventId, const uint32_t ev
     TaskInfo *tsk = tskFactory->Alloc(PrimaryStream_(), TS_TASK_TYPE_MAINTENANCE, error);
     NULL_PTR_GOTO_MSG_INNER(tsk, ERROR_RETURN, error, error);
     error = MaintenanceTaskInit(tsk, MT_EVENT_DESTROY, static_cast<uint32_t>(eventId), false, eventFlag);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Event destroy task init failed, device_id=%u event_id=%d, retCode=%#x.",
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to init the event destruction task, device_id=%u, event_id=%d, retCode=%#x.",
                          Id_(), eventId, static_cast<uint32_t>(error));
     if (freeSyncFlag == true) {
         const std::lock_guard<std::mutex> lock(syncEventMapLock_);
@@ -1808,7 +1800,7 @@ rtError_t RawDevice::FreeEventIdFromDrv(const int32_t eventId, const uint32_t ev
     }
 
     error = SubmitTask(tsk);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Event destroy task submit failed, device_id=%u, event_id=%d, "
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit the event destruction task, device_id=%u, event_id=%d, "
                                                "retCode=%#x.", Id_(), eventId, static_cast<uint32_t>(error));
     if (freeSyncFlag == true) {
         bool needWait = true;
@@ -1843,13 +1835,13 @@ rtError_t RawDevice::TschStreamSetup()
     COND_RETURN_INFO(tsFftsDsaStream_ != nullptr, RT_ERROR_NONE, "there has ffts dsa stream");
 
     tsFftsDsaStream_ = new (std::nothrow) TschStream(this, 0U, SQ_ALLOC_TYPE_TS_FFTS_DSA);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, tsFftsDsaStream_ == nullptr, RT_ERROR_STREAM_NEW,
-                               "New ffts dsa stream failed.");
+    COND_RETURN_AND_MSG_OUTER(tsFftsDsaStream_ == nullptr, RT_ERROR_STREAM_NEW,
+        ErrorCode::EE1013, sizeof(TschStream));
 
     const rtError_t error = tsFftsDsaStream_->Setup();
     if (error != RT_ERROR_NONE) {
         DeleteStream(tsFftsDsaStream_);
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Setup ffts dsa stream failed.");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Ffts dsa stream setup failed.");
         return error;
     }
     RT_LOG(RT_LOG_INFO, "Tsch setup ffts dsa stream ok, stream_id=%d", tsFftsDsaStream_->Id_());
@@ -1872,10 +1864,7 @@ rtError_t RawDevice::TschStreamAllocDsaAddr() const
 void RawDevice::CtrlResEntrySetup()
 {
     ctrlRes_ = new (std::nothrow) CtrlResEntry();
-    if (ctrlRes_ == nullptr) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "alloc ctrl res failed.");
-        return;
-    }
+    COND_RETURN_VOID_AND_MSG_OUTER(ctrlRes_ == nullptr, ErrorCode::EE1013, sizeof(CtrlResEntry));
     const rtError_t error = ctrlRes_->Init(this);
     COND_PROC((error != RT_ERROR_NONE), DELETE_O(ctrlRes_);)
 }
@@ -1917,9 +1906,8 @@ void RawDevice::CtrlStreamSetup()
     }
 
     ctrlStream_ = new (std::nothrow) CtrlStream(this);
-    COND_PROC((ctrlStream_ == nullptr),
-        DELETE_O(ctrlRes_);
-        return;)
+    COND_PROC_RETURN_VOID_AND_MSG_OUTER(ctrlStream_ == nullptr, ErrorCode::EE1013, DELETE_O(ctrlRes_),
+        sizeof(CtrlStream));
 
     const rtError_t error = ctrlStream_->Setup();
     COND_PROC((error != RT_ERROR_NONE),
@@ -2141,33 +2129,33 @@ rtError_t RawDevice::EnableP2PWithOtherDevice(const uint32_t peerPhyDeviceId)
 rtError_t RawDevice::WriteDevString(void * const dest, const size_t max, const char_t * const str)
 {
     const size_t devStrLen = strnlen(str, max);
-    COND_RETURN_ERROR_MSG_INNER(devStrLen == 0UL, RT_ERROR_INVALID_VALUE,
-        "Device string failed, string length must be greater than 0.");
+    COND_RETURN_ERROR(devStrLen == 0UL, RT_ERROR_INVALID_VALUE,
+        "Failed to write device string, string length must be greater than 0.");
 
     const size_t devStrBufLen = devStrLen + 1UL;
     rtError_t error = driver_->MemSetSync(dest, devStrBufLen, 0U, devStrBufLen);
-    ERROR_RETURN_MSG_INNER(error, "Memset string failed, size=%zu, retCode=%#x!",
+    ERROR_RETURN(error, "Failed to memset string, size=%zu, retCode=%#x.",
         devStrBufLen, static_cast<uint32_t>(error));
     error = driver_->MemCopySync(dest, static_cast<uint64_t>(devStrLen), str, static_cast<uint64_t>(devStrLen),
         RT_MEMCPY_HOST_TO_DEVICE);
-    ERROR_RETURN_MSG_INNER(error,
-        "Memory copy string failed, size=%zu(bytes), kind=%d(RT_MEMCPY_HOST_TO_DEVICE), retCode=%#x!",
+    ERROR_RETURN(error,
+        "Failed to copy memory for string, size=%zu(bytes), kind=%d(RT_MEMCPY_HOST_TO_DEVICE), retCode=%#x.",
         devStrLen, static_cast<int32_t>(RT_MEMCPY_HOST_TO_DEVICE), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
 rtError_t RawDevice::WriteDevValue(void * const dest, const size_t size, const void * const data)
 {
-    COND_RETURN_ERROR_MSG_INNER(size == 0U, RT_ERROR_INVALID_VALUE,
-        "Device value failed, data size(%zu) must be greater than 0.", size);
+    COND_RETURN_ERROR(size == 0U, RT_ERROR_INVALID_VALUE,
+        "Failed to write device value, data size(%zu) must be greater than 0.", size);
 
     rtError_t error = driver_->MemSetSync(dest, static_cast<uint64_t>(size), 0U, static_cast<uint64_t>(size));
-    ERROR_RETURN_MSG_INNER(error, "Memset value failed, size=%zu, retCode=%#x!",
+    ERROR_RETURN(error, "Failed to memset string, size=%zu, retCode=%#x.",
         size, static_cast<uint32_t>(error));
     error = driver_->MemCopySync(dest, static_cast<uint64_t>(size), data, static_cast<uint64_t>(size),
         RT_MEMCPY_HOST_TO_DEVICE);
-    ERROR_RETURN_MSG_INNER(error,
-        "Memory copy value failed, size=%zu(bytes), kind=%d(RT_MEMCPY_HOST_TO_DEVICE), retCode=%#x!",
+    ERROR_RETURN(error,
+        "Failed to copy memory value, size=%zu(bytes), kind=%d(RT_MEMCPY_HOST_TO_DEVICE), retCode=%#x.",
         size, static_cast<int32_t>(RT_MEMCPY_HOST_TO_DEVICE), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
@@ -2463,8 +2451,8 @@ bool RawDevice::JudgeIsEndGraphNotifyWaitExecuted(const Stream* const exeStream,
         // update head and tail timingly
         const uint16_t sqTail = exeStream->GetTaskPosTail();
         const rtError_t error = this->Driver_()->GetSqHead(this->Id_(), tsId, sqId, sqHead);
-        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, false, 
-            "Query sq head failed in JudgeIsEndGraphNotifyWaitExecuted, retCode=%#x", static_cast<uint32_t>(error));
+        COND_RETURN_ERROR(error != RT_ERROR_NONE, false, 
+            "Query sq head failed in JudgeIsEndGraphNotifyWaitExecuted, retCode=%#x.", static_cast<uint32_t>(error));
 
         if (JudgeIsExecuted(sqHead, sqTail, *it)) {
             it = sqePosList.erase(it);
@@ -2602,7 +2590,7 @@ rtError_t RawDevice::RestoreSqCqPool()
     deviceSqCqPool_->FreeOccupyList();
     rtError_t err = deviceSqCqPool_->ReAllocSqCqForFreeList();
 
-    COND_RETURN_ERROR(err != RT_ERROR_NONE, err, "Realloc sqcq in deviceSqCqFreeList_ failed, deviceId=%u, retCode=%#x",
+    COND_RETURN_ERROR(err != RT_ERROR_NONE, err, "Failed to realloc sqcq in deviceSqCqFreeList_, device_id=%u, retCode=%#x",
         deviceId_, static_cast<uint32_t>(err));
 
     return RT_ERROR_NONE;

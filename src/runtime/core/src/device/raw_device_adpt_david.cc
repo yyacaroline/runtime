@@ -109,8 +109,8 @@ rtError_t RawDevice::UbArgLoaderInit(void)
 {
     if (Runtime::Instance()->GetConnectUbFlag()) {
         ubArgLoader_ = new (std::nothrow) UbArgLoader(this);
-        COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, ubArgLoader_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            "Alloc module failed.");
+        COND_RETURN_AND_MSG_OUTER(ubArgLoader_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+            sizeof(UbArgLoader));
         RT_LOG(RT_LOG_INFO, "new UbArgLoader ok, Runtime_alloc_size %zu(bytes)", sizeof(UbArgLoader));
 
         const auto error = ubArgLoader_->Init();

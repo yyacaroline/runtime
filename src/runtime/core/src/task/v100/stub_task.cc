@@ -101,9 +101,9 @@ rtError_t SyncGetDevMsg(Device * const dev, const void * const devMemAddr, const
     // new a stream for get exception info
     std::unique_ptr<Stream, void(*)(Stream*)> stm(StreamFactory::CreateStream(dev, 0U),
                                                   [](Stream* ptr) {ptr->Destructor();});
-    COND_RETURN_AND_MSG_OUTER(stm == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, std::to_string(sizeof(Stream)));
+    COND_RETURN_AND_MSG_OUTER(stm == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
     rtError_t error = stm->Setup();
-    ERROR_RETURN_MSG_INNER(error, "stream setup failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "The stream setup failed, retCode=%#x.", static_cast<uint32_t>(error));
     const std::function<void()> streamTearDownFunc = [&stm]() {
         const auto ret = (stm->TearDown());
         // Disable thread stream destroy task will delete stream

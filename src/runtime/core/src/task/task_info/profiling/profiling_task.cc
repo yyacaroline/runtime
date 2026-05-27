@@ -56,12 +56,10 @@ void ToCommandBodyForDynamicProfilingEnableTask(TaskInfo * const taskInfo, rtCom
     const errno_t ret = memcpy_s(command->u.profilingEnable.eventMuxConfig,
                                  static_cast<size_t>(M_PROF_EVEID_NUM),
                                  profilingEnableTaskInfo->eventMuxConfig, static_cast<size_t>(M_PROF_EVEID_NUM));
-    if (ret != EOK) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR,
-            "Failed to call memcpy_s to copy profilingEnableTaskInfo->eventMuxConfig, src=%p, dest=%p,"
-            " dest_max=%u, count=%u, retCode=%#x.", profilingEnableTaskInfo->eventMuxConfig,
-            command->u.profilingEnable.eventMuxConfig, M_PROF_EVEID_NUM, M_PROF_EVEID_NUM, ret);
-    }
+    COND_AND_MSG_INNER(ret != EOK,
+        "Failed to call memcpy_s to copy profilingEnableTaskInfo->eventMuxConfig, src=%p, dest=%p,"
+        " dest_max=%u, count=%u, retCode=%#x.", profilingEnableTaskInfo->eventMuxConfig,
+        command->u.profilingEnable.eventMuxConfig, M_PROF_EVEID_NUM, M_PROF_EVEID_NUM, ret);
     command->u.profilingEnable.startCycle = profilingEnableTaskInfo->startCycle;
     command->u.profilingEnable.stopCycle = profilingEnableTaskInfo->stopCycle;
     command->u.profilingEnable.userDefinedEnable = profilingEnableTaskInfo->userDefinedEnable;
@@ -140,12 +138,10 @@ void ToCommandBodyForProfilingEnableTask(TaskInfo * const taskInfo, rtCommand_t 
     const errno_t ret = memcpy_s(command->u.profilingEnable.eventMuxConfig,
                                  static_cast<size_t>(M_PROF_EVEID_NUM),
                                  profilingEnableTaskInfo->eventMuxConfig, static_cast<size_t>(M_PROF_EVEID_NUM));
-    if (ret != EOK) {
-         RT_LOG_INNER_MSG(RT_LOG_ERROR,
-            "Failed to call memcpy_s to copy profilingEnableTaskInfo->eventMuxConfig, src=%p, dest=%p,"
-            " dest_max=%u, count=%u, retCode=%#x.", profilingEnableTaskInfo->eventMuxConfig,
-            command->u.profilingEnable.eventMuxConfig, M_PROF_EVEID_NUM, M_PROF_EVEID_NUM, ret);
-    }
+    COND_AND_MSG_INNER(ret != EOK,
+        "Failed to call memcpy_s to copy profilingEnableTaskInfo->eventMuxConfig, src=%p, dest=%p,"
+        " dest_max=%u, count=%u, retCode=%#x.", profilingEnableTaskInfo->eventMuxConfig,
+        command->u.profilingEnable.eventMuxConfig, M_PROF_EVEID_NUM, M_PROF_EVEID_NUM, ret);
     command->u.profilingEnable.startCycle = profilingEnableTaskInfo->startCycle;
     command->u.profilingEnable.stopCycle = profilingEnableTaskInfo->stopCycle;
     command->u.profilingEnable.userDefinedEnable = profilingEnableTaskInfo->userDefinedEnable;

@@ -71,22 +71,22 @@ static rtError_t GetDeviceResByFe(const uint32_t devId, int32_t moduleType, int6
     const std::string socVersion = GetSocVersion();
     uint32_t platformRet = fe::PlatformInfoManager::GeInstance().InitRuntimePlatformInfos(socVersion);
     if (platformRet != 0U) {
-        RT_LOG(RT_LOG_ERROR,
-            "drv devId=%u, socVersion=%s, platformRet=%u", devId, socVersion.c_str(), platformRet);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR,
+            "InitRuntimePlatformInfos failed, drv devId=%u, socVersion=%s, platformRet=%u.", devId, socVersion.c_str(), platformRet);
         return RT_ERROR_INVALID_VALUE;
     }
 
     fe::PlatFormInfos platformInfos;
     platformRet = fe::PlatformInfoManager::GeInstance().GetRuntimePlatformInfosByDevice(devId, platformInfos);
     if (platformRet != 0U) {
-        RT_LOG(RT_LOG_ERROR, "drv devId=%u, platformRet=%u", devId, platformRet);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "GetRuntimePlatformInfosByDevice failed, drv devId=%u, platformRet=%u.", devId, platformRet);
         return RT_ERROR_INVALID_VALUE;
     }
 
     const std::string socInfoKey = "SoCInfo";
     std::map<std::string, std::string> res;
     if (!platformInfos.GetPlatformResWithLock(socInfoKey, res)) {
-        RT_LOG(RT_LOG_ERROR, "get platform result failed");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "GetPlatformResWithLock failed.");
         return RT_ERROR_INVALID_VALUE;
     }
 
@@ -105,7 +105,7 @@ static rtError_t GetDeviceResByFe(const uint32_t devId, int32_t moduleType, int6
     try {
         value = std::stoll(strVal);
     } catch (...) {
-        RT_LOG(RT_LOG_ERROR, "strVal[%s] can not be converted to digital value, moduleType=%d", strVal.c_str(), moduleType);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to convert string to digital value, strVal=%s, moduleType=%d.", strVal.c_str(), moduleType);
         return RT_ERROR_INVALID_VALUE;
     }
 

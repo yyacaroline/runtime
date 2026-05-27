@@ -76,7 +76,8 @@ uint32_t SqAddrMemoryOrder::GetMemOrderTypeByMemSize(const uint32_t memSize) con
     }
 
     if (memOrderType >= SQ_ADDR_MEM_ORDER_TYPE_MAX) {
-        RT_LOG(RT_LOG_ERROR, "invalid memSize=%u", memSize);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "GetMemOrderTypeByMemSize failed because value %u for memOrderType is invalid. Expected value: [%u, %u).",
+            memOrderType, SQ_ADDR_MEM_ORDER_TYPE_32K, SQ_ADDR_MEM_ORDER_TYPE_MAX);
     }
 
     return static_cast<uint32_t>(memOrderType);
@@ -124,8 +125,8 @@ BufferAllocator* SqAddrMemoryOrder::SetUp(const uint32_t memOrderType)
     BufferAllocator *sqAddrAllocator = new (std::nothrow) BufferAllocator(memOrderTypeList[memOrderType].sqAddrItemSize, 
         memOrderTypeList[memOrderType].sqAddrInitCount, memOrderTypeList[memOrderType].sqAddrMaxCount,
         BufferAllocator::LINEAR, &DrvAllocSqAddr, &DrvFreeSqAddr, device_);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, sqAddrAllocator == nullptr, nullptr,
-        "SqAddr pool init failed, new BufferAllocator failed.");
+    COND_RETURN_AND_MSG_OUTER(sqAddrAllocator == nullptr, nullptr, ErrorCode::EE1013,
+        sizeof(BufferAllocator));
 
     sqAddrAllocators_.emplace_back(static_cast<SQ_ADDR_MEM_ORDER_TYPE>(memOrderType), sqAddrAllocator);
     RT_LOG(RT_LOG_DEBUG, "new BufferAllocator ok.");

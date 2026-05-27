@@ -88,21 +88,21 @@ void DeviceMsgHandler::FreeDevMem()
 rtError_t DeviceMsgHandler::CheckGetDevMsgCtrlValid(const rtGetDevMsgCtrlInfo_t * const ctrlInfo) const
 {
     if (ctrlInfo->magic != DEVICE_GET_MSG_MAGIC) {
-        RT_LOG(RT_LOG_ERROR, "The magic=%#x of device message is invalid, valid value=%#x.",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The magic %#x of the device message is invalid. Expected value: %#x.",
                ctrlInfo->magic, DEVICE_GET_MSG_MAGIC);
         return RT_ERROR_INVALID_VALUE;
     }
     uint32_t pid = 0U;
     const auto error = dev_->Driver_()->DeviceGetBareTgid(&pid);
-    ERROR_RETURN_MSG_INNER(error, "Device get bare tgid failed, device id=%u.", dev_->Id_());
+    ERROR_RETURN(error, "Call driver api DeviceGetBareTgid failed, device id=%u.", dev_->Id_());
     COND_RETURN_ERROR_MSG_INNER(ctrlInfo->pid != pid, RT_ERROR_INVALID_VALUE,
                                 "The pid of error message is not matched, device pid=%u, host pid=%u.", ctrlInfo->pid,
                                 pid);
 
     COND_RETURN_ERROR_MSG_INNER(
-        ((ctrlInfo->bufferLen < sizeof(rtGetDevMsgCtrlInfo_t)) || (ctrlInfo->bufferLen > devMemSize_)),
-        RT_ERROR_INVALID_VALUE, "bufferLen=%u is invalid, range[%zu, %u], pid=%u.",
-        ctrlInfo->bufferLen, sizeof(rtGetDevMsgCtrlInfo_t), devMemSize_, pid);
+        ((ctrlInfo->bufferLen < sizeof(rtGetDevMsgCtrlInfo_t)) || (ctrlInfo->bufferLen > devMemSize_)), RT_ERROR_INVALID_VALUE,
+        "CheckGetDevMsgCtrlValid failed because value %u for parameter ctrlInfo->bufferLen is invalid, pid=%u. Expected value: [%zu, %u].",
+        ctrlInfo->bufferLen, pid, sizeof(rtGetDevMsgCtrlInfo_t), devMemSize_);
     return RT_ERROR_NONE;
 }
 
@@ -115,20 +115,21 @@ rtError_t DeviceMsgHandler::HandleMsg()
 
     RT_LOG(RT_LOG_INFO, "Begin to process device errMessage.");
     const std::unique_ptr<char_t[]> hostBuf(new(std::nothrow) char_t[devMemSize_]);
-    NULL_PTR_RETURN_MSG(hostBuf, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostBuf == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        devMemSize_ * sizeof(char_t));
     auto * const devDrv = dev_->Driver_();
     // 1. memcpy error message buffer to host
     const uint64_t destMax = devMemSize_;
     rtError_t error = devDrv->MemCopySync(hostBuf.get(), destMax, devMemAddr_, destMax, RT_MEMCPY_DEVICE_TO_HOST);
-    ERROR_RETURN_MSG_INNER(error, "Failed to Memcpy from device to host, devMemSize_=%u (bytes).", devMemSize_);
+    ERROR_RETURN(error, "Failed to Memcpy from device to host, devMemSize_=%u (bytes).", devMemSize_);
 
     auto * const ctrlInfo = RtPtrToPtr<rtGetDevMsgCtrlInfo_t *, char_t *>(hostBuf.get());
     error = CheckGetDevMsgCtrlValid(ctrlInfo);
-    ERROR_RETURN_MSG_INNER(error, "GetDevMsgCtrlInfo check failed.");
+    ERROR_RETURN(error, "Failed to chack GetDevMsgCtrlInfo.");
 
     // 2. memset device ms ctrl info
     error = devDrv->MemSetSync(devMemAddr_, destMax, 0U, sizeof(rtGetDevMsgCtrlInfo_t));
-    ERROR_RETURN_MSG_INNER(error, "MemSetSync failed, buffer len=%zu (bytes).", sizeof(rtGetDevMsgCtrlInfo_t));
+    ERROR_RETURN(error, "MemSetSync failed, buffer len=%zu (bytes).", sizeof(rtGetDevMsgCtrlInfo_t));
 
     RT_LOG(RT_LOG_INFO, "Finished to process device errInfo, retCode=%#x.", error);
     const char_t * const msgBuff = hostBuf.get() + sizeof(rtGetDevMsgCtrlInfo_t);
@@ -141,7 +142,7 @@ rtError_t DeviceErrMsgHandler::HandleMsgInHostBuf(const char_t * const msgBuff, 
     TTLV ttlvData(msgBuff, msgBuffSize);
     const rtError_t decodeRet = ttlvData.Decode();
     // Translate ts error message to std string
-    ERROR_RETURN_MSG_INNER(decodeRet, "Do complete failed, decode error message failed, devId=%u.", dev_->Id_());
+    ERROR_RETURN(decodeRet, "HandleMsgInHostBuf failed, failed to decode error message, devId=%u.", dev_->Id_());
     // Splicing string should be an atomic operation
     const std::string reportMsg = ("\nDEVICE[" + std::to_string(dev_->Id_()) + "] PID[" + std::to_string(mmGetPid()) +
         "]:" + ttlvData.GetDecodeStr());
@@ -159,8 +160,9 @@ rtError_t DeviceErrMsgHandler::HandleMsgInHostBuf(const char_t * const msgBuff, 
             copySize = msgSize - offset;
         }
         const errno_t err = strncpy_s(bAddr, sizeof(logBuffer), reportMsg.c_str() + offset, copySize);
-        COND_RETURN_ERROR_MSG_INNER(err != EOK, RT_ERROR_SEC_HANDLE, "strncpy_s failed, max size=%u (bytes)",
-                                    RT_MAX_LOG_LEN);
+        COND_RETURN_ERROR_MSG_INNER(err != EOK, RT_ERROR_SEC_HANDLE, "Failed to call strncpy_s to copy reportMsg,"
+            " destMax=%zu, strSrc=%s, count=%zu, retCode=%d.", sizeof(logBuffer), reportMsg.c_str() + offset,
+            copySize, err);
         offset += copySize;
         RT_LOG(RT_LOG_ERROR, "%s", bAddr);
     }

@@ -50,7 +50,7 @@ rtError_t GroupDevice::FillCache(struct capability_group_info capGroupInfos[], c
             continue;
         }
         if (groupInfoCache_.find(static_cast<int32_t>(capGroupInfos[i].group_id)) != groupInfoCache_.end()) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Group id %u already exists.", capGroupInfos[i].group_id);
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "The group id %u already exists.", capGroupInfos[i].group_id);
             groupInfoCache_.clear();
             return RT_ERROR_GROUP_NOT_CREATE;
         }
@@ -71,7 +71,7 @@ rtError_t GroupDevice::FillCache(struct capability_group_info capGroupInfos[], c
             if (defaultGroup_ == -1) {
                 defaultGroup_ = rtGrpInfo.groupId;
             } else {
-                RT_LOG_INNER_MSG(RT_LOG_ERROR, "More than one default group: %d and %d", defaultGroup_,
+                RT_LOG_INNER_MSG(RT_LOG_ERROR, "More than one default group is detected: %d and %d.", defaultGroup_,
                     rtGrpInfo.groupId);
                 groupInfoCache_.clear();
                 defaultGroup_ = -1;
@@ -89,7 +89,7 @@ rtError_t GroupDevice::GroupInfoSetup()
     (void)memset_s(&capabilityInfo, sizeof(halCapabilityInfo), 0U, sizeof(halCapabilityInfo));
     rtError_t error = Driver_()->GetChipCapability(Id_(), &capabilityInfo);
     if (error != RT_ERROR_NONE) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "GetChipCapability failed, retCode=%#x, deviceId=%u.",
+        RT_LOG(RT_LOG_ERROR, "GetChipCapability failed, retCode=%#x, deviceId=%u.",
                          static_cast<uint32_t>(error), Id_());
         return error;
     }
@@ -97,7 +97,8 @@ rtError_t GroupDevice::GroupInfoSetup()
     if (capabilityInfo.ts_group_number > 0U) {
         capability_group_info * const capGroupInfos =
             new (std::nothrow) capability_group_info[capabilityInfo.ts_group_number];
-        NULL_PTR_RETURN_MSG(capGroupInfos, RT_ERROR_MEMORY_ALLOCATION);
+        COND_RETURN_AND_MSG_OUTER(capGroupInfos == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, 
+            capabilityInfo.ts_group_number * sizeof(capability_group_info));
         (void)memset_s(capGroupInfos, sizeof(capability_group_info) * capabilityInfo.ts_group_number,
             0U, sizeof(capability_group_info) * capabilityInfo.ts_group_number);
         error = FillCache(capGroupInfos, capabilityInfo.ts_group_number);
@@ -106,7 +107,7 @@ rtError_t GroupDevice::GroupInfoSetup()
             return RT_ERROR_NONE;
         }
         if (error != RT_ERROR_NONE) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "FillCache failed, retCode=%#x, tsGroupNum=%u.",
+            RT_LOG(RT_LOG_ERROR, "FillCache failed, retCode=%#x, tsGroupNum=%u.",
                              static_cast<uint32_t>(error), capabilityInfo.ts_group_number);
             return error;
         }
@@ -146,7 +147,7 @@ rtError_t GroupDevice::GetGroupInfo(const int32_t grpId, rtGroupInfo_t * const i
     }
 
     if (groupInfoCache_.empty() || ((grpId != -1) && (groupInfoCache_.find(grpId) == groupInfoCache_.end()))) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Get group info failed, groupId=%d, count=%u, groupInfo size=%zu(bytes)",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to get group info, groupId=%d, count=%u, groupInfo size=%zu(bytes).",
                          grpId, cnt, groupInfoCache_.size());
         return RT_ERROR_GROUP_NOT_CREATE;
     }
@@ -188,7 +189,7 @@ rtError_t GroupDevice::SetGroup(const int32_t grpId)
     }
 
     if (groupInfoCache_.find(grpId) == groupInfoCache_.end()) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Group id %d does not exist.", grpId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The group id %d does not exist.", grpId);
         return RT_ERROR_GROUP_NOT_CREATE;
     }
 

@@ -37,7 +37,7 @@ rtError_t ReduceAsyncV2TaskInit(TaskInfo* const taskInfo, uint32_t cpyType, cons
     if (reduceAsyncV2TaskInfo->guardMemVec == nullptr) {
         reduceAsyncV2TaskInfo->guardMemVec = new (std::nothrow) std::vector<std::shared_ptr<void>>();
         COND_RETURN_AND_MSG_OUTER(reduceAsyncV2TaskInfo->guardMemVec == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(sizeof(std::vector<std::shared_ptr<void>>)));
+            ErrorCode::EE1013, sizeof(std::vector<std::shared_ptr<void>>));
     }
     return RT_ERROR_NONE;
 }

@@ -54,7 +54,7 @@ rtError_t AllocCpyTmpMem(TaskInfo * const taskInfo, uint32_t &cpyType,
         ERROR_RETURN(error, "Alloc src failed,size=%" PRIu64 "(bytes), device_id=%u, retCode=%#x",
                                size, stream->Device_()->Id_(), error);
         COND_RETURN_AND_MSG_OUTER(memcpyAsyncTaskInfo->srcPtr == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(size));
+            ErrorCode::EE1013, size);
         errno_t rc = memcpy_s(memcpyAsyncTaskInfo->srcPtr, size, src, size);
         COND_RETURN_AND_MSG_OUTER(rc != EOK, RT_ERROR_SEC_HANDLE, ErrorCode::EE1020, __func__, "memcpy_s",
             std::to_string(rc), strerror(rc), "src=" + std::to_string(RtPtrToValue(src)) + ", dest=" +
@@ -73,7 +73,7 @@ rtError_t AllocCpyTmpMem(TaskInfo * const taskInfo, uint32_t &cpyType,
         ERROR_RETURN(error, "Alloc dest failed, size=%u(bytes), device_id=%u, retCode=%#x",
             size, stream->Device_()->Id_(), error);
         COND_RETURN_AND_MSG_OUTER(memcpyAsyncTaskInfo->desPtr == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(size));
+            ErrorCode::EE1013, size);
         des = (void *)memcpyAsyncTaskInfo->desPtr;
         memcpyAsyncTaskInfo->isConcernedRecycle = true;
     }
@@ -107,7 +107,7 @@ rtError_t AllocCpyTmpMem(TaskInfo * const taskInfo, uint32_t &cpyType,
 
         ERROR_RETURN(error, "HostMemAlloc failed, retCode=%#x", static_cast<uint32_t>(error));
         COND_RETURN_AND_MSG_OUTER(memcpyAsyncTaskInfo->srcPtr == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(addrSize + ASYNC_MEMORY_SIZE));
+            ErrorCode::EE1013, addrSize + ASYNC_MEMORY_SIZE);
 
         const uintptr_t offset = reinterpret_cast<uintptr_t>(memcpyAsyncTaskInfo->srcPtr) +
                                     static_cast<uint64_t>(ASYNC_MEMORY_ALIGN_SIZE) -
@@ -137,7 +137,7 @@ rtError_t AllocCpyTmpMem(TaskInfo * const taskInfo, uint32_t &cpyType,
             " Expected value: [0, %" PRIu64 "].", addrSize, MAX_UINT64_NUM);
         memcpyAsyncTaskInfo->desPtr = malloc(addrSize + ASYNC_MEMORY_SIZE);
         COND_RETURN_AND_MSG_OUTER(memcpyAsyncTaskInfo->desPtr == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(addrSize + ASYNC_MEMORY_SIZE));
+            ErrorCode::EE1013, addrSize + ASYNC_MEMORY_SIZE);
         const uintptr_t offset = reinterpret_cast<uintptr_t>(memcpyAsyncTaskInfo->desPtr) +
                                  static_cast<uint64_t>(ASYNC_MEMORY_ALIGN_SIZE) -
                                  (reinterpret_cast<uintptr_t>(memcpyAsyncTaskInfo->desPtr) %
@@ -314,7 +314,7 @@ rtError_t MemcpyAsyncTaskCommonInit(TaskInfo * const taskInfo)
     if (memcpyAsyncTaskInfo->guardMemVec == nullptr) {
         memcpyAsyncTaskInfo->guardMemVec = new (std::nothrow) std::vector<std::shared_ptr<void>>();
         COND_RETURN_AND_MSG_OUTER(memcpyAsyncTaskInfo->guardMemVec == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            ErrorCode::EE1013, std::to_string(sizeof(std::vector<std::shared_ptr<void>>)));
+            ErrorCode::EE1013, sizeof(std::vector<std::shared_ptr<void>>));
         taskInfo->needPostProc = true;
     }
     return RT_ERROR_NONE;

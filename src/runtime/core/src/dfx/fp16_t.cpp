@@ -12,6 +12,7 @@
 #include "fp16_t.h"
 #include "base.hpp"
 #include "securec.h"
+#include "error_message_manage.hpp"
 
 namespace cce {
 namespace runtime {
@@ -20,10 +21,9 @@ inline float uint32ToFloat(uint32_t val)
 {
     float result = 0.0f;
     auto ret = memcpy_s(&result, sizeof(result), &val, sizeof(val));
-    if (ret != EOK) {
-        RT_LOG(RT_LOG_ERROR, "memcpy_s from uint32 to float failed, ret=%d.", ret);
-        return 0.0f;
-    }
+    COND_RETURN_AND_MSG_INNER(ret != EOK, 0.0f,
+        "Failed to call memcpy_s to copy val, src=%p, dest=%p, dest_max=%zu, count=%zu, retCode=%d.",
+        &val, &result, sizeof(result), sizeof(val), ret);
     return result;
 }
 }

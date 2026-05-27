@@ -42,18 +42,20 @@ static rtError_t CheckMemoryParam(const rtDebugMemoryParam_t *const param)
     const auto &iter = debugMemSizeMap.find(param->debugMemType);
     if (iter != debugMemSizeMap.end()) {
         const bool isValid = ((param->srcAddr + param->memLen) <= iter->second);
-        COND_RETURN_ERROR((!isValid), RT_ERROR_INVALID_VALUE, "CheckMemoryParam fail, debugMemType=%d, srcAddr=0x%llx, "
-            "memLen=%llu.", param->debugMemType, param->srcAddr, param->memLen);
+        COND_RETURN_ERROR((!isValid), RT_ERROR_INVALID_VALUE,
+            "The read memory boundary exceeds the hardware memory boundary of the specified memory type,"
+            " debugMemType=%d, srcAddr=0x%llx, memLen=%llu.", param->debugMemType, param->srcAddr, param->memLen);
     }
     if (param->debugMemType == RT_MEM_TYPE_REGISTER) {
         COND_RETURN_ERROR((param->elementSize == 0U), RT_ERROR_INVALID_VALUE,
-            "CheckMemoryParam fail, elementSize can not be 0.", param->debugMemType, param->srcAddr, param->memLen);
+            "CheckMemoryParam failed, elementSize cannot be 0, debugMemType=%d, srcAddr=0x%llx, memLen=%llu.",
+            param->debugMemType, param->srcAddr, param->memLen);
         COND_RETURN_ERROR((param->memLen % param->elementSize != 0U), RT_ERROR_INVALID_VALUE,
-            "CheckMemoryParam register fail, memLen=%llu, elementSize=%u.", param->memLen, param->elementSize);
+            "The read memory length %llu is not aligned with the register bit width %u.", param->memLen, param->elementSize);
     }
     if (param->debugMemType == RT_MEM_TYPE_REGISTER_DIRECT) {
         COND_RETURN_ERROR((param->memLen == 0U), RT_ERROR_INVALID_VALUE,
-            "CheckMemoryParam fail, memLen can not be 0, debugMemType=%d, memLen=%llu", param->debugMemType, param->memLen);
+            "CheckMemoryParam failed, memLen cannot be 0, debugMemType=%d, memLen=%llu.", param->debugMemType, param->memLen);
     }
     return RT_ERROR_NONE;
 }

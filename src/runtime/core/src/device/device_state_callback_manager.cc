@@ -36,14 +36,17 @@ rtError_t DeviceStateCallbackManager::RegDeviceStateCallback(const char_t *regNa
         callbackMap_[regName].args = nullptr;
         callbackMap_[regName].notifyPos = notifyPos;
     } else if(type == DeviceStateCallback::RTS_DEVICE_STATE_CALLBACK) {
-        COND_RETURN_OUT_ERROR_MSG_CALL(callbackMap_.count(regName) > 0, RT_ERROR_INVALID_VALUE,
-            "regName:%s has already been registered.", regName);
+        COND_RETURN_AND_MSG_OUTER(callbackMap_.count(regName) > 0, RT_ERROR_INVALID_VALUE, ErrorCode::EE1011, __func__,
+            regName, "regName", "The callback function " + std::string(regName) +
+            " has been registered and cannot be registered again");
         callbackMap_[regName].callback = nullptr;
         callbackMap_[regName].callbackV2 = RtPtrToPtr<rtsDeviceStateCallback>(callback);
         callbackMap_[regName].args = args;
         callbackMap_[regName].notifyPos = DEV_CB_POS_END;
     } else {
-        RT_LOG(RT_LOG_ERROR, "register device state type:%u is invalid.", type);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1003, static_cast<uint32_t>(type), "type",
+            "[" + std::to_string(static_cast<uint32_t>(DeviceStateCallback::RT_DEVICE_STATE_CALLBACK)) + ", "
+            + std::to_string(static_cast<uint32_t>(DeviceStateCallback::DEVICE_CALLBACK_TYPE_MAX))  + ")");
         return RT_ERROR_INVALID_VALUE;
     }
 

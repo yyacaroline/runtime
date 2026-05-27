@@ -993,11 +993,12 @@ static void PrintAicpuErrorInfo(TaskInfo* taskInfo, const uint32_t devId)
     std::string soName = (isKernelValid && kernel != nullptr) ? kernel->GetCpuKernelSo() : "";
 
     if ((taskInfo->type == TS_TASK_TYPE_KERNEL_AICPU) && (taskInfo->errorCode == TS_ERROR_AICPU_TIMEOUT)) {
-        RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "AI CPU kernel execute failed, device_id=%u, stream_id=%d, "
-            "%s=%u, soName=%s, funcName=%s, kernelName=%s.",
-            devId, streamId, TaskIdDesc(), taskId, soName.c_str(), funcName.c_str(), kernelName.c_str());
+        const std::string errMsg = "The AI CPU operator " + kernelName + " that times out is on device " +
+            std::to_string(devId) + " stream " + std::to_string(streamId) + ". The task ID is " + std::to_string(taskId) +
+            ", the so name is " + soName + ", and the entry function for executing this AI CPU operator is " + funcName;
+        RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "%s", errMsg.c_str());
     } else {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "AI CPU kernel execute failed, device_id=%u, stream_id=%d, "
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "AI CPU kernel execution failed, device_id=%u, stream_id=%d, "
             "%s=%u, soName=%s, funcName=%s, kernelName=%s, errorCode=%#x.",
             devId, streamId, TaskIdDesc(), taskId, soName.c_str(), funcName.c_str(), kernelName.c_str(), taskInfo->errorCode);
     }
@@ -1024,7 +1025,6 @@ static void PrintAicpuErrorInfo(TaskInfo* taskInfo, const uint32_t devId)
     RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "AI CPU kernel execution failed, device_id=%u,stream_id=%d,"
         "%s=%u, soName=%s, funcName=%s, kernelName=%s.",
         devId, streamId, TaskIdDesc(), taskId, soName.c_str(), funcName.c_str(), kernelName.c_str());
-
     STREAM_REPORT_ERR_MSG(reportStream, ERR_MODULE_AICPU,
         "AI CPU kernel execution failed, device_id=%u, stream_id=%d, %s=%u, flip_num=%hu, kernel_type=%u, "
         "fault op_name=%s, extend_info=%s.", devId, streamId, TaskIdDesc(), taskId, taskInfo->flipNum, 
@@ -1269,7 +1269,7 @@ void PreCheckTaskErr(TaskInfo* taskInfo, const uint32_t devId)
                 " AI CPU error code=0x%x, [%s].", errorCode, GetTsErrCodeMap(errorCode, &rtErrCode));
         } else if (CheckErrPrint(errorCode)) {
             if ((type == TS_TASK_TYPE_KERNEL_AICPU) && (errorCode == TS_ERROR_AICPU_TIMEOUT)) {
-                RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "An error occurred in the kernel task, retCode=%#x, [%s].",
+                RT_LOG_OUTER_MSG(RT_AICPU_TIMEOUT_ERROR, "An error occurred in the AI CPU task, retCode=%#x, [%s].",
                     errorCode, GetTsErrCodeMap(errorCode, &rtErrCode));
             } else {
                 RT_LOG_CALL_MSG(moduleType, "An error occurred in the kernel task, retCode=%#x, [%s].",

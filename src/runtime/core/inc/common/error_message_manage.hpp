@@ -148,6 +148,10 @@
         return RTERRCODE; \
     }
 
+//除EE1003、EE1001之外的其他外部错误码使用
+#define COND_RETURN_VOID_AND_MSG_OUTER(COND, ERRCODE, ...) \
+    COND_RETURN_AND_MSG_OUTER(COND, ,ERRCODE, ##__VA_ARGS__)
+
 //带PROC的外部错误码条件返回
 #define COND_PROC_RETURN_AND_MSG_OUTER(COND, RTERRCODE, ERRCODE, PROC, ...) \
     if (unlikely(COND)) { \
@@ -156,12 +160,20 @@
         return RTERRCODE; \
     }
 
+//带PROC的外部错误码条件返回
+#define COND_PROC_RETURN_VOID_AND_MSG_OUTER(COND, ERRCODE, PROC, ...) \
+    COND_PROC_RETURN_AND_MSG_OUTER(COND, , ERRCODE, PROC, ##__VA_ARGS__)
+
 //EE9999 错误码使用
 #define COND_RETURN_AND_MSG_INNER(COND, RTERRCODE, format, ...) \
     if (unlikely(COND)) { \
         RT_LOG_INNER_MSG(RT_LOG_ERROR, format, ##__VA_ARGS__); \
         return RTERRCODE; \
     }
+
+//EE9999 错误码使用
+#define COND_RETURN_VOID_AND_MSG_INNER(COND, format, ...) \
+    COND_RETURN_AND_MSG_INNER(COND, , format, ##__VA_ARGS__)
 
 //EE9999 错误码使用
 #define COND_AND_MSG_INNER(COND, format, ...) \

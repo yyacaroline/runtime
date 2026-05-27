@@ -61,7 +61,7 @@ rtError_t TaskFactory::Init()
     allocator_ = new (std::nothrow)
         TaskAllocator(GetTaskMaxSize(), INIT_TASK_CAPACITY, device_->GetDevProperties().maxSupportTaskNum);
     COND_RETURN_AND_MSG_OUTER(allocator_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-        std::to_string(sizeof(TaskAllocator)));
+        sizeof(TaskAllocator));
     RT_LOG(RT_LOG_DEBUG, "TaskFactory::Init ok, alloc size is %zu.", sizeof(TaskAllocator));
     return RT_ERROR_NONE;
 }

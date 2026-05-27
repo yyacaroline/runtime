@@ -68,12 +68,30 @@ void DeviceErrorProc::ProcessReportFastRingBuffer()
     }
     ConvertErrorCodeForFastReport(&report);
     TaskInfo *tsk = device_->GetTaskFactory()->GetTask(static_cast<int32_t>(report.streamId), report.taskId);
-    RT_LOG(RT_LOG_ERROR, "fast ring buffer report error, "
-        "device_id=%u, stream_id=%u, task_id=%u, sqe_type=%u, error_code=%#x, kernel_name=%s.",
-        device_->Id_(), report.streamId, report.taskId, report.sqeType, report.errorCode,
+    if (tsk == nullptr) {
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The fast ring buffer reports an error,"
+            " device_id=%u, stream_id=%u, task_id=%u, sqe_type=%u, error_code=%#x, kernel_name=none.",
+            device_->Id_(), report.streamId, report.taskId, report.sqeType, report.errorCode);
+        RT_LOG(RT_LOG_ERROR, "The task has been recycled, stream_id=%u, task_id=%u.",
+            report.streamId, report.taskId);
+        return;
+    }
+    const char *errMsg = "a kernel task";
+    uint8_t errModule = ERR_MODULE_TBE;
+    if (tsk->type == TS_TASK_TYPE_KERNEL_AIVEC) {
+        errMsg = "a Vector Core task";
+    } else if (tsk->type == TS_TASK_TYPE_KERNEL_AICORE) {
+        errMsg = "an AI Core task";
+    } else if (tsk->type == TS_TASK_TYPE_KERNEL_AICPU) {
+        errMsg = "an AI CPU task";
+        errModule = ERR_MODULE_AICPU;
+    } else {
+        errModule = ERR_MODULE_RTS;
+    }
+    RT_LOG_CALL_MSG(errModule, "The fast ring buffer reports %s error,"
+        " device_id=%u, stream_id=%u, task_id=%u, sqe_type=%u, error_code=%#x, kernel_name=%s.",
+        errMsg, device_->Id_(), report.streamId, report.taskId, report.sqeType, report.errorCode,
         GetTaskKernelName(tsk).c_str());
-    COND_RETURN_VOID(tsk == nullptr, "stream_id=%u, task_id=%u, task has been recycled.",
-        report.streamId, report.taskId);
     tsk->stream->SetErrCode(report.errorCode);
     tsk->stream->EnterFailureAbort();
     TaskFailCallBack(report.streamId, report.taskId, tsk->tid, report.errorCode, device_);

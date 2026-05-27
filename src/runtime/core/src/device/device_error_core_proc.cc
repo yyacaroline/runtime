@@ -286,14 +286,14 @@ void DeviceErrorProc::PrintCoreInfoErrMsg(const DeviceErrorInfo *const coreInfo)
             REPORT_INNER_ERROR(errLevel.c_str(), "%s", &(buffer[0]));
             countTotal = sprintf_s(&(buffer[0]), static_cast<size_t>(MSG_LENGTH), "coreId(%2lu):",
                 static_cast<uint64_t>(coreIdx));
-            COND_RETURN_VOID(countTotal < 0, "sprintf_s failed, cnt=%d.", cnt);
+            COND_RETURN_VOID_AND_MSG_INNER(countTotal < 0, "Failed to call sprintf_s, count=%d.", countTotal);
         }
         if ((countTotal >= MSG_LENGTH) || (coreIdx >= MAX_RECORD_CORE_NUM)) {
             break;
         }
         cnt = sprintf_s(&(buffer[countTotal]), static_cast<size_t>(MSG_LENGTH) - static_cast<size_t>(countTotal),
                         "%#16" PRIx64 "    ", coreInfo->u.coreErrorInfo.info[coreIdx].aicError);
-        COND_RETURN_VOID(cnt < 0, "sprintf_s failed, cnt=%d, countTotal=%d.", cnt, countTotal);
+        COND_RETURN_VOID_AND_MSG_INNER(cnt < 0, "Failed to call sprintf_s, count=%d.", cnt);
         countTotal += cnt;
     }
     if (static_cast<int32_t>(coreIdx) > 0) {   // 4 表示每4个core一组, 最后只要cordIdx > 0, 总是会有最后一组没打印
@@ -354,7 +354,7 @@ rtError_t DeviceErrorProc::ProcessCoreErrorInfo(const DeviceErrorInfo * const co
         RT_LOG(RT_LOG_DEBUG, "dha num:%hu", dhaNum);
         for (uint16_t dhaIndex = 0U; (dhaIndex < dhaNum) && (dhaIndex < MAX_RECORD_DHA_NUM); ++dhaIndex) {
             RT_LOG_CALL_MSG(ERR_MODULE_TBE,
-                "The dha(mata) info from device(%hu), dha id is %u, dha status 1 info:0x%x",
+                "The dha(mata) info comes from device(%hu), the dha id is %u, dha status 1 info: 0x%x.",
                 coreInfo->u.coreErrorInfo.deviceId, coreInfo->u.coreErrorInfo.dhaInfo[dhaIndex].regId,
                 coreInfo->u.coreErrorInfo.dhaInfo[dhaIndex].status1);
         }
@@ -432,7 +432,8 @@ bool IsHitBlacklist(const uint32_t deviceId, const std::map<uint32_t, std::strin
 {
     constexpr uint32_t maxFaultNum = 128U;
     rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_PROC((faultEventInfo == nullptr), return false);
+    COND_RETURN_AND_MSG_OUTER(faultEventInfo == nullptr, false, ErrorCode::EE1013,
+        maxFaultNum * sizeof(rtDmsFaultEvent));
     const std::function<void()> releaseFunc = [&faultEventInfo]() { DELETE_A(faultEventInfo); };
     ScopeGuard faultEventInfoRelease(releaseFunc);
 
@@ -460,7 +461,8 @@ bool HasBlacklistEventOnDevice(const uint32_t deviceId, const std::map<uint32_t,
 {
     constexpr uint32_t maxFaultNum = 128U;
     rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_RETURN_ERROR((faultEventInfo == nullptr), false, "new rtDmsFaultEvent failed.");
+    COND_RETURN_AND_MSG_OUTER(faultEventInfo == nullptr, false, ErrorCode::EE1013,
+        maxFaultNum * sizeof(rtDmsFaultEvent));
     const size_t totalSize = maxFaultNum * sizeof(rtDmsFaultEvent);
     (void)memset_s(faultEventInfo, totalSize, 0, totalSize);
 
@@ -630,7 +632,8 @@ bool IsEventIdAndRasCodeMatch( const uint32_t deviceId, const std::vector<EventR
 {
     constexpr uint32_t maxFaultNum = 128U;
     rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_RETURN_ERROR((faultEventInfo == nullptr), false, "new rtDmsFaultEvent failed.");
+    COND_RETURN_AND_MSG_OUTER(faultEventInfo == nullptr, false, ErrorCode::EE1013,
+        maxFaultNum * sizeof(rtDmsFaultEvent));
     const size_t totalSize = maxFaultNum * sizeof(rtDmsFaultEvent);
     (void)memset_s(faultEventInfo, totalSize, 0, totalSize);
 

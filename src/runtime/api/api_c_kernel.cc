@@ -92,7 +92,7 @@ rtError_t rtsLaunchCpuKernel(const rtFuncHandle funcHandle, uint32_t numBlocks, 
     Kernel * const kernel = RtPtrToPtr<Kernel *>(funcHandle);
     const KernelRegisterType regType = kernel->GetKernelRegisterType();
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER(regType != RT_KERNEL_REG_TYPE_CPU, RT_ERROR_INVALID_VALUE, ErrorCode::EE1017,
-        __func__, "kernel", "current API only support CPU kernel");
+        __func__, "kernel", "current API only supports CPU kernel");
     RtArgsWithType argsWithType = {};
     argsWithType.type = RT_ARGS_CPU_EX;
     argsWithType.args.cpuArgsInfo = argsInfo;

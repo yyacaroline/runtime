@@ -121,11 +121,11 @@ rtError_t DeviceSqCqPool::AllocSqRegVirtualAddr(const uint32_t sqId, uint64_t &s
     uint32_t addrLen = 0U;
     rtError_t error = device_->Driver_()->GetSqRegVirtualAddrBySqid(static_cast<int32_t>(device_->Id_()),
         device_->DevGetTsId(), sqId, &sqRegVirtualAddr, &addrLen);
-    ERROR_RETURN_MSG_INNER(error, "Fail to get sq reg virtual addr, deviceId=%u, sqId=%u.", device_->Id_(), sqId);
+    ERROR_RETURN(error, "Failed to get sq reg virtual addr, deviceId=%u, sqId=%u.", device_->Id_(), sqId);
     RT_LOG(RT_LOG_DEBUG, "Success to get sq=%u sq reg virtual addr length=%u.", sqId, addrLen);
 
     error = SetSqRegVirtualAddrToDevice(sqId, sqRegVirtualAddr);
-    ERROR_RETURN_MSG_INNER(error, "Fail to copy sqid=%u virtual addr to device, error=0x%#x.", sqId,
+    ERROR_RETURN(error, "Failed to copy sqid=%u virtual addr to device, error=0x%#x.", sqId,
         static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;

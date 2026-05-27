@@ -53,7 +53,7 @@ rtError_t PCTrace::WritePCTraceFile()
     const uint32_t pcTraceFileLen =
             static_cast<uint32_t>(*(RtValueToPtr<uint64_t *>(pctraceFileAddr)));
     if (pcTraceFileLen > tspctrace_.pctraceAddrSize) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "PC trace file length=%u can't bigger than PC trace address size=%" PRIu64,
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The length of PC trace file %u cannot exceed the size of PC trace address %" PRIu64 ".",
             pcTraceFileLen, tspctrace_.pctraceAddrSize);
         return RT_ERROR_PCTRACE_FILE;
     }
@@ -63,7 +63,7 @@ rtError_t PCTrace::WritePCTraceFile()
 
     mmSystemTime_t currentTime;
     if (mmGetLocalTime(&currentTime) != EN_OK) {
-        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "mmGetLocalTime error.");
+        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "mmGetLocalTime failed.");
         return RT_ERROR_PCTRACE_TIME;
     }
 
@@ -71,7 +71,7 @@ rtError_t PCTrace::WritePCTraceFile()
         PC_TRACE_FILE_NAME, currentTime.wYear, currentTime.wMonth, currentTime.wDay, currentTime.wHour,
         currentTime.wMinute, currentTime.wSecond, currentTime.wMilliseconds * 1000);
     COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, ret == -1, RT_ERROR_PCTRACE_TIME,
-        "Write pc trace file failed, sprintf_s failed, len=%d, retCode=%d", len, ret);
+        "Failed to call sprintf_s, count=%d.", ret);
 
     auto fd = mmOpen2(filename, M_CREAT | M_WRONLY, M_UMASK_USRREAD | M_UMASK_USRWRITE);
     if (fd == -1) {
@@ -89,7 +89,7 @@ rtError_t PCTrace::WritePCTraceFile()
     }
     writeRet = mmWrite(fd, RtValueToPtr<void *>(pctraceFileAddr), pcTraceFileLen);
     if (writeRet != static_cast<mmSsize_t>(pcTraceFileLen)) {
-        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "Write pcTraceFile failed, need write size=%u, writeRet=%zd.",
+        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "Failed to write pcTraceFile, writeSize=%u, writeRet=%zd.",
             pcTraceFileLen, writeRet);
         (void) mmClose(fd);
         fd = -1;
@@ -107,13 +107,15 @@ rtError_t PCTrace::AllocPCTraceMemory(void **addr, uint64_t addrSize)
     void *addrTempt = nullptr;
 
     rtError_t error = device_->Driver_()->DevMemAllocForPctrace(&addrTempt, addrSize, device_->Id_());
-    ERROR_RETURN_MSG_INNER(error, "Alloc pctrace memory failed, size=%" PRIu64 ", retCode=%#x!",
+    ERROR_RETURN(error, "Failed to allocate pctrace memory, size=%" PRIu64 ", retCode=%#x.",
                            addrSize, static_cast<uint32_t>(error));
 
     const errno_t ret = memset_s(addrTempt, addrSize, 0, addrSize);
     if (ret != EOK) {
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to call memset_s to set addrTempt, size=%" PRIu64 ", retCode=%#x.",
+            addrSize, static_cast<uint32_t>(ret));
         error = device_->Driver_()->DevMemFreeForPctrace(addrTempt);
-        ERROR_RETURN_MSG_INNER(error, "Free pctrace memory failed, retCode=%#x!", static_cast<uint32_t>(error));
+        ERROR_RETURN(error, "Failed to free pctrace memory, retCode=%#x.", static_cast<uint32_t>(error));
         return RT_ERROR_SEC_HANDLE;
     }
 
@@ -143,7 +145,7 @@ rtError_t PCTrace::FreePCTraceMemory()
     }
 
     const rtError_t error = device_->Driver_()->DevMemFreeForPctrace(pcTraceAddr);
-    ERROR_RETURN_MSG_INNER(error, "Free pctrace mem failed, retCode=%#x!", static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to free pctrace mem, retCode=%#x.", static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 }

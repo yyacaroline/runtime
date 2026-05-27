@@ -60,7 +60,7 @@ void TaskRollBack(Stream * const stm, uint32_t pos)
         Device *dev = stm->Device_();
         TaskInfo *taskInfo = dev->GetTaskFactory()->GetTask(stm->Id_(), static_cast<uint16_t>(pos));
         if (taskInfo == nullptr) {
-            RT_LOG(RT_LOG_DEBUG, "task info is null, stream_id=%hu, task_id=%hu", stm->Id_(), pos);
+            RT_LOG(RT_LOG_DEBUG, "Task info is null, stream_id=%hu, task_id=%hu.", stm->Id_(), pos);
             return;
         }
 
@@ -98,7 +98,8 @@ static rtError_t ExpandHostSqeBufferLocked(Stream * const stm)
         stm->GetExposedStreamId(), stm->Id_());
     AutoSplitSqContext *ctx = stm->GetAutoSplitCtx();
     if (ctx == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "AutoSplitSqContext is null, master_stream_id=%d, cur_stream_id=%d",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR,
+            "ExpandHostSqeBufferLocked failed because ctx cannot be a NULL pointer, master_stream_id=%d, cur_stream_id=%d.",
             stm->GetExposedStreamId(), stm->Id_());
         return RT_ERROR_INVALID_VALUE;
     }
@@ -106,11 +107,11 @@ static rtError_t ExpandHostSqeBufferLocked(Stream * const stm)
     uint32_t newSize = stm->GetSqeBufferSize() + STREAM_SQE_BUFFER_INIT_SIZE;
     uint8_t *newBuffer = new (std::nothrow) uint8_t[newSize];
     COND_RETURN_AND_MSG_OUTER(newBuffer == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-        ErrorCode::EE1013, std::to_string(sizeof(uint8_t) * newSize));
+        ErrorCode::EE1013, sizeof(uint8_t) * newSize);
 
     errno_t ret = memset_s(newBuffer, newSize, 0U, newSize);
     COND_PROC_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_MEMORY_ALLOCATION, delete[] newBuffer,
-        "Failed to call memset_s, size=%u, retCode=%#x.", newSize, ret);
+        "Failed to call memset_s to set newBuffer, size=%u, retCode=%#x.", newSize, ret);
 
     // 复制原有数据
     uint8_t *oldBuffer = stm->GetSqeBuffer();
@@ -150,8 +151,8 @@ static rtError_t TryCreateAutoSplitSlaveStream(Stream * const masterStm, uint32_
     RT_LOG(RT_LOG_DEBUG, "Enter TryCreateAutoSplitSlaveStream, master_stream_id=%d, cur_stream_id=%d, sqeNum=%u",
         masterStm->GetExposedStreamId(), curStream->Id_(), sqeNum);
     AutoSplitSqContext *splitCtx = curStream->GetAutoSplitCtx();
-    COND_RETURN_ERROR(splitCtx == nullptr, RT_ERROR_INVALID_VALUE,
-        "curStream AutoSplitSqContext is null, stream_id=%d", curStream->Id_());
+    COND_RETURN_ERROR_MSG_INNER(splitCtx == nullptr, RT_ERROR_INVALID_VALUE,
+        "TryCreateAutoSplitSlaveStream failed because splitCtx cannot be a NULL pointer, stream_id=%d.", curStream->Id_());
 
     if ((splitCtx->curStreamSqeCount + sqeNum + CAPTURE_TASK_RESERVED_NUM + masterStm->Device_()->GetDevProperties().expandStreamRsvTaskNum) < HOST_SQ_MAX_COUNT) {
         return RT_ERROR_NONE;  // 容量充足，无需创建
@@ -201,7 +202,7 @@ rtError_t AllocTaskInfoOnAutoSplitStream(Stream *curStream, uint32_t sqeNum, Tas
     // 检查是否需要扩容 host SQ buffer
     if ((splitCtx->curStreamSqeCount + sqeNum) > (curStream->GetSqeBufferSize() / sizeof(rtDavidSqe_t))) {
         rtError_t error = ExpandHostSqeBufferLocked(curStream);
-        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Expand host SQ buffer failed, retCode=%#x.", error);
+        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to expand host SQ buffer, retCode=%#x.", error);
     }
 
     rtError_t error = RT_ERROR_NONE;
@@ -211,7 +212,7 @@ rtError_t AllocTaskInfoOnAutoSplitStream(Stream *curStream, uint32_t sqeNum, Tas
         if (error == RT_ERROR_NONE) {
             error = RT_ERROR_MEMORY_ALLOCATION;
         }
-        RT_LOG(RT_LOG_ERROR, "Alloc task info failed, master_stream_id=%d, cur_stream_id=%d, error=%#x",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to allocate taskInfo, master_stream_id=%d, cur_stream_id=%d, error=%#x.",
             curStream->GetExposedStreamId(), curStream->Id_(), error);
         return error;
     }
@@ -229,8 +230,8 @@ static rtError_t AllocAutoSplitTaskInfo(TaskInfo **taskInfo, Stream * const stm,
         stm->GetExposedStreamId(), sqeNum);
 
     AutoSplitSqContext *masterCtx = stm->GetAutoSplitCtx();
-    COND_RETURN_ERROR(masterCtx == nullptr, RT_ERROR_INVALID_VALUE,
-        "AutoSplitSqContext is null, stream_id=%d", stm->Id_());
+    COND_RETURN_ERROR_MSG_INNER(masterCtx == nullptr, RT_ERROR_INVALID_VALUE,
+        "AllocAutoSplitTaskInfo failed because masterCtx cannot be a NULL pointer, stream_id=%d.", stm->Id_());
 
     // 获取当前活跃的 stream
     // 注意: 调用方已持有 StreamLock()，保护了对 slaveStreams 的访问
@@ -247,8 +248,8 @@ static rtError_t AllocAutoSplitTaskInfo(TaskInfo **taskInfo, Stream * const stm,
     COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Try create slave stream failed.");
 
     AutoSplitSqContext *splitCtx = curStream->GetAutoSplitCtx();
-    COND_RETURN_ERROR(splitCtx == nullptr, RT_ERROR_INVALID_VALUE,
-        "curStream AutoSplitSqContext is null, stream_id=%d", curStream->Id_());
+    COND_RETURN_ERROR_MSG_INNER(splitCtx == nullptr, RT_ERROR_INVALID_VALUE,
+        "AllocAutoSplitTaskInfo failed because splitCtx cannot be a NULL pointer, stream_id=%d.", curStream->Id_());
 
     // 分配 TaskInfo
     error = AllocTaskInfoOnAutoSplitStream(curStream, sqeNum, taskInfo, pos);
@@ -296,7 +297,9 @@ static rtError_t AllocCaptureTaskInfo(TaskInfo **taskInfo, Stream * const stm, u
         Context * const ctx = stm->Context_();
         if (ctx == nullptr) {
             stm->SingleStreamTerminateCapture();
-            RT_LOG(RT_LOG_ERROR, "context is null, device_id=%u, original stream_id=%d.", stm->Device_()->Id_(), stm->Id_());
+            RT_LOG_INNER_MSG(RT_LOG_ERROR,
+                "AllocCaptureTaskInfo failed because ctx cannot be a NULL pointer, device_id=%u, original stream_id=%d.",
+                stm->Device_()->Id_(), stm->Id_());
             return RT_ERROR_CONTEXT_NULL;
         }
         error = CondStreamActive(newCaptureStream, curCaptureStream);
@@ -412,7 +415,7 @@ rtError_t AllocTaskInfo(TaskInfo **taskInfo, Stream * const stm, uint32_t &pos, 
         error = stm->CheckContextStatus();
         COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<uint32_t>(error)); 
         COND_RETURN_ERROR_MSG_INNER((stm->abortStatus_ != RT_ERROR_NONE), stm->abortStatus_,
-            "stream_id=%d is ABORT.", stmId);
+            "The stream %d is in abort state.", stmId);
         stm->StreamUnLock();
         stm->StarsStmDfxCheck(beginCnt, endCnt, checkCount);
         TryToReclaimTask(stm, needLog);
@@ -441,7 +444,7 @@ rtError_t ProcAicpuTask(TaskInfo *submitTask)
         rtCommand_t command;
         ToCommand(submitTask, &command);
         COND_RETURN_ERROR_MSG_INNER((submitTask->stream->Model_() == nullptr), RT_ERROR_MODEL_NULL,
-            "SubmitTask fail for model null, stream_id=%d.", submitTask->stream->Id_());
+            "ProcAicpuTask failed, model is NULL pointer, stream_id=%d.", submitTask->stream->Id_());
         (void)submitTask->stream->Model_()->SaveAicpuStreamTask(submitTask->stream, &command);
     }
     RT_LOG(RT_LOG_DEBUG, "aicpu stream,no need sent to ts,stream_id=%d,task_type=%d (%s).",
@@ -566,7 +569,7 @@ rtError_t DavidSendTask(TaskInfo *taskInfo, Stream * const stm)
     sendInfo.sqe_addr = RtPtrToPtr<uint8_t *, rtDavidSqe_t *>(sqeAddr);
     drvError_t drvRet = halSqTaskSend(devId, &sendInfo);
     COND_RETURN_ERROR_MSG_INNER((drvRet != DRV_ERROR_NO_RESOURCES) && (drvRet != DRV_ERROR_NONE),
-        RT_ERROR_DRV_ERR, "[drv api] device_id=%u, stream_id=%d send task fail retCode=%d.", devId, stm->Id_(), drvRet);
+        RT_ERROR_DRV_ERR, "[drv api] Call driver api halSqTaskSend failed, device_id=%u, stream_id=%d, drvRetCode=%d.", devId, stm->Id_(), drvRet);
     while (unlikely(drvRet == DRV_ERROR_NO_RESOURCES)) {
         RT_LOG(RT_LOG_WARNING, "halSqTaskSend fail. device_id=%u, ts_id=%u, sq_id=%u, cq_id=%u,"
             " stream_id=%d, task_id=%hu, task_type=%u(%s), error=%#x, drvRetCode=%d, tryCount=%u",
@@ -594,10 +597,10 @@ rtError_t CheckTaskCanSend(Stream * const stm)
     errorCode = stm->CheckContextStatus(false);
     COND_RETURN_ERROR(errorCode != RT_ERROR_NONE, errorCode, "context is abort, status=%#x.", static_cast<uint32_t>(errorCode));
     const rtError_t streamAbortStatus = stm->GetAbortStatus();
-    COND_RETURN_ERROR((streamAbortStatus == RT_ERROR_STREAM_ABORT),
+    COND_RETURN_ERROR_MSG_INNER((streamAbortStatus == RT_ERROR_STREAM_ABORT),
         RT_ERROR_STREAM_ABORT_SEND_TASK_FAIL,
-        "stream is in stream abort status, send task fail, device_id=%u, stream_id=%d",
-        stm->Device_()->Id_(), stm->Id_());
+        "The stream %d is in abort state, device_id=%u.",
+        stm->Id_(), stm->Device_()->Id_());
 
     TaskResManageDavid *taskResManag = RtPtrToPtr<TaskResManageDavid *, TaskResManage *>(stm->taskResMang_);
     if (unlikely(taskResManag == nullptr) && (!stm->IsSoftwareSqEnable()) && (!stm->IsAutoSplitSq())) {
@@ -646,7 +649,7 @@ rtError_t SubmitTaskPostProc(Stream * const stm, uint32_t pos, bool isNeedStream
     }
 
     error = TryRecycleTask(stm);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Try recycle task failed, retCode=%#x.",
+    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "TryRecycleTask failed, retCode=%#x.",
         static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }

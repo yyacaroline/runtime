@@ -528,16 +528,15 @@ rtError_t DeviceErrorProc::GetQosInfoFromRingbuffer()
 {
     NULL_PTR_RETURN(device_, RT_ERROR_DEVICE_NULL);
     NULL_PTR_RETURN(deviceRingBufferAddr_, RT_ERROR_DRV_MEMORY);
-
     constexpr uint32_t len = RTS_TIMEOUT_STREAM_SNAPSHOT_LEN + RUNTME_TSCH_CAPABILITY_LEN + QOS_INFO_LEN;
     COND_RETURN_ERROR(len >= ringBufferSize_, RT_ERROR_INVALID_VALUE,
-        "ring buffer length invalid, ringBufferSize=%u(bytes), len=%u(bytes)",
-        ringBufferSize_, len);
+        "The length of ring buffer is invalid, ringBufferSize=%u(bytes), len=%u(bytes).", ringBufferSize_, len);
     const uint32_t qosOffset = ringBufferSize_ - len;
     RtQos_t *devRtQos = RtValueToPtr<RtQos_t *>(RtPtrToValue<const void *>(deviceRingBufferAddr_) + qosOffset);
     
     std::unique_ptr<char[]> hostAddr(new (std::nothrow) char[sizeof(RtQos_t)]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        sizeof(RtQos_t));
 
     Driver * const devDrv = device_->Driver_();
     rtError_t error = devDrv->MemCopySync(hostAddr.get(), sizeof(RtQos_t), devRtQos,
@@ -596,7 +595,8 @@ rtError_t DeviceErrorProc::GetTschCapability(const void *devMem) const
     TschCapability *devTschCapa = RtValueToPtr<TschCapability *>(RtPtrToValue<const void *>(devMem) + tschOffset);
 
     std::unique_ptr<char[]> hostAddr(new (std::nothrow) char[sizeof(TschCapability)]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        sizeof(TschCapability));
     Driver * const devDrv = device_->Driver_();
     const rtError_t error = devDrv->MemCopySync(hostAddr.get(), sizeof(TschCapability), devTschCapa,
         sizeof(TschCapability), RT_MEMCPY_DEVICE_TO_HOST, false);
@@ -617,10 +617,16 @@ rtError_t DeviceErrorProc::GetTschCapability(const void *devMem) const
         capaLen = static_cast<uint32_t>(sizeof(tschCapa->capability));
     }
     uint8_t *capa = new (std::nothrow) uint8_t[capaLen];
-    NULL_PTR_RETURN(capa, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(capa == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        capaLen * sizeof(uint8_t));
     const int ret = memcpy_s(capa, capaLen, tschCapa->capability, capaLen);
-    COND_PROC_RETURN_ERROR(ret != EOK, RT_ERROR_SEC_HANDLE, DELETE_A(capa),
-        "memcpy_s faild, ret=%d, len=%u", ret, capaLen);
+    if (ret != EOK) {
+        RT_LOG_INNER_MSG(RT_LOG_ERROR,
+            "Failed to call memcpy_s to copy tschCapa->capability, src=%p, dest=%p, dest_max=%u, count=%u, retCode=%d.",
+            tschCapa->capability, capa, capaLen, capaLen, ret);
+        DELETE_A(capa);
+        return RT_ERROR_SEC_HANDLE;
+    }
     device_->InitTschCapability(capa, capaLen, tschCapa->header.depth);
     device_->SetSupportFlipVersionSwitch();
     Runtime::Instance()->SetTilingkeyFlag(
@@ -737,7 +743,8 @@ rtError_t DeviceErrorProc::CreateDeviceRingBufferAndSendTask()
     NULL_PTR_RETURN(devMem, RT_ERROR_DRV_MEMORY);
 
     std::unique_ptr<char[]> hostAddr(new (std::nothrow) char[ringBufferSize_]);
-    COND_GOTO_ERROR(hostAddr == nullptr, ERROR_FREE, error, RT_ERROR_MEMORY_ALLOCATION, "new memory failed.");
+    COND_GOTO_MSG_OUTER(hostAddr == nullptr, ERROR_FREE, error, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        ringBufferSize_);
     (void)memset_s(hostAddr.get(), ringBufferSize_, 0U, ringBufferSize_);
 
     error = WriteRuntimeCapability(hostAddr.get());
@@ -977,7 +984,8 @@ rtError_t DeviceErrorProc::ProcErrorInfoWithoutLock(const TaskInfo * const taskP
 {
     RT_LOG(RT_LOG_INFO, "Begin to process device abnormal info.");
     std::unique_ptr<char[]> hostAddr(new (std::nothrow)  char[ringBufferSize_]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        ringBufferSize_);
     NULL_PTR_RETURN(device_, RT_ERROR_DEVICE_NULL);
 
     // 1. memcpy ringbuffer to host
@@ -1143,7 +1151,8 @@ rtError_t DeviceErrorProc::ProcessReportRingBuffer(const DevRingBufferCtlInfo * 
     // copy element
     size_t copySize  = sizeof(RingBufferElementInfo) + sizeof(StarsDeviceErrorInfo);
     std::unique_ptr<char[]> elementHostAddr(new (std::nothrow) char[copySize]);
-    NULL_PTR_RETURN(elementHostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(elementHostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        copySize);
 
     const size_t elementSize = (device_->IsDavidPlatform()) ? \
         static_cast<size_t>(tmpCtrlInfo->elementSize) : \
@@ -1215,7 +1224,8 @@ rtError_t DeviceErrorProc::ReportRingBuffer(uint16_t *errorStreamId)
     rtError_t error;
     constexpr uint64_t headSize = sizeof(DevRingBufferCtlInfo);
     std::unique_ptr<char[]> hostAddr(new (std::nothrow) char[headSize]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        headSize);
     NULL_PTR_RETURN(device_, RT_ERROR_DEVICE_NULL);
     Driver * const devDrv = Runtime::Instance()->driverFactory_.GetDriver(NPU_DRIVER);
     NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
@@ -1267,7 +1277,8 @@ void ConvertErrorCodeForFastReport(StarsOpExceptionInfo* report)
 rtError_t DeviceErrorProc::ProcCleanRingbuffer()
 {
     std::unique_ptr<char[]> hostAddr(new (std::nothrow)  char[ringBufferSize_]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        ringBufferSize_);
     NULL_PTR_RETURN(device_, RT_ERROR_DEVICE_NULL);
     (void)memset_s(hostAddr.get(), ringBufferSize_, 0U, ringBufferSize_);
     // 1. memcpy ringbuffer to host
@@ -1392,7 +1403,7 @@ static void PrintSnapshotInfo(TaskInfo * const tsk, char_t * const errStr, int32
             break;
     }
 
-    COND_RETURN_VOID(ret < 0, "sprintf_s failed, ret=%d.", ret);
+    COND_RETURN_VOID_AND_MSG_INNER(ret < 0, "Failed to call sprintf_s, count=%d.", ret);
 }
 
 rtError_t DeviceErrorProc::PrintStreamTimeoutSnapshotInfo()
@@ -1410,7 +1421,8 @@ rtError_t DeviceErrorProc::PrintStreamTimeoutSnapshotInfo()
 
     const std::unique_lock<std::mutex> lk(device_->GetErrProLock());
     std::unique_ptr<char[]> hostAddr(new (std::nothrow) char[sizeof(RtsTimeoutStreamSnapshot)]);
-    NULL_PTR_RETURN(hostAddr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostAddr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        sizeof(RtsTimeoutStreamSnapshot));
     error = devDrv->MemCopySync(hostAddr.get(), static_cast<uint64_t>(snapshotLen_),
         device_->GetSnapshotAddr(), static_cast<uint64_t>(snapshotLen_), RT_MEMCPY_DEVICE_TO_HOST, false);
     ERROR_RETURN(error, "Failed to Memcpy snapshot from dev to host");
@@ -1433,7 +1445,7 @@ rtError_t DeviceErrorProc::PrintStreamTimeoutSnapshotInfo()
             "stream_id=%hu, task_id=%hu, taskType=%d (%s)",
             streamId, taskId, tsk->type, tsk->typeName);
         if ((countNum < 0) || (countNum > MSG_LENGTH)) {
-            RT_LOG(RT_LOG_ERROR, "cpy countNum=%d error", countNum);
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to call sprintf_s, count=%d.", countNum);
             continue;
         }
         PrintSnapshotInfo(tsk, errStr, countNum);
@@ -1540,7 +1552,7 @@ rtError_t DeviceErrorProc::ProcessStarsWaitTimeoutErrorInfo(const StarsDeviceErr
             info->u.timeoutErrorInfo.streamId, info->u.timeoutErrorInfo.sqId, info->u.timeoutErrorInfo.taskId);
     }
     if (errTaskPtr == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_GE, "Error task from the device stream.");
+        RT_LOG_CALL_MSG(ERR_MODULE_RTS, "Error task reported by the device stream.");
     }
     return RT_ERROR_NONE;
 }
@@ -1685,7 +1697,7 @@ rtError_t DeviceErrorProc::ProcessStarsSdmaErrorInfo(const StarsDeviceErrorInfo 
     if (type == static_cast<uint16_t>(SDMA_ERROR)) {
         RecordSdmaErrorInfo(dev, coreNum, errTaskPtr, info, errorNumber);
         if (errTaskPtr == nullptr) {
-            RT_LOG_CALL_MSG(ERR_MODULE_GE, "Error task from the device stream.");
+            RT_LOG_CALL_MSG(ERR_MODULE_GE, "Error task reported by the device stream.");
         }
     } else {
         ProcessCoreErrors(info, errorNumber, dev, errTaskPtr, coreNum);

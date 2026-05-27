@@ -383,7 +383,8 @@ void CheckAndPrintRasInfo(const Device * const dev)
     
     constexpr uint32_t maxFaultNum = 128U;
     rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_RETURN_VOID((faultEventInfo == nullptr), "new rtDmsFaultEvent failed.");
+    COND_RETURN_VOID_AND_MSG_OUTER(faultEventInfo == nullptr, ErrorCode::EE1013,
+        maxFaultNum * sizeof(rtDmsFaultEvent));
     const size_t totalSize = maxFaultNum * sizeof(rtDmsFaultEvent);
     const std::function<void()> releaseFunc = [&faultEventInfo]() { DELETE_A(faultEventInfo); };
     ScopeGuard faultEventInfoRelease(releaseFunc);
@@ -474,7 +475,8 @@ static void AixLinkErrProc(const Device * const dev, const StarsDeviceErrorInfo 
 {
     constexpr uint32_t maxFaultNum = 128U;
     rtDmsFaultEvent *faultEventInfo = new (std::nothrow)rtDmsFaultEvent[maxFaultNum];
-    COND_RETURN_VOID((faultEventInfo == nullptr), "new rtDmsFaultEvent failed.");
+    COND_RETURN_VOID_AND_MSG_OUTER(faultEventInfo == nullptr, ErrorCode::EE1013,
+        maxFaultNum * sizeof(rtDmsFaultEvent));
 
     const std::function<void()> releaseFunc = [&faultEventInfo]() { DELETE_A(faultEventInfo); };
     ScopeGuard faultEventInfoRelease(releaseFunc);
@@ -976,7 +978,7 @@ rtError_t ProcRingBufferTaskDavid(const Device *const dev, const void * const de
     Stream *stm = dev->GetCtrlSQStream(dev->PrimaryStream_());
     NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream check failed, stream_id=%d, retCode=%#x.", stm->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(),
         static_cast<uint32_t>(error));
     uint32_t pos = 0xFFFFU;
     std::function<void()> const errRecycle = [&tsk, &stm, &pos]() {

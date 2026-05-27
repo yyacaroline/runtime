@@ -176,9 +176,8 @@ rtError_t rtsLabelSwitchListCreate(rtLabel_t *labels, size_t num, void **labelLi
 {
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
-    COND_RETURN_WITH_EXT_ERRCODE(((num == 0U) || (num > static_cast<size_t>(MAX_UINT16_NUM))), RT_ERROR_INVALID_VALUE,
-        "Invalid label num, current num=%zu, valid range is (0, %u].",
-        num, MAX_UINT16_NUM);
+    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM(((num == 0U) || (num > static_cast<size_t>(MAX_UINT16_NUM))),
+        RT_ERROR_INVALID_VALUE, num, "(0, " + std::to_string(MAX_UINT16_NUM) + "]");
     RT_VALIDATE_AND_UNWRAP_OBJECT_ARRAY(labels, num, Label, realLabels);
     const rtError_t error = apiInstance->LabelSwitchListCreate(realLabels.data(), num, labelList);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
