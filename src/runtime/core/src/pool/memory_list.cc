@@ -31,13 +31,14 @@ rtError_t MemoryList::AddBlock(void *address, size_t size)
 {
     rtError_t error = RT_ERROR_NONE;
     MemoryBlock* block = new (std::nothrow) MemoryBlock;
-    NULL_PTR_RETURN(block , RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(block == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        std::to_string(sizeof(MemoryBlock)).c_str());
     block->address = address;
     block->size = size;
 
     ListNode* node = new (std::nothrow) ListNode;
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, node == nullptr, BLOCK_FREE,
-        error, RT_ERROR_MEMORY_ALLOCATION, "allocate memory failed.");
+    COND_GOTO_MSG_OUTER(node == nullptr, BLOCK_FREE, error,
+        RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, std::to_string(sizeof(ListNode)).c_str());
     node->block = block;
     node->next = nullptr;
 

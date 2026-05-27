@@ -1789,18 +1789,24 @@ rtError_t ApiErrorDecorator::CheckMemcpyAttribute(const rtMemcpyKind kind, const
     rtPtrAttributes_t srcAttributes = {};
     rtPtrAttributes_t destAttributes = {};
     rtError_t error = impl_->PtrGetAttributes(dst, &destAttributes);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Get dst pointer attributes failed, retCode=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_AND_MSG_OUTER(error != RT_ERROR_NONE, error, ErrorCode::EE1017, __func__, "desc",
+        "Failed to get dst pointer memory attributes");
 
     error = impl_->PtrGetAttributes(src, &srcAttributes);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Get src pointer attributes failed, retCode=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_AND_MSG_OUTER(error != RT_ERROR_NONE, error, ErrorCode::EE1017, __func__, "desc",
+        "Failed to get src pointer memory attributes");
 
-    COND_RETURN_ERROR_MSG_INNER((((kind == RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE) &&
-        (destAttributes.location.id != srcAttributes.location.id)) || 
-        ((kind == RT_MEMCPY_KIND_INTER_DEVICE_TO_DEVICE) && (destAttributes.location.id == srcAttributes.location.id))),
-        RT_ERROR_INVALID_VALUE, "DstAddr and srcAddr do not matched with the kind, kind=%u, dstAddr=%p, srcAddr=%p, "
-        "dstAddr DeviceId=%u, srcAddr DeviceId=%u.", kind, dst, src, destAttributes.location.id, srcAttributes.location.id);
+    COND_RETURN_AND_MSG_OUTER(((kind == RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE) &&
+        (destAttributes.location.id != srcAttributes.location.id)),
+        RT_ERROR_INVALID_VALUE, ErrorCode::EE1011, __func__, std::to_string(static_cast<uint32_t>(kind)).c_str(), "kind",
+        "DstAddr and srcAddr do not match with the kind RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE, dstAddr DeviceId=" + std::to_string(destAttributes.location.id) +
+        ", srcAddr DeviceId=" + std::to_string(srcAttributes.location.id));
+    
+    COND_RETURN_AND_MSG_OUTER(
+        ((kind == RT_MEMCPY_KIND_INTER_DEVICE_TO_DEVICE) && (destAttributes.location.id == srcAttributes.location.id)),
+        RT_ERROR_INVALID_VALUE, ErrorCode::EE1011, __func__, std::to_string(static_cast<uint32_t>(kind)).c_str(), "kind",
+        "DstAddr and srcAddr do not match with the kind RT_MEMCPY_KIND_INTER_DEVICE_TO_DEVICE. dstAddr DeviceId=" + std::to_string(destAttributes.location.id) +
+        ", srcAddr DeviceId=" + std::to_string(srcAttributes.location.id));
 
     return RT_ERROR_NONE;
 }
@@ -1881,29 +1887,31 @@ rtError_t ApiErrorDecorator::SetMemcpyDesc(rtMemcpyDesc_t desc, const void * con
     rtPtrAttributes_t destAttributes;
     rtPtrAttributes_t descAttributes;
     rtError_t error = impl_->PtrGetAttributes(desc, &descAttributes);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Get desc pointer attributes failed, retCode=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_AND_MSG_OUTER(error != RT_ERROR_NONE, error, ErrorCode::EE1017, __func__, "desc",
+        "Failed to get desc pointer memory attributes");
 
     error = impl_->PtrGetAttributes(dstAddr, &destAttributes);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Get dstAddr pointer attributes failed, retCode=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_AND_MSG_OUTER(error != RT_ERROR_NONE, error, ErrorCode::EE1017, __func__, "dstAddr",
+        "Failed to get dstAddr pointer memory attributes");
 
     error = impl_->PtrGetAttributes(srcAddr, &srcAttributes);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "Get srcAddr pointer attributes failed, retCode=%#x.", static_cast<uint32_t>(error));
-
+    COND_RETURN_AND_MSG_OUTER(error != RT_ERROR_NONE, error, ErrorCode::EE1017, __func__, "srcAddr",
+        "Failed to get srcAddr pointer memory attributes");
+    
     COND_RETURN_ERROR_MSG_INNER(descAttributes.location.type != RT_MEMORY_LOC_DEVICE,
-        RT_ERROR_INVALID_VALUE, "rtsSetMemcpyDesc failed, desc addr type=%d is invalid!", descAttributes.location.type);
-
-    COND_RETURN_ERROR_MSG_INNER(((destAttributes.location.id != srcAttributes.location.id) ||
+         RT_ERROR_INVALID_VALUE, "rtsSetMemcpyDesc failed, desc addr type=%d is invalid!", descAttributes.location.type);
+    
+    COND_RETURN_AND_MSG_OUTER(((destAttributes.location.id != srcAttributes.location.id) ||
         (destAttributes.location.type != RT_MEMORY_LOC_DEVICE) ||
-        (srcAttributes.location.type != RT_MEMORY_LOC_DEVICE)), RT_ERROR_INVALID_VALUE,
-        "DstAddr and srcAddr do not matched with the kind, kind=%u, dstAddr=%p, srcAddr=%p, "
-        "dstAddr DeviceId=%u, srcAddr DeviceId=%u, dstAddr type=%d, srcAddr type=%d.", kind, dstAddr, srcAddr,
-        destAttributes.location.id, srcAttributes.location.id, destAttributes.location.type, srcAttributes.location.type);
+        (srcAttributes.location.type != RT_MEMORY_LOC_DEVICE)), RT_ERROR_INVALID_VALUE, ErrorCode::EE1017, __func__,
+        "dstAddr or srcAddr",
+        "DstAddr and srcAddr do not match with the kind RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE, dstAddr DeviceId=" + std::to_string(destAttributes.location.id) +
+        ", srcAddr DeviceId=" + std::to_string(srcAttributes.location.id) +
+        ", dstAddr type=" + std::to_string(destAttributes.location.type) +
+        ", srcAddr type=" + std::to_string(srcAttributes.location.type));
 
     error = impl_->SetMemcpyDesc(desc, srcAddr, dstAddr, count, kind, config);
-    ERROR_RETURN_MSG_INNER(error, "SetMemcpyDesc failed");
+    ERROR_RETURN_MSG_INNER(error, "Failed to set memcpy desc, retCode=%#x.", static_cast<uint32_t>(error));
     return error;
 }
 
@@ -3080,8 +3088,8 @@ rtError_t ApiErrorDecorator::ModelCreate(Model ** const mdl, const uint32_t flag
 rtError_t ApiErrorDecorator::ModelSetExtId(Model * const mdl, const uint32_t extId)
 {
     NULL_PTR_RETURN_MSG_OUTER(mdl, RT_ERROR_INVALID_VALUE);
-    COND_RETURN_ERROR_MSG_INNER(mdl->GetModelType() == RT_MODEL_CAPTURE_MODEL, RT_ERROR_INVALID_VALUE,
-        "capture model does not support set extId, modelType=%d .", mdl->GetModelType());
+    COND_RETURN_AND_MSG_OUTER(mdl->GetModelType() == RT_MODEL_CAPTURE_MODEL, RT_ERROR_INVALID_VALUE,
+        ErrorCode::EE1006, __func__, "ACL Graph mode");
 
     return impl_->ModelSetExtId(mdl, extId);
 }

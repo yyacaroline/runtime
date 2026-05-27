@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #include "package_rebuilder.hpp"
 #include "engine.hpp"
 #include "runtime.hpp"
@@ -40,7 +41,7 @@ bool PackageRebuilder::PackageReportReceive(const rtTaskReport_t * const report,
     const uint8_t packageReportNum = reportTask->pkgStat[report->packageType].packageReportNum;
     if (likely(packageReportNum == 1U)) {
         if (unlikely((report->SOP == 0U) || (report->EOP == 0U))) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Report missing SOP/EOP flag, "
+            RT_LOG(RT_LOG_ERROR, "Report missing SOP/EOP flag, "
                 "SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,task_id=%hu,"
                 "payLoad=0x%x,sq_id=%hu,phase=%hu,sq_head=%hu",
                 report->SOP, report->MOP, report->EOP, report->packageType, streamId, report->taskID,
@@ -61,7 +62,7 @@ bool PackageRebuilder::PackageReportReceive(const rtTaskReport_t * const report,
 
     if (report->SOP != 0U) {
         if (report->MOP != 0U) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Report invalid MOP flag, "
+            RT_LOG(RT_LOG_ERROR, "Report invalid MOP flag, "
                 "SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,task_id=%hu,"
                 "payLoad=0x%x,sq_id=%hu,phase=%hu,sq_head=%hu",
                 report->SOP, report->MOP, report->EOP, report->packageType, streamId, report->taskID,
@@ -78,21 +79,17 @@ bool PackageRebuilder::PackageReportReceive(const rtTaskReport_t * const report,
 
         const size_t packageBufLen = (packageReportNum + 1U) * sizeof(uint32_t);
         pkgBuf = static_cast<rtPackageBuf_t *>(malloc(packageBufLen));
-        COND_PROC_RETURN_ERROR(pkgBuf == nullptr, false,
-                               RT_LOG_INNER_DETAIL_MSG(RT_SYSTEM_INNER_ERROR, {"target", "size"},
-                                            {"pkgBuf", std::to_string(packageBufLen)});,
-                               "Report rebuilder memory alloc fail, SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,"
-                               "task_id=%hu,payLoad=0x%x,sq_id=%hu,phase=%hu,sq_head=%hu.",
-                               report->SOP, report->MOP, report->EOP, report->packageType, streamId, report->taskID,
-                               report->payLoad, report->SQ_id, report->phase, report->SQ_head);
+        COND_RETURN_AND_MSG_OUTER(pkgBuf == nullptr, false, ErrorCode::EE1013,
+            std::to_string(packageBufLen).c_str());
         const errno_t rc = memset_s(pkgBuf, packageBufLen, 0, packageBufLen);
         if (rc != EOK) {
-            RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "Report rebuilder memory set zero fail, "
-                "SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,task_id=%hu,"
-                "payLoad=0x%x,sq_id=%hu,phase=%hu,sq_head=%hu"
-                ",retCode=%d,size=%zu(bytes).", report->SOP, report->MOP, report->EOP, report->packageType,
+            RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, 
+                "Failed to reset rebuilder report memory in %s. Reason: Standard function memset_s failed. [Errno %d] %s. "
+                "SOP=%hu, MOP=%hu, EOP=%hu, packType=%hu, stream_id=%hu, task_id=%hu, payLoad=0x%x, sq_id=%hu, phase=%hu, sq_head=%hu, size=%zu(bytes).",
+                __func__, rc, strerror(rc), 
+                report->SOP, report->MOP, report->EOP, report->packageType,
                 streamId, report->taskID, report->payLoad, report->SQ_id, report->phase, report->SQ_head,
-                rc, packageBufLen);
+                packageBufLen);
             free(pkgBuf);
             pkgBuf = nullptr;
             return false;
@@ -110,7 +107,7 @@ bool PackageRebuilder::PackageReportReceive(const rtTaskReport_t * const report,
 
     if (report->EOP != 0U) {
         if (pkgBuf == nullptr) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR,
+            RT_LOG(RT_LOG_ERROR,
                 "Report rebuilder memory not found, "
                 "SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,task_id=%hu,payLoad=0x%x,"
                 "sq_id=%hu,phase=%hu,sq_head=%hu",
@@ -128,13 +125,16 @@ bool PackageRebuilder::PackageReportReceive(const rtTaskReport_t * const report,
             return false;
         }
         const errno_t ret = memcpy_s(package, pkgLen, pkgBuf->buf, pkgBuf->len * sizeof(uint32_t));
-        COND_LOG_ERROR(ret != EOK,
-                       "memcpy_s failed,SOP=%hu,MOP=%hu,EOP=%hu,packType=%hu,stream_id=%hu,task_id=%hu,"
-                       "payLoad=0x%x,sq_id=%hu,phase=%hu,sq_head=%hu, retCode=%d, copySize=%zu(bytes),"
-                       "targetSize=%zu(bytes)",
-                       report->SOP, report->MOP, report->EOP, report->packageType, streamId, report->taskID,
-                       report->payLoad, report->SQ_id, report->phase, report->SQ_head, ret,
-                       pkgBuf->len * sizeof(uint32_t), pkgLen);
+        if (ret != EOK) {
+            RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM,
+                "%s failed. Reason: Standard function memcpy_s failed. [Errno %d] %s. "
+                "SOP=%hu, MOP=%hu, EOP=%hu, packType=%hu, stream_id=%hu, task_id=%hu, "
+                "payLoad=0x%x, sq_id=%hu, phase=%hu, sq_head=%hu, copySize=%zu(bytes), targetSize=%zu(bytes).",
+                __func__, ret, strerror(ret),
+                report->SOP, report->MOP, report->EOP, report->packageType, streamId, report->taskID,
+                report->payLoad, report->SQ_id, report->phase, report->SQ_head,
+                pkgBuf->len * sizeof(uint32_t), pkgLen);
+        }
 
         free(pkgBuf);
         pkgBuf = nullptr;

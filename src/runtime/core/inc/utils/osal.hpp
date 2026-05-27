@@ -219,6 +219,9 @@ public:
 
     // Create Notifier object.
     static Notifier *CreateNotifier();
+
+    // Get actual thread object size allocated by CreateThread.
+    static size_t GetThreadObjectSize();
 };
 
 class PidTidFetcher {

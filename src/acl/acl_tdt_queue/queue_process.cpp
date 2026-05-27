@@ -390,7 +390,7 @@ namespace acl {
 
         bqs::QsProcMsgRsp *const rsp = reinterpret_cast<bqs::QsProcMsgRsp *>(ack.buf);
         if (rsp->retCode != 0) {
-            ACL_LOG_INNER_ERROR("query queue route failed, ret code is %d", rsp->retCode);
+            ACL_LOG_INNER_ERROR("Failed to query queue routes, ret code is %d.", rsp->retCode);
             (void)rtMbufFree(mBuf);
             devPtr = nullptr;
             mBuf = nullptr;
@@ -682,7 +682,7 @@ namespace acl {
         }
 
         if (ret != RT_ERROR_NONE) {
-            ACL_LOG_ERROR("failed to rtMemQueueDeQueueBuf, device is %d, qid is %u", deviceId, qid);
+            ACL_LOG_ERROR("Failed to rtMemQueueDeQueueBuf, device is %d, qid is %u.", deviceId, qid);
             return ret;
         }
 

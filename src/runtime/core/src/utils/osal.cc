@@ -344,6 +344,11 @@ Notifier *OsalFactory::CreateNotifier()
     return new (std::nothrow) LocalNotifier();
 }
 
+size_t OsalFactory::GetThreadObjectSize()
+{
+    return sizeof(LocalThread);
+}
+
 void ThreadGuard::ThreadExit()
 {
     RT_LOG(RT_LOG_INFO, "ThreadExit start.");

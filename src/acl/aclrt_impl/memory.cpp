@@ -1723,7 +1723,7 @@ aclError aclrtFreeBufImpl(aclrtMbuf buf)
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(buf);
     const rtError_t rtRet = rtMbufFree(buf);
     if (rtRet != RT_ERROR_NONE) {
-        ACL_LOG_CALL_ERROR("[Free][buf]fail to call rtMbufFree, result is [%d]", rtRet);
+        ACL_LOG_CALL_ERROR("[Free][buf]Failed to call rtMbufFree, result is [%d].", rtRet);
         return rtRet;
     }
     buf = nullptr;
@@ -1739,7 +1739,7 @@ aclError aclrtAllocBufImpl(aclrtMbuf *buf, size_t size)
     ACL_REQUIRES_POSITIVE_REPORT(size);
     const rtError_t rtRet = rtMbufAlloc(buf, size);
     if (rtRet != RT_ERROR_NONE) {
-        ACL_LOG_CALL_ERROR("[Alloc][buf]fail to call rtMbufAlloc, result is [%d]", rtRet);
+        ACL_LOG_CALL_ERROR("[Alloc][buf]Failed to call rtMbufAlloc, result is [%d].", rtRet);
         return rtRet;
     }
     return ACL_SUCCESS;

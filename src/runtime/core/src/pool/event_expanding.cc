@@ -60,27 +60,27 @@ void EventExpandingPool::FreeBufferForEvent(void * const addr, void * const para
 rtError_t EventExpandingPool::AllocAndInsertEvent(void** const eventAddr, int32_t *eventId)
 {
     const std::unique_lock<std::mutex> taskLock(EventMapLock_);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, eventIdCount_ == INT32_MAX, RT_ERROR_DRV_NO_EVENT_RESOURCES,
-        "event count is reaching the maximum.");
+    COND_RETURN_ERROR_MSG_INNER(eventIdCount_ == INT32_MAX, RT_ERROR_DRV_NO_EVENT_RESOURCES,
+        "Event count is reaching the maximum.");
     int32_t currentEventId = -1;
  	uint16_t oriPoolIndex = poolIndex_;
  	do {
  	    if (eventAllocator_[poolIndex_] == nullptr) {
  	        eventAllocator_[poolIndex_] = new (std::nothrow) BufferAllocator(sizeof(uint8_t), EVENT_INIT_CNT, PER_POOL_CNT,
  	            BufferAllocator::LINEAR, &MallocBufferForEvent, &FreeBufferForEvent, device_);
- 	        COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, eventAllocator_[poolIndex_] == nullptr, RT_ERROR_MEMORY_ALLOCATION,
- 	            "Init EventExpandingPool failed.");
+ 	        COND_RETURN_AND_MSG_OUTER(eventAllocator_[poolIndex_] == nullptr, RT_ERROR_MEMORY_ALLOCATION,
+ 	            ErrorCode::EE1013, std::to_string(sizeof(BufferAllocator)).c_str());
  	        RT_LOG(RT_LOG_INFO, "Init EventExpandingPool success, poolIndex=%hu.", poolIndex_);
  	    }
- 	 
+  	 
  	    currentEventId = eventAllocator_[poolIndex_]->AllocIdWithoutRetry(false);
  	    if (currentEventId >= 0) {
- 	        break; // alloc success
+ 	        break;
  	    }
  	    poolIndex_ = (poolIndex_ + 1U) % MAX_POOL_CNT;
  	} while (oriPoolIndex != poolIndex_); // only one loop
- 	COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, currentEventId < 0, RT_ERROR_DRV_NO_EVENT_RESOURCES,
- 	    "Alloc event_id form event pool failed.");
+ 	COND_RETURN_ERROR_MSG_INNER(currentEventId < 0, RT_ERROR_DRV_NO_EVENT_RESOURCES,
+ 	    "Failed to allocate event ID from event pool.");
  	lastEventId_ = EVENT_INIT_VALUE + (PER_POOL_CNT * poolIndex_) + currentEventId; // (init:65536) + (PER_POOL_CNT * index)  + cur
  	*eventAddr = eventAllocator_[poolIndex_]->GetItemById(currentEventId, false);
     *eventId = lastEventId_;
@@ -110,7 +110,7 @@ rtError_t EventExpandingPool::ResetBufferForEvent()
         }
         
         const rtError_t error = allocator->MemsetBuffers(device_, 0U);
-        ERROR_RETURN(error, "ResetBufferForEvent failed, poolIdx=%zu", poolIdx);
+        ERROR_RETURN(error, "Failed to reset event buffer, poolIdx=%zu", poolIdx);
     }
     return RT_ERROR_NONE;
 }

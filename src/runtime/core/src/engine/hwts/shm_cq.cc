@@ -38,8 +38,8 @@ rtError_t ShmCq::Init(Device * dev)
         return RT_ERROR_NONE;
     }
 
-    NULL_PTR_RETURN_MSG_OUTER(dev, RT_ERROR_INVALID_VALUE);
-    NULL_PTR_RETURN_MSG_OUTER(dev->Driver_(), RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(dev, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(dev->Driver_(), RT_ERROR_INVALID_VALUE);
     driver_ = dev->Driver_();
     deviceId_ = dev->Id_();
     tsId_ = dev->DevGetTsId();
@@ -50,6 +50,7 @@ rtError_t ShmCq::Init(Device * dev)
                static_cast<uint32_t>(error), deviceId_);
         return error;
     }
+
     ERROR_RETURN_MSG_INNER(error, "Failed to allocate virtual cq, retCode=%#x, deviceId=%u.",
         static_cast<uint32_t>(error), deviceId_);
     COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_DRV, (vSqBase_ == nullptr), RT_ERROR_INVALID_VALUE,
@@ -67,12 +68,11 @@ rtError_t ShmCq::InitCqShm(const uint32_t streamId)
         return RT_ERROR_NONE;
     }
 
-    COND_RETURN_ERROR_MSG_INNER(streamShmTaskId_ == nullptr, RT_ERROR_DRV_MALLOC_FAIL, "Malloc failed!");
-
-    COND_RETURN_ERROR_MSG_INNER(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
-                                "Query cq shm failed, virtual SQ address is NULL.");
+    COND_RETURN_ERROR(streamShmTaskId_ == nullptr, RT_ERROR_DRV_MALLOC_FAIL, "Failed to allocate memory for stream task ID.");
+    COND_RETURN_ERROR(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
+                                "Failed to initialize CQ shm. Reason: virtual SQ address is null.");
     COND_RETURN_ERROR_MSG_INNER(streamId >= RT_MAX_STREAM_ID, RT_ERROR_INVALID_VALUE,
-                                "Query cq shm failed, stream id is too large, stream_id=%u", streamId);
+                                "Failed to query CQ shm, Value %u for parameter streamId is invalid. Expected: [0, %u].", streamId, RT_MAX_STREAM_ID);
 
     uint8_t * const shmAddr = vSqBase_ + (streamId * sizeof(rtShmQuery_t));
     volatile rtShmQuery_t * const shareMemory = RtPtrToPtr<volatile rtShmQuery_t *>(shmAddr);
@@ -95,11 +95,11 @@ rtError_t ShmCq::InitCqShm(const uint32_t streamId)
 
 rtError_t ShmCq::QueryLatestTaskId(const uint32_t streamId, uint32_t &taskId) const
 {
-    COND_RETURN_ERROR_MSG_INNER(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
-                                "Query cq shm failed, virtual SQ address is NULL.");
+    COND_RETURN_ERROR(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
+                                "Failed to query CQ shm. Reason: virtual SQ address is null.");
 
     COND_RETURN_ERROR_MSG_INNER(streamId >= RT_MAX_STREAM_ID, RT_ERROR_INVALID_VALUE,
-                                "Query cq shm failed, stream id is too large, stream_id=%u", streamId);
+                                "Failed to query CQ shm, Value %u for parameter streamId is invalid. Expected: [0, %u].", streamId, RT_MAX_STREAM_ID);
 
     uint8_t * const shmAddr = vSqBase_ + (streamId * sizeof(rtShmQuery_t));
     volatile rtShmQuery_t * const shmQuery = RtPtrToPtr<volatile rtShmQuery_t *>(shmAddr);
@@ -127,10 +127,10 @@ TIMESTAMP_EXTERN(QueryCqShmData);
 rtError_t ShmCq::QueryCqShm(const uint32_t streamId, rtShmQuery_t &shareMemInfo)
 {
     TIMESTAMP_BEGIN(QueryCqShmData);
-    COND_RETURN_ERROR_MSG_INNER(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
-                                "Query cq shm failed, virtual SQ address is NULL.");
+    COND_RETURN_ERROR(vSqBase_ == nullptr, RT_ERROR_DRV_PTRNULL,
+                                "Failed to query cq shm. Reason: virtual SQ address is null.");
     COND_RETURN_ERROR_MSG_INNER(streamId >= RT_MAX_STREAM_ID, RT_ERROR_INVALID_VALUE,
-                                "Query cq shm failed, stream id is too large, stream_id=%u", streamId);
+                                "Query cq shm failed. Value %u for parameter streamId is invalid. Expected: [0, %u]", streamId, RT_MAX_STREAM_ID);
 
     uint8_t * const shmAddr = vSqBase_ + (streamId * sizeof(rtShmQuery_t));
     rtShmQuery_t * const shmQuery = RtPtrToPtr<rtShmQuery_t *>(shmAddr);

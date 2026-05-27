@@ -94,10 +94,9 @@ rtError_t H2HCopyMgr::H2DMemCopy(void *dst, const void * const src, const uint32
             curSize = (remaining < SECUREC_MEM_MAX_LEN) ? remaining : SECUREC_MEM_MAX_LEN;
             const errno_t ret = memcpy_s(RtValueToPtr<void *>(RtPtrToValue<void *>(dest) + offset), static_cast<size_t>(curSize),
                 RtValueToPtr<void *>(RtPtrToValue<void *>(nonConstSrc) + offset), static_cast<size_t>(curSize));
-            if (ret != EOK) {
-                RT_LOG(RT_LOG_ERROR, "Args host memcpy failed, size=%u, offset=%u, kind=%d, ret=%#x.", size, offset, RT_MEMCPY_HOST_TO_HOST, ret);
-                return RT_ERROR_INVALID_VALUE;
-            }
+            COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, ret != EOK, RT_ERROR_INVALID_VALUE,
+                "%s failed. Reason: Standard function memcpy_s failed. [Errno %d] %s. size=%u, offset=%u, kind=%d.",
+                __func__, ret, strerror(ret), size, offset, RT_MEMCPY_HOST_TO_HOST);
             offset += curSize;
         }
     }

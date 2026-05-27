@@ -223,7 +223,8 @@ rtError_t H2DCopyMgr::H2DMemCopy(void *dst, const void * const src, const uint64
         TIMESTAMP_BEGIN(rtKernelLaunch_MemCopyPcie);
         const errno_t ret = memcpy_s(dst, size, src, size);
         COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, ret != EOK, RT_ERROR_DRV_MEMORY,
-            "Pcie bar memcpy failed, kind=%d, ret=%#x.", RT_MEMCPY_HOST_TO_DEVICE, static_cast<uint32_t>(ret));
+            "%s failed. Reason: Standard function memcpy_s failed. [Errno %d] %s. dst=%p, src=%p, size=%lu.",
+            __func__, ret, strerror(ret), dst, src, size);
         TIMESTAMP_END(rtKernelLaunch_MemCopyPcie);
     } else if (policy_ == COPY_POLICY_ASYNC_PCIE_DMA) {
         CpyHandle *handle = static_cast<CpyHandle *>(dst);
@@ -231,7 +232,7 @@ rtError_t H2DCopyMgr::H2DMemCopy(void *dst, const void * const src, const uint64
         TIMESTAMP_BEGIN(rtKernelLaunch_MemCopyAsync_DmaFind);
         const auto iter = cpyInfoDmaMap_.cpyDmaMap.find(RtPtrToValue(handle->devAddr));
         if (iter == cpyInfoDmaMap_.cpyDmaMap.end()) {
-            ERROR_RETURN_MSG_INNER(RT_ERROR_MEMORY_ALLOCATION, "can't find dma info by args device addr.");
+            ERROR_RETURN_MSG_INNER(RT_ERROR_MEMORY_ALLOCATION, "Failed to find DMA info by device address.");
         }
         TIMESTAMP_END(rtKernelLaunch_MemCopyAsync_DmaFind);
         handle->isDmaPool = iter->second.isDma;
@@ -239,27 +240,35 @@ rtError_t H2DCopyMgr::H2DMemCopy(void *dst, const void * const src, const uint64
             RT_LOG(RT_LOG_WARNING, "dma convert failed, use Async copy, size=%" PRIu64 "(bytes)", size);
             error = drv_->MemCopyAsync(handle->devAddr, size, src, size,
                 RT_MEMCPY_HOST_TO_DEVICE, handle->copyStatus);
-            ERROR_RETURN_MSG_INNER(error, "Asynchronize memcpy failed, kind=%d, retCode=%#x.",
-                RT_MEMCPY_HOST_TO_DEVICE, error);
+            if (error != RT_ERROR_NONE) {
+                RT_LOG(RT_LOG_ERROR, "Failed to copy memory asynchronously, retCode=%#x.", error);
+                return error;
+            }
             return RT_ERROR_NONE;
         }
         TIMESTAMP_BEGIN(rtKernelLaunch_MemCopyAsync_HostCpy);
         const errno_t ret = memcpy_s(RtValueToPtr<void *>(iter->second.hostAddr),
             size, src, size);
         COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, ret != EOK, RT_ERROR_DRV_MEMORY,
-            "Pcie bar memcpy failed, kind=%d, ret=%#x.", RT_MEMCPY_HOST_TO_DEVICE, static_cast<uint32_t>(ret));
+            "%s failed. Reason: Standard function memcpy_s failed. [Errno %d] %s. dst=%p, src=%p, size=%lu.",
+            __func__, ret, strerror(ret), RtValueToPtr<void *>(iter->second.hostAddr), src, size);
+
         handle->dmaHandle = &(iter->second.dmaAddr);
         TIMESTAMP_END(rtKernelLaunch_MemCopyAsync_HostCpy);
         TIMESTAMP_BEGIN(rtKernelLaunch_MemCopyAsync);
         error = drv_->MemCopyAsyncEx(handle->dmaHandle);
-        ERROR_RETURN_MSG_INNER(error, "Asynchronize memcpy ex failed, kind=%d, retCode=%#x.",
-            RT_MEMCPY_HOST_TO_DEVICE, error);
+        if (error != RT_ERROR_NONE) {
+            RT_LOG(RT_LOG_ERROR, "Failed to execute asynchronous DMA copy, retCode=%#x.", error);
+            return error;
+        }
         TIMESTAMP_END(rtKernelLaunch_MemCopyAsync);
         handle->copyStatus = ASYNC_COPY_STATU_SUCC;
     } else if (policy_ == COPY_POLICY_SYNC) {
         error = drv_->MemCopySync(dst, size, src, size, RT_MEMCPY_HOST_TO_DEVICE);
-        ERROR_RETURN_MSG_INNER(error, "Synchronize memcpy failed, kind=%d, retCode=%#x.",
-            RT_MEMCPY_HOST_TO_DEVICE, error);
+        if (error != RT_ERROR_NONE) {
+            RT_LOG(RT_LOG_ERROR, "Failed to copy memory synchronously, retCode=%#x.", error);
+            return error;
+        }
     } else {
         // no op
     }
@@ -299,8 +308,10 @@ rtError_t H2DCopyMgr::ArgsPoolConvertAddr(void)
         cpyAddr.dmaAddr.offsetAddr.devid = static_cast<uint32_t>(dev->Id_());
         const rtError_t error = dev->Driver_()->MemConvertAddr(cpyAddr.hostAddr, devAddr,
             static_cast<uint64_t>(cpyInfoDmaMap_.cpyItemSize), &cpyAddr.dmaAddr);
-        ERROR_RETURN_MSG_INNER(error,
-            "Convert memory address from virtual to dma physical failed, retCode=%#x.", error);
+        if (error != RT_ERROR_NONE) {
+            RT_LOG(RT_LOG_ERROR, "Failed to convert virtual address to DMA physical address, retCode=%#x.", error); 
+            return error;
+        }
         RT_LOG(RT_LOG_DEBUG, "devAddr=%#llx, iter->second=%p, dmaAddr.phyAddr.priv=%p.",
             devAddr, iter->second.dmaAddr.phyAddr.priv, cpyAddr.dmaAddr.phyAddr.priv);
     }
@@ -437,15 +448,19 @@ rtError_t GetMemTsegInfo(const Device *const dev, void *devAddr, void *hostAddr,
 {
     rtError_t ret = dev->Driver_()->GetTsegInfoByVa(dev->Id_(), RtPtrToValue(hostAddr), size,
         1U, hostTsegInfo);
-    ERROR_PROC_RETURN_MSG_INNER(ret, (void)dev->Driver_()->HostMemFree(hostAddr);
-                                     (void)dev->Driver_()->DevMemFree(devAddr, dev->Id_());,
-                                       "host mem get segment failed, retCode=%#x, size=%lu, device_id=%u.",
-                                       ret, size, dev->Id_());
+    if (ret != RT_ERROR_NONE) {
+        (void)dev->Driver_()->HostMemFree(hostAddr);
+        (void)dev->Driver_()->DevMemFree(devAddr, dev->Id_());
+        RT_LOG(RT_LOG_ERROR, "Failed to get host memory segment info, retCode=%#x.", ret);
+        return ret;
+    }
     ret = dev->Driver_()->GetTsegInfoByVa(dev->Id_(), RtPtrToValue(devAddr), size, 0U, devTsegInfo);
-    ERROR_PROC_RETURN_MSG_INNER(ret, (void)dev->Driver_()->HostMemFree(hostAddr);
-                                     (void)dev->Driver_()->DevMemFree(devAddr, dev->Id_());,
-                                       "dev mem get segment failed, retCode=%#x, size=%lu, device_id=%u.",
-                                       ret, size, dev->Id_());
+    if (ret != RT_ERROR_NONE) {
+        (void)dev->Driver_()->HostMemFree(hostAddr);
+        (void)dev->Driver_()->DevMemFree(devAddr, dev->Id_());
+        RT_LOG(RT_LOG_ERROR, "Failed to get device memory segment info, retCode=%#x.", ret);
+        return ret;
+    }
     return RT_ERROR_NONE;
 }
 
@@ -571,7 +586,7 @@ rtError_t H2DCopyMgr::UbArgsPoolConvertAddr(void)
         const rtError_t error = GetMemTsegInfo(dev, RtValueToPtr<void *>(cpyAddrPtr->devBaseAddr),
             RtValueToPtr<void *>(cpyAddrPtr->hostBaseAddr), static_cast<uint64_t>(cpyInfoUbMap_.cpyItemSize),
             &(memInfo->devTsegInfo), &(memInfo->hostTsegInfo));
-        ERROR_RETURN_MSG_INNER(error,
+        ERROR_RETURN(error,
             "Refresh ub segment info failed, poolIndex=%u, devAddr=%#lx, retCode=%#x.", poolIndex, cpyAddrPtr->devBaseAddr, error);
         RT_LOG(RT_LOG_DEBUG, "Refresh ub segment success, poolIndex=%u, devAddr=%#lx.", poolIndex, cpyAddrPtr->devBaseAddr);
     }

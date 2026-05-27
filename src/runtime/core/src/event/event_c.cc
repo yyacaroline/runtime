@@ -20,7 +20,7 @@ namespace runtime {
 
 rtError_t EvtRecord(Event * const evt, Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = RT_ERROR_NONE;
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
     int32_t newEventId = davidEvt->EventId_();
@@ -28,13 +28,13 @@ rtError_t EvtRecord(Event * const evt, Stream * const stm)
     const bool oldHasRecord = davidEvt->HasRecord();
     TaskInfo *tsk = nullptr;
     error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
 
     uint32_t pos = 0xFFFFU;
     Stream *dstStm = stm;
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm);
-    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to alloc task, stream_id=%d, retCode=%#x.",
+    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
 
     if (davidEvt->IsNewMode() || davidEvt->GetEventFlag() == RT_EVENT_DEFAULT) {
@@ -57,23 +57,23 @@ rtError_t EvtRecord(Event * const evt, Stream * const stm)
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     return error;
 }
 
 rtError_t EvtRecordSoftwareMode(Event * const evt, Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
     TaskInfo *tsk = nullptr;
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
 
     void *eventAddr = nullptr;
     int32_t newEventId = INVALID_EVENT_ID;
     Device * const dev = stm->Device_();
     error = dev->AllocExpandingPoolEvent(&eventAddr, &newEventId);
-    ERROR_RETURN_MSG_INNER(error, "capture addr error, deviceId=%u, tsId=%u, retCode=%#x",
+    ERROR_RETURN(error, "Failed to capture address, deviceId=%u, tsId=%u, retCode=%#x",
         dev->Id_(), dev->DevGetTsId(), static_cast<uint32_t>(error));
     davidEvt->SetEventAddr(eventAddr);
     davidEvt->SetEventId(newEventId);
@@ -82,7 +82,7 @@ rtError_t EvtRecordSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm);
     ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, 
-        "Failed to alloc task, stream_id=%d, retCode=%#x.",
+        "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
 
     SaveTaskCommonInfo(tsk, dstStm, pos);
@@ -103,7 +103,7 @@ rtError_t EvtRecordSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     davidEvt->SetRecord(true);
     RT_LOG(RT_LOG_INFO, "capture event task submit success, device_id=%u, src_stream_id=%d->dst_stream_id=%d, task_id=%hu, event_id=%d, task_pos=%u",
         dev->Id_(), stm->Id_(), dstStm->Id_(), tsk->id, newEventId, pos);
@@ -113,7 +113,7 @@ rtError_t EvtRecordSoftwareMode(Event * const evt, Stream * const stm)
 rtError_t ProcStreamRecordTask(Stream * const stm, int32_t timeout)
 {
     rtError_t error = CheckTaskCanSend(stm);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "stream_id=%d check failed, retCode=%#x.",
+    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to check stream, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     uint32_t pos = 0xFFFFU;
     TaskInfo *tsk = nullptr;
@@ -127,18 +127,16 @@ rtError_t ProcStreamRecordTask(Stream * const stm, int32_t timeout)
     if (lastHalfRecord == nullptr) {
         lastHalfRecord = new (std::nothrow) DavidEvent(stm->Device_(), RT_EVENT_STREAM_MARK, stm->Context_(), false);
         stm->SetLastHalfRecord(lastHalfRecord);
-        COND_PROC_RETURN_ERROR_MSG_INNER((lastHalfRecord == nullptr),
-                                         RT_ERROR_EVENT_NEW,
-                                         stm->StreamUnLock();,
-                                         "Failed to alloc event, stream_id=%d.", stm->Id_());
+        COND_PROC_RETURN_AND_MSG_ALLOC_FAILED(lastHalfRecord == nullptr, RT_ERROR_EVENT_NEW,
+            stm->StreamUnLock();, sizeof(DavidEvent));
     }
     error = AllocTaskInfo(&tsk, stm, pos);
-    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to alloc task, stream_id=%d, retCode=%#x.",
+    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     ScopeGuard tskErrRecycle(errRecycle);
     SaveTaskCommonInfo(tsk, stm, pos);
     error = DavidEventRecordTaskInit(tsk, lastHalfRecord, lastHalfRecord->EventId_());
-    ERROR_RETURN_MSG_INNER(error, "event init fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN(error, "Failed to initialize event, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     DavidEventRecordTaskInfo * const eventRecordTsk = &(tsk->u.davidEventRecordTaskInfo);
     eventRecordTsk->timeout = timeout;
@@ -147,7 +145,7 @@ rtError_t ProcStreamRecordTask(Stream * const stm, int32_t timeout)
     SetSqPos(tsk, pos);
     tsk->stmArgPos = (static_cast<DavidStream *>(stm))->GetArgPos();
     error = DavidSendTask(tsk, stm);
-    ERROR_RETURN_MSG_INNER(error, "event task send fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Failed to send event task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     tskErrRecycle.ReleaseGuard();
     stm->StreamUnLock();
@@ -156,14 +154,14 @@ rtError_t ProcStreamRecordTask(Stream * const stm, int32_t timeout)
         stm->SetNeedSyncFlag(true);
         return error;
     }
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.",
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
 rtError_t EvtWait(Event * const evt, Stream * const stm, const uint32_t timeout)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = RT_ERROR_NONE;
     Device * const dev = stm->Device_();
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
@@ -180,13 +178,13 @@ rtError_t EvtWait(Event * const evt, Stream * const stm, const uint32_t timeout)
         return RT_ERROR_INVALID_VALUE;
     }
     error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     TaskInfo *tsk = nullptr;
     uint32_t pos = 0xFFFFU;
     Stream *dstStm = stm;
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm);
-    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to alloc task, stream_id=%d, retCode=%#x.",
+    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     SaveTaskCommonInfo(tsk, dstStm, pos);
     DavidEventWaitTaskInit(tsk, davidEvt, eventId, timeout);
@@ -201,21 +199,21 @@ rtError_t EvtWait(Event * const evt, Stream * const stm, const uint32_t timeout)
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
 rtError_t EvtWaitSoftwareMode(Event * const evt, Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
 
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
     Device * const dev = stm->Device_();
     void *eventAddr = davidEvt->GetEventAddr();
-    COND_RETURN_ERROR_MSG_INNER(eventAddr == nullptr, RT_ERROR_EVENT_RECORDER_NULL,
- 	    "eventAddr is null, event_id=%d.", davidEvt->EventId_());
+    COND_RETURN_ERROR(eventAddr == nullptr, RT_ERROR_EVENT_RECORDER_NULL,
+  	    "Event address is null, event_id=%d.", davidEvt->EventId_());
 
     TaskInfo *tsk = nullptr;
     uint32_t pos = 0xFFFFU;
@@ -223,14 +221,14 @@ rtError_t EvtWaitSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm, MEM_WAIT_V2_SQE_NUM);
     ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, 
-        "Failed to alloc task, stream_id=%d, retCode=%#x.",
+        "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     SaveTaskCommonInfo(tsk, dstStm, pos, MEM_WAIT_V2_SQE_NUM);
     tsk->typeName = "EVENT_WAIT";
     tsk->type = TS_TASK_TYPE_CAPTURE_WAIT;
     error = MemWaitValueTaskInit(tsk, eventAddr, 1UL, 0U);
     ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, 
-        "Task init failed, stream_id=%d, retCode=%#x.",
+        "Failed to initialize task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     MemWaitValueTaskInfo *memWaitValueTask = &tsk->u.memWaitValueTask;
     memWaitValueTask->awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_8BIT;
@@ -245,7 +243,7 @@ rtError_t EvtWaitSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "capture wait task submit success, device_id=%u, src_stream_id=%d->dst_stream_id=%d, task_id=%hu, event_id=%d, task_pos=%u",
         dev->Id_(), stm->Id_(), dstStm->Id_(), tsk->id, davidEvt->EventId_(), pos);
     return RT_ERROR_NONE;
@@ -253,18 +251,18 @@ rtError_t EvtWaitSoftwareMode(Event * const evt, Stream * const stm)
 
 rtError_t EvtReset(Event * const evt, Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     TaskInfo *tsk = nullptr;
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
     const int32_t eventId = davidEvt->EventId_();
     uint32_t pos = 0xFFFFU;
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
 
     Stream *dstStm = stm;
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm);
-    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to alloc task, stream_id=%d, retCode=%#x.",
+    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     SaveTaskCommonInfo(tsk, dstStm, pos);
     DavidEventResetTaskInit(tsk, davidEvt, eventId);
@@ -280,21 +278,21 @@ rtError_t EvtReset(Event * const evt, Stream * const stm)
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     davidEvt->SetHasReset(true);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     return RT_ERROR_NONE;
 }
 
 rtError_t EvtResetSoftwareMode(Event * const evt, Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     rtError_t error = CheckTaskCanSend(stm);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
 
     DavidEvent *davidEvt = static_cast<DavidEvent *>(evt);
     Device * const dev = stm->Device_();
     void *eventAddr = davidEvt->GetEventAddr();
-    COND_RETURN_ERROR_MSG_INNER(eventAddr == nullptr, RT_ERROR_EVENT_RECORDER_NULL,
- 	    "eventAddr is null, event_id=%d.", davidEvt->EventId_());
+    COND_RETURN_ERROR(eventAddr == nullptr, RT_ERROR_EVENT_RECORDER_NULL,
+  	    "Event address is null, event_id=%d.", davidEvt->EventId_());
 
     TaskInfo *tsk = nullptr;
     uint32_t pos = 0xFFFFU;
@@ -302,7 +300,7 @@ rtError_t EvtResetSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamLock();
     error = AllocTaskInfoForCapture(&tsk, stm, pos, dstStm);
     ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, 
-        "Failed to alloc task, stream_id=%d, retCode=%#x.",
+        "Failed to allocate task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
 
     SaveTaskCommonInfo(tsk, dstStm, pos);
@@ -322,7 +320,7 @@ rtError_t EvtResetSoftwareMode(Event * const evt, Stream * const stm)
     stm->StreamUnLock();
     SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), tsk->taskSn);
     error = SubmitTaskPostProc(dstStm, pos);
-    ERROR_RETURN_MSG_INNER(error, "recycle fail, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", stm->Id_(), static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "reset task submit success, device_id=%u, src_stream_id=%d->dst_stream_id=%d, task_id=%hu, event_id=%d, task_pos=%u",
         dev->Id_(), stm->Id_(), dstStm->Id_(), tsk->id, davidEvt->EventId_(), pos);
     return error;

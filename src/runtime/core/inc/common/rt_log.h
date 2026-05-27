@@ -43,6 +43,7 @@ enum class ErrorCode
     EE1018,
     EE1019,
     EE1020,
+    EE1021,
     EE2002,
     WE0001
 };

@@ -319,7 +319,7 @@ aclError aclrtGetMemUceInfoImpl(int32_t deviceId, aclrtMemUceInfo *memUceInfoArr
     rtMemUceInfo rtUceInfo = {};
     ACL_REQUIRES_CALL_RTS_OK(rtGetMemUceInfo(deviceId, &rtUceInfo), rtGetMemUceInfo);
     if (arraySize < rtUceInfo.count) {
-        ACL_LOG_ERROR("failed to execute aclrtGetMemUceInfo, because arraySize %zu is less than the required size %u",
+        ACL_LOG_ERROR("Failed to execute aclrtGetMemUceInfo, because arraySize %zu is less than the required size %u.",
                       arraySize, rtUceInfo.count);
         const std::string arraySizeVal = std::to_string(arraySize);
         std::string reason = acl::AclErrorLogManager::FormatStr(
@@ -357,8 +357,8 @@ aclError aclrtMemUceRepairImpl(int32_t deviceId, aclrtMemUceInfo *memUceInfoArra
     size_t reservedZeroValue[UCE_INFO_RESERVED_SIZE] = {0};
     for (size_t i = 0; i < arraySize; ++i) {
         if (memcmp(memUceInfoArray[i].reserved, reservedZeroValue, UCE_INFO_RESERVED_SIZE)) {
-            ACL_LOG_ERROR("failed to execute aclrtMemUceRepair with mismatched version, "
-                          "pls set valid value only for ptr and len ");
+            ACL_LOG_ERROR("Failed to execute aclrtMemUceRepair with mismatched version, "
+                          "pls set valid value only for ptr and len.");
             const char_t *argList[] = {"func", "param", "reason"};
             const char_t *argVal[] = {__func__, "memUceInfoArray.reserved", "memUceInfoArray.reserved is a reserved parameter and must be 0"};
             acl::AclErrorLogManager::ReportInputErrorWithChar(acl::INVALID_PARAM_NO_VALUE_MSG, argList, argVal, 3U);

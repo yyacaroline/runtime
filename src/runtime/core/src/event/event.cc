@@ -294,7 +294,7 @@ rtError_t Event::CreateEventNotifier(Notifier* &notifier)
 {
     const std::lock_guard<std::mutex> initLock(initMutex_);
     notifier = OsalFactory::CreateNotifier();
-    NULL_PTR_RETURN_MSG(notifier, RT_ERROR_NOTIFY_NEW);
+    COND_RETURN_AND_MSG_OUTER(notifier == nullptr, RT_ERROR_NOTIFY_NEW, ErrorCode::EE1013, sizeof(Notifier));
     return RT_ERROR_NONE;
 }
 
@@ -312,7 +312,7 @@ rtError_t Event::AllocEventIdResource(const Stream * const stm, int32_t &newEven
             tryCount++;
             (void)device_->TaskReclaimAllForNoRes(false, taskId);
             errorAbort = stm->CheckContextStatus();
-            ERROR_RETURN(errorAbort, "context is abort, status=%#x.", static_cast<uint32_t>(errorAbort));
+            ERROR_RETURN(errorAbort, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<uint32_t>(errorAbort));
         }
         RT_LOG(RT_LOG_INFO, "alloc_id=%d, event_id=%d, err_code=%d.", newEventId, eventId_, error);
     } while ((error == RT_ERROR_DRV_NO_EVENT_RESOURCES) && (device_->GetDevStatus() == RT_ERROR_NONE) &&
@@ -360,12 +360,12 @@ rtError_t Event::GenEventId()
         return RT_ERROR_NONE;
     }
     devDrv = rt->driverFactory_.GetDriver(NPU_DRIVER);
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
     const uint32_t eventFlag = ((eventFlag_ == RT_EVENT_MC2) &&
         (device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DRIVER_EVENT_MC2))) ?
         static_cast<uint32_t>(eventFlag_) : 0U;
     error = devDrv->EventIdAlloc(&eventId_, deviceId, tsId, eventFlag, true);
-    ERROR_RETURN(error, "Event id alloc error, device_id=%u, tsId=%u, retCode=%#x!", deviceId, tsId, error);
+    ERROR_RETURN(error, "Failed to allocate event id, device_id=%u, tsId=%u, retCode=%#x.", deviceId, tsId, error);
 
     RT_LOG(RT_LOG_INFO, "Event id alloc success, device_id=%u, tsId=%u, eventFlag=%" PRIu64 ", event_id=%d",
            deviceId, tsId, eventFlag_, eventId_);
@@ -381,11 +381,11 @@ rtError_t Event::ReAllocId()
 
     Runtime * const rt = Runtime::Instance();
     Driver *devDrv = rt->driverFactory_.GetDriver(NPU_DRIVER);
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
     const rtError_t error = devDrv->ReAllocResourceId(device_->Id_(), device_->DevGetTsId(), 0U,
         static_cast<uint32_t>(eventId_), DRV_EVENT_ID);
-    ERROR_RETURN(error, "Realloc event id failed, eventId=%d, deviceId=%u, retCode=%d.",
-        eventId_, device_->Id_(), error);
+    ERROR_RETURN(error, "Failed to realloc event id, eventId=%d, deviceId=%u, retCode=%#x.",
+        eventId_, device_->Id_(), static_cast<uint32_t>(error));
 
     RT_LOG(RT_LOG_INFO, "Event id re alloc success, device_id=%u, tsId=%u, event_id=%d",
            device_->Id_(), device_->DevGetTsId(), eventId_);
@@ -404,7 +404,7 @@ rtError_t Event::GetEventID(uint32_t * const evtId) const
 
 rtError_t Event::Record(Stream * const stm, const bool isApiCall)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     const std::lock_guard<std::mutex> lockRecord(eventLockForRecord_);
     if ((!IsHardwareMode()) && (captureStream_ != nullptr)) {
         return CaptureEventProcess(stm);
@@ -421,13 +421,13 @@ rtError_t Event::Record(Stream * const stm, const bool isApiCall)
     rtTaskGenCallback callback = nullptr;
     tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_EVENT_RECORD, errorReason);
     COND_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-                                "Failed to alloc task when event record, stream_id=%d.", stm->Id_());
+                                "Failed to allocate task when event record, stream_id=%d.", stm->Id_());
     if (isNewMode_ || eventFlag_ == RT_EVENT_DEFAULT) {
         InitEventAllocFlag(stm->Id_());
         if (isIdAllocFromDrv_) {
             error = AllocEventIdResource(stm, newEventId);
-            ERROR_GOTO_MSG_INNER(error, TASK_RECYCLE, "Event id alloc error, deviceId=%u, tsId=%u, retCode=%#x!",
-                                 device_->Id_(), device_->DevGetTsId(), error);
+            ERROR_GOTO_MSG_INNER(error, TASK_RECYCLE, "Failed to allocate event id, deviceId=%u, tsId=%u, retCode=%#x.",
+                device_->Id_(), device_->DevGetTsId(), static_cast<uint32_t>(error));
         } else {
             const std::lock_guard<std::mutex> lock(idMapMutex_);
             newEventId = eventId_;
@@ -439,12 +439,12 @@ rtError_t Event::Record(Stream * const stm, const bool isApiCall)
     {
         const std::lock_guard<std::mutex> lock(eventLock_);
         error = EventRecordTaskInit(tsk, this, false, newEventId);
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to init record task, retCode=%#x.",
+        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to initialize record task, retCode=%#x.",
                              static_cast<uint32_t>(error));
     }
     error = UpdateEventTimeLine(tsk, this); // can not in task init because maybe deadlock
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Get timeline buffer failed, retCode=%#x.",
-        static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to get timeline buffer, retCode=%#x.",
+                         static_cast<uint32_t>(error));
     callback = (stm->Context_() == nullptr) ? nullptr : stm->Context_()->TaskGenCallback_();
     error = dev->SubmitTask(tsk, callback);
     TryFreeLastEventId();
@@ -515,7 +515,7 @@ bool Event::WaitSendCheck(const Stream * const stm, int32_t &eventId)
 
 rtError_t Event::Wait(Stream * const stm, const uint32_t timeout)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     if ((!IsHardwareMode()) && (captureStream_ != nullptr)) {
         return CaptureWaitProcess(stm);
     }
@@ -527,9 +527,9 @@ rtError_t Event::Wait(Stream * const stm, const uint32_t timeout)
     const uint32_t recDevId = device_->Id_();
     if ((!isNotify_) && ((eventFlag_ & (RT_EVENT_DDSYNC_NS | RT_EVENT_EXTERNAL)) == 0U) &&
         (!HasRecord() || (eventId == INVALID_EVENT_ID))) {
-        RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, "The wait event cannot be submitted before the record event. device_id=%u, "
-            "stream_id=%d, flag=%" PRIu64 ", model=%s.",
-            recDevId, stm->Id_(), eventFlag_, stm->GetModelNum() != 0 ? "yes" : "no");
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1018, 
+            "The event has not been recorded. "
+            "Call rtRecordEvent first to record the event on a stream");
         EventIdCountSub(eventId);
         return RT_ERROR_INVALID_VALUE;
     }
@@ -544,7 +544,7 @@ rtError_t Event::Wait(Stream * const stm, const uint32_t timeout)
     tsk = isRemoteEventWait ? stm->AllocTask(&submitTask, TS_TASK_TYPE_REMOTE_EVENT_WAIT, errorReason) :
           stm->AllocTask(&submitTask, TS_TASK_TYPE_STREAM_WAIT_EVENT, errorReason);
     COND_PROC_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-                                     EventIdCountSub(eventId), "task alloc fail err:%#x",
+                                     EventIdCountSub(eventId), "Failed to allocate task, retCode=%#x.",
                                      static_cast<uint32_t>(errorReason));
 
     isRemoteEventWait ? (void)RemoteEventWaitTaskInit(tsk, this, static_cast<int32_t>(recDevId), eventId) :
@@ -568,7 +568,7 @@ ERROR_RECYCLE:
 // new mode not call
 rtError_t Event::Reset(Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
     if ((!IsHardwareMode()) && (captureStream_ != nullptr)) { // capture mode
         return CaptureResetProcess(stm);
     }
@@ -584,7 +584,7 @@ rtError_t Event::Reset(Stream * const stm)
     tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_EVENT_RESET, errorReason);
     COND_PROC_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
                                      EventIdCountSub(eventId),
-                                     "task alloc fail err:%#x", static_cast<uint32_t>(errorReason));
+                                     "Failed to allocate task, retCode=%#x.", static_cast<uint32_t>(errorReason));
     
     SetHasReset(true);
     (void)EventResetTaskInit(tsk, this, isNotify_, eventId);
@@ -659,7 +659,7 @@ rtError_t Event::ReclaimTask(const bool evtWaitTask)
         Stream * const stm = item.second.first;
         Device * const dev = stm->Device_();
         const rtError_t error = stm->CheckContextStatus();
-        ERROR_RETURN(error, "context is abort, status=%#x.", static_cast<int32_t>(error));
+        ERROR_RETURN(error, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<int32_t>(error));
 
         if (evtWaitTask) {
             if (stm->GetAbortStatus() ==  RT_ERROR_STREAM_ABORT) {
@@ -685,10 +685,10 @@ rtError_t Event::QueryEventTask(rtEventStatus_t * const status)
     uint32_t taskId = latestState.taskId;
     error = device_->GetStreamSqCqManage()->GetStreamById(static_cast<uint32_t>(streamId), &stm);
     COND_RETURN_ERROR_MSG_INNER(((error != RT_ERROR_NONE) || (stm == nullptr)), error,
-                                "Query stream failed, device_id=%u, stream_id=%u, retCode=%#x.",
+                                "Failed to query stream, device_id=%u, stream_id=%u, retCode=%#x.",
                                 device_->Id_(), streamId, static_cast<uint32_t>(error));
     error = stm->CheckContextStatus();
-    ERROR_RETURN(error, "context is abort, status=%#x.", static_cast<int32_t>(error));
+    ERROR_RETURN(error, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<int32_t>(error));
     if (device_->IsStarsPlatform()) {
         error = stm->JudgeHeadTailPos(status, this->recordPos_);
         if (error != RT_ERROR_NONE) { // confirm
@@ -708,7 +708,7 @@ rtError_t Event::QueryEventTask(rtEventStatus_t * const status)
     } else {
         uint32_t lastTaskId = 0U;
         error = stm->GetLastTaskIdFromCqShm(lastTaskId);
-        ERROR_RETURN(error, "Query wait status failed.");
+        ERROR_RETURN(error, "Failed to query wait status.");
         if ((taskId != UINT32_MAX) && (TASK_ID_LEQ(taskId, lastTaskId))) {
             *status = RT_EVENT_RECORDED;
         } else {
@@ -732,7 +732,7 @@ rtError_t Event::WaitTask(const int32_t timeout)
     std::shared_ptr<Stream> stm = nullptr;
     error = device_->GetStreamSqCqManage()->GetStreamSharedPtrById(static_cast<uint32_t>(streamId), stm);
     COND_RETURN_ERROR_MSG_INNER(((error != RT_ERROR_NONE) || (stm == nullptr)), error,
-                                "Query stream failed, stream_id=%d, retCode=%#x.",
+                                "Failed to query stream, stream_id=%d, retCode=%#x.",
                                 streamId, static_cast<uint32_t>(error));
     if (stm->IsSeparateSendAndRecycle()) {
         // no timeline，MAX_UINT16_NUM is used to indicate that task reclamation does not need to be waited for.
@@ -759,7 +759,7 @@ void Event::UpdateTimeline()
     std::shared_ptr<Stream> stm = nullptr;
     error = device_->GetStreamSqCqManage()->GetStreamSharedPtrById(static_cast<uint32_t>(latestRecordInfo.streamId),
                                                                    stm);
-    COND_RETURN_NORMAL(((error != RT_ERROR_NONE) || (stm == nullptr)), "Query stream not successful, stream_id=%d, retCode=%#x.",
+    COND_RETURN_NORMAL(((error != RT_ERROR_NONE) || (stm == nullptr)), "Failed to query stream, stream_id=%d, retCode=%#x.",
                        latestRecordInfo.streamId, static_cast<uint32_t>(error));
     bool updateFlag = false;
     for (auto &item : recordResetMap_) {
@@ -785,7 +785,7 @@ void Event::UpdateTimeline()
         EventRecordTaskInfo * const recTask = &(tsk->u.eventRecordTaskInfo);
         if (recTask == nullptr) {
             stm.reset();
-            RT_LOG(RT_LOG_INFO, "can't dynamic_cast recordTask.");
+            RT_LOG(RT_LOG_INFO, "Cannot dynamic_cast recordTask.");
             return;
         }
         const uint64_t timelineBase = recTask->timelineBase;
@@ -804,10 +804,10 @@ rtError_t Event::Setup()
     Runtime * const rt = Runtime::Instance();
     devDrv = rt->driverFactory_.GetDriver(NPU_DRIVER);
 
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
     error = devDrv->EventIdAlloc(&eventId_, deviceId, tsId, 0, true);
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "Event id alloc error, device_id=%u, tsId=%u, retCode=%#x!", deviceId, tsId, error);
+        RT_LOG(RT_LOG_ERROR, "Failed to allocate event id, device_id=%u, tsId=%u, retCode=%#x.", deviceId, tsId, error);
         eventId_ = INVALID_EVENT_ID;
         return error;
     }
@@ -819,7 +819,7 @@ rtError_t Event::Setup()
 
 rtError_t Event::RecordForNotify(Stream * const stm)
 {
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_STREAM_NULL);
 
     Device * const dev = stm->Device_();
     TaskInfo submitTask = {};
@@ -842,10 +842,10 @@ rtError_t Event::RecordForNotify(Stream * const stm)
 
     tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_EVENT_RECORD, errorReason);
     COND_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-                                "task alloc fail err:%#x", static_cast<uint32_t>(errorReason));
+                                "Failed to allocate task, retCode=%#x.", static_cast<uint32_t>(errorReason));
  
     error = EventRecordTaskInit(tsk, this, true, EventId_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to init record task, retCode=%#x.",
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to initialize record task, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     error = dev->SubmitTask(tsk, (stm->Context_())->TaskGenCallback_());
@@ -910,7 +910,7 @@ rtError_t Event::Synchronize(int32_t timeout)
             return RT_ERROR_NONE;
         }
         error = CreateEventNotifier(newNotifer);
-        COND_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), error,
+        COND_RETURN_ERROR((error != RT_ERROR_NONE), error,
                                     "Notifier create failed, stream_id=%d, task_id=%u, retCode=%#x",
                                     streamId, taskId, static_cast<uint32_t>(error));
         InsertToNotifierMap(static_cast<uint32_t>(streamId), static_cast<uint16_t>(taskId), newNotifer);
@@ -1014,7 +1014,7 @@ rtError_t Event::QueryEventWaitStatus(const bool disableThread, bool &waitFlag)
             Stream * const stm = waitMapItem.second.first;
             waitFlag = false;
             const rtError_t error = stm->QueryWaitTask(waitFlag, waitMapItem.second.second);
-            COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Query wait status failed, "
+            COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to query wait status, "
             "device_id=%u, retCode=%#x.", device_->Id_(), static_cast<uint32_t>(error));
             if (!waitFlag) {
                 RT_LOG(RT_LOG_INFO, "device_id=%u, event_id=%d, not complete wait stream_id=%d, task_id=%hu",

@@ -90,14 +90,14 @@ rtError_t DavidEvent::GenEventId()
 
     Runtime * const rt = Runtime::Instance();
     Driver *devDrv =  rt->driverFactory_.GetDriver(NPU_DRIVER);
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
 
     const uint32_t eventFlag = (eventFlag_ == RT_EVENT_MC2) ? RT_NOTIFY_MC2 : 0U;
     const rtError_t error = devDrv->NotifyIdAlloc(device_->Id_(), RtPtrToPtr<uint32_t *>(&eventId_),
         device_->DevGetTsId(), eventFlag, false, true);
 
-    ERROR_RETURN(error, "Event id alloc error, device_id=%u, tsId=%u, retCode=%#x!",
-        device_->Id_(), device_->DevGetTsId(), error);
+    ERROR_RETURN(error, "Failed to allocate event id, device_id=%u, tsId=%u, retCode=%#x.",
+        device_->Id_(), device_->DevGetTsId(), static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "Event id alloc success, device_id=%u, tsId=%u, eventFlag=%u, event_id=%d",
         device_->Id_(), device_->DevGetTsId(), eventFlag_, eventId_);
 
@@ -123,12 +123,12 @@ rtError_t DavidEvent::AllocEventIdResource(Stream * const stm, int32_t &eventId)
         bool waitStatus = false;
         while ((error == RT_ERROR_NONE) && (!waitStatus)) {
             error = stm->CheckContextStatus();
-            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<uint32_t>(error));
+            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
             error = QueryEventWaitStatus(true, waitStatus);
         }
         if (unlikely(error != RT_ERROR_NONE)) {
             RT_LOG(RT_LOG_ERROR,
-                "Event wait status, device_id=%u, tsId=%u, stream_id=%d, waitStatus=%u, retCode=%#x!",
+                "Event wait status, device_id=%u, tsId=%u, stream_id=%d, waitStatus=%u, retCode=%#x.",
                 device_->Id_(), device_->DevGetTsId(), stm->Id_(), waitStatus, error);
             return error;
         }
@@ -209,7 +209,7 @@ rtError_t DavidEvent::ReclaimTask(const bool evtWaitTask)
     for (auto &item : eventTaskMaps) {
         Stream * const stm = item.second.first;
         rtError_t error = stm->CheckContextStatus();
-        COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<int32_t>(error));
+        COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<int32_t>(error));
         stm->StreamSyncLock();
         (void)TaskReclaimByStream(stm, true);
         stm->StreamSyncUnLock();
@@ -226,10 +226,10 @@ rtError_t DavidEvent::QueryEventTask(rtEventStatus_t * const status)
     rtError_t error = device_->GetStreamSqCqManage()->GetStreamById(static_cast<uint32_t>(streamId), &stm);
 
     COND_RETURN_ERROR_MSG_INNER(((error != RT_ERROR_NONE) || (stm == nullptr)), error,
-                                "Query stream failed, device_id=%u, stream_id=%u, retCode=%#x.",
+                                "Failed to get stream by id, device_id=%u, stream_id=%u, retCode=%#x.",
                                 device_->Id_(), streamId, static_cast<uint32_t>(error));
     error = stm->CheckContextStatus();
-    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<int32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check the context status for the stream. Reason: context is abort, status=%#x.", static_cast<int32_t>(error));
     error = stm->JudgeHeadTailPos(status, this->recordPos_);
     if (error != RT_ERROR_NONE) { // confirm
         return RT_ERROR_NONE;
@@ -259,7 +259,7 @@ rtError_t DavidEvent::WaitTask(const int32_t timeout)
     std::shared_ptr<Stream> stm = nullptr;
     rtError_t error = device_->GetStreamSqCqManage()->GetStreamSharedPtrById(static_cast<uint32_t>(streamId), stm);
     COND_RETURN_ERROR_MSG_INNER(((error != RT_ERROR_NONE) || (stm == nullptr)), error,
-                                "Query stream failed, stream_id=%d, retCode=%#x.",
+                                "Failed to get stream by id, stream_id=%d, retCode=%#x.",
                                 streamId, static_cast<uint32_t>(error));
     // if set stream fail mode, need to reclaim task to update error info
     bool isReclaim = (stm->Context_()->GetCtxMode() == STOP_ON_FAILURE);    
@@ -334,7 +334,7 @@ rtError_t DavidEvent::QueryEventWaitStatus(const bool disableThread, bool &waitF
         waitFlag = false;
         const rtError_t error = stm->QueryWaitTask(waitFlag, waitMapItem.second.second);
         COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-            "Query wait status failed, device_id=%u, retCode=%#x.", device_->Id_(), static_cast<uint32_t>(error));
+            "Failed to query wait status, device_id=%u, retCode=%#x.", device_->Id_(), static_cast<uint32_t>(error));
         if (!waitFlag) {
             RT_LOG(RT_LOG_INFO, "device_id=%u, event_id=%d, not complete wait stream_id=%d, task_id=%hu",
                 device_->Id_(), eventId_, stm->Id_(), waitMapItem.second.second);
@@ -406,11 +406,11 @@ rtError_t DavidEvent::ReAllocId()
 
     Runtime * const rt = Runtime::Instance();
     Driver *devDrv = rt->driverFactory_.GetDriver(NPU_DRIVER);
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
     const rtError_t error = devDrv->ReAllocResourceId(device_->Id_(), device_->DevGetTsId(), 0U,
         static_cast<uint32_t>(eventId_), DRV_NOTIFY_ID);
-    ERROR_RETURN(error, "Realloc event_id failed, event_id=%d, device_id=%u, ret_code=%d.",
-        eventId_, device_->Id_(), error);
+    ERROR_RETURN(error, "Failed to realloc event id, event_id=%d, device_id=%u, retCode=%#x.",
+        eventId_, device_->Id_(), static_cast<uint32_t>(error));
 
     RT_LOG(RT_LOG_INFO, "Realloc event_id success, device_id=%u, ts_id=%u, event_id=%d",
         device_->Id_(), device_->DevGetTsId(), eventId_);

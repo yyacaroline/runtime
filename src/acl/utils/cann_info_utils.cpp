@@ -81,14 +81,14 @@ namespace acl {
         // init config path and CANN install path
         auto ret = GetConfigInstallPath();
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_INNER_ERROR("failed to get swFeatureList.json, please check ascendcl_config path!");
+            ACL_LOG_INNER_ERROR("Failed to get swFeatureList.json, please check ascendcl_config path.");
             return ret;
         }
 
         // parse requirments of each attributes
         ret = JsonParser::GetAttrConfigFromFile(swConfigPath_.c_str(), attrToCannInfo_);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_INNER_ERROR("failed to parse requirements of Cann attrs, ret = %d", ret);
+            ACL_LOG_INNER_ERROR("Failed to parse requirements of Cann attrs, ret = %d.", ret);
             return ret;
         }
 
@@ -114,7 +114,7 @@ namespace acl {
         std::string path;
         const aclError ret = file_utils::GetSoRealPath(path);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_WARN("failed to get libascendcl.so file path");
+            ACL_LOG_WARN("Failed to get libascendcl.so file path.");
             return ret;
         }
         ACL_LOG_DEBUG("current path = %s", path.c_str());

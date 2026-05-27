@@ -27,17 +27,17 @@ namespace {
         ACL_CHECK_INVALID_PARAM_WITH_REASON(srcLen > dstLen, srcLen, "srcLen must not be larger than dstLen");
         const auto ret = memcpy_s(dst, dstLen, src, srcLen);
         if (ret != EOK) {
-        const std::string retVal = std::to_string(ret);
-        const std::string extendInfo = "src=" + std::to_string(reinterpret_cast<uintptr_t>(src)) + 
-            ", dst=" + std::to_string(reinterpret_cast<uintptr_t>(dst)) +
-            ", dstLen=" + std::to_string(dstLen) + ", srcLen=" + std::to_string(srcLen);
-        acl::AclErrorLogManager::ReportInputError(acl::STANDARD_FUNC_FAILED_MSG,
-            std::vector<const char *>({"func1", "func2", "ret_code", "reason", "extend_info"}),
-            std::vector<const char *>({__func__, "memcpy_s", retVal.c_str(),
-                strerror(ret), extendInfo.c_str()}));
-        ACL_LOG_ERROR("[Call][MemCpy]call memcpy failed, result=%d, srcLen=%zu, dstLen=%zu",
-            ret, srcLen, dstLen);
-        return ACL_ERROR_FAILURE;
+            const std::string retVal = std::to_string(ret);
+            const std::string extendInfo = "src=" + std::to_string(reinterpret_cast<uintptr_t>(src)) + 
+                ", dst=" + std::to_string(reinterpret_cast<uintptr_t>(dst)) +
+                ", dstLen=" + std::to_string(dstLen) + ", srcLen=" + std::to_string(srcLen);
+            acl::AclErrorLogManager::ReportInputError(acl::STANDARD_FUNC_FAILED_MSG,
+                std::vector<const char *>({"func1", "func2", "ret_code", "reason", "extend_info"}),
+                std::vector<const char *>({__func__, "memcpy_s", retVal.c_str(),
+                    strerror(ret), extendInfo.c_str()}));
+            ACL_LOG_ERROR("[Call][MemCpy]call memcpy failed, result=%d, srcLen=%zu, dstLen=%zu",
+                ret, srcLen, dstLen);
+            return ACL_ERROR_FAILURE;
         }
         if (realCopySize != nullptr) {
             *realCopySize = srcLen;
@@ -374,8 +374,11 @@ aclError acltdtSetQueueAttr(acltdtQueueAttr *attr,
                 ACL_REQUIRES_NOT_NULL(tmp);
                 const size_t tmpLen = strnlen(tmp, static_cast<size_t>(RT_MQ_MAX_NAME_LEN));
                 if ((tmpLen + 1U) > static_cast<size_t>(RT_MQ_MAX_NAME_LEN)) {
-                    ACL_LOG_ERROR("queue name len [%zu] can not be larger than %d",
-                                  tmpLen + 1U, RT_MQ_MAX_NAME_LEN);
+                    const std::string tmpLenVal = std::to_string(tmpLen + 1U);
+                    const std::string expectVal = "[0, " + std::to_string(RT_MQ_MAX_NAME_LEN) + "]";
+                    acl::AclErrorLogManager::ReportInputError(acl::INVALID_VALUE_MSG,
+                        std::vector<const char *>({"func", "value", "param", "expect"}),
+                        std::vector<const char *>({__func__, tmpLenVal.c_str(), "queue name length", expectVal.c_str()}));
                     return ACL_ERROR_INVALID_PARAM;
                 }
                 return CopyParam(tmp, tmpLen + 1U, static_cast<void *>(attr->name),
@@ -530,15 +533,6 @@ acltdtQueueRouteQueryInfo* acltdtCreateQueueRouteQueryInfo()
     return info;
 }
 
-aclError acltdtDestroyQueueRouteQueryInfo(const acltdtQueueRouteQueryInfo *info)
-{
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(info);
-    ACL_ADD_RELEASE_TOTAL_COUNT(acl::ACL_STATISTICS_CREATE_DESTROY_QUEUE_ROUTE_QUERY);
-    ACL_DELETE_AND_SET_NULL(info);
-    ACL_ADD_RELEASE_SUCCESS_COUNT(acl::ACL_STATISTICS_CREATE_DESTROY_QUEUE_ROUTE_QUERY);
-    return ACL_SUCCESS;
-}
-
 aclError acltdtSetQueueRouteQueryInfo(acltdtQueueRouteQueryInfo *param,
                                       acltdtQueueRouteQueryInfoParamType type,
                                       size_t len,
@@ -578,4 +572,13 @@ aclError acltdtSetQueueRouteQueryInfo(acltdtQueueRouteQueryInfo *param,
             return ACL_ERROR_INVALID_PARAM;
         }
     }
+}
+
+aclError acltdtDestroyQueueRouteQueryInfo(const acltdtQueueRouteQueryInfo *info)
+{
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(info);
+    ACL_ADD_RELEASE_TOTAL_COUNT(acl::ACL_STATISTICS_CREATE_DESTROY_QUEUE_ROUTE_QUERY);
+    ACL_DELETE_AND_SET_NULL(info);
+    ACL_ADD_RELEASE_SUCCESS_COUNT(acl::ACL_STATISTICS_CREATE_DESTROY_QUEUE_ROUTE_QUERY);
+    return ACL_SUCCESS;
 }

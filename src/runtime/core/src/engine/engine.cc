@@ -140,7 +140,7 @@ void Engine::SetDevRunningState(const DevRunningState state, const bool direct)
 rtError_t Engine::SubmitTask(TaskInfo * const workTask, uint32_t * const flipTaskId, int32_t timeout)
 {
     rtError_t ret = workTask->stream->CheckContextTaskSend(workTask);
-    ERROR_RETURN(ret, "context is abort, status=%#x.", static_cast<uint32_t>(ret));
+    ERROR_RETURN(ret, "Failed to check the context status for the task. Reason: context is abort, status=%#x.", static_cast<uint32_t>(ret));
     if (workTask->stream->taskResMang_ == nullptr) {
         // for non-fast scenarios
         ret = SubmitTaskNormal(workTask, flipTaskId);
@@ -178,14 +178,12 @@ rtError_t Engine::SubmitTaskNormal(TaskInfo * const workTask, uint32_t * const f
             rtCommand_t command;
             (void)memset_s(&command, sizeof(rtCommand_t), 0U, sizeof(rtCommand_t));
             ToCommand(workTask, &command);
-            COND_RETURN_ERROR_MSG_INNER((workTask->stream->Model_() == nullptr),
-                RT_ERROR_MODEL_NULL,
-                "SubmitTask fail for model null, stream_id=%d,pendingNum=%u",
-                workTask->stream->Id_(),
-                workTask->stream->GetPendingNum());
+            COND_RETURN_AND_MSG_OUTER((workTask->stream->Model_() == nullptr), RT_ERROR_MODEL_NULL,
+                ErrorCode::EE1018, __func__,
+                "Aicpu stream requires a model association. Call the rtsModelBindStream API to bind a model to the stream");
             (void)workTask->stream->Model_()->SaveAicpuStreamTask(workTask->stream, &command);
         }
-        RT_LOG(RT_LOG_DEBUG, "aicpu stream,no need sent to ts,stream_id=%u,task_id=%u,task_type=%d (%s).",
+        RT_LOG(RT_LOG_DEBUG, "aicpu stream, no need sent to ts,stream_id=%u, task_id=%u, task_type=%d (%s).",
                static_cast<uint32_t>(workTask->stream->Id_()), static_cast<uint32_t>(workTask->id),
                static_cast<int32_t>(workTask->type), workTask->typeName);
         Complete(workTask, RT_MAX_DEV_NUM);
@@ -274,8 +272,8 @@ uint32_t Engine::GetRecycleDavinciTaskNum(const uint16_t lastRecycleEndTaskId,
     }
 
     if (totalTaskNum < recyclePublicTaskCount) {
-        RT_LOG(RT_LOG_ERROR, "get task num failed,lastRecycleEndTaskId=%hu,recycleEndTaskId=%hu,"
-            "recyclePublicTaskCount=%hu", lastRecycleEndTaskId, recycleEndTaskId, recyclePublicTaskCount);
+        RT_LOG(RT_LOG_ERROR, "Failed to get task num, lastRecycleEndTaskId=%hu, recycleEndTaskId=%hu, recyclePublicTaskCount=%hu.",
+            lastRecycleEndTaskId, recycleEndTaskId, recyclePublicTaskCount);
         return 0U;
     }
 
@@ -396,7 +394,7 @@ bool Engine::ProcessPublicTask(TaskInfo *workTask, const uint32_t deviceId, uint
     if (isNeedAsyncRecycle) {
         (void)device_->GetStreamSqCqManage()->GetStreamById(static_cast<uint32_t>(streamId), &recycleStm);
         if (recycleStm == nullptr) {
-            RT_LOG(RT_LOG_ERROR, "get stream info failed,stream_id=%d", streamId);
+            RT_LOG(RT_LOG_ERROR, "Failed to get stream info, stream_id=%d.", streamId);
             return false;
         }
     }
@@ -506,8 +504,8 @@ bool Engine::ProcessTaskDavinciList(Stream * const stm,  const uint16_t endTaskI
 
         recycleTsk = GetRecycleWorkTask(stm, delTaskId);
         if (recycleTsk == nullptr) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Can't find davinci from factory, device_id=%u, stream_id=%d, "
-                "isHasPcieBar_=%d, hasTaskResMang_=%u, task_id=%u, endTaskId=%hu, pendingNum=%u, lastTaskId=%u",
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to find davinci task from task factory, device_id=%u, stream_id=%d, "
+                "isHasPcieBar_=%d, hasTaskResMang_=%u, task_id=%u, endTaskId=%hu, pendingNum=%u, lastTaskId=%u.",
                 deviceId, streamId, stm->isHasPcieBar_, (stm->taskResMang_ == nullptr) ? 0 : 1,
                 static_cast<uint32_t>(delTaskId), endTaskId, stm->pendingNum_.Value(), stm->GetLastTaskId());
             break;
@@ -660,7 +658,7 @@ rtError_t Engine::TryAddTaskToStream(TaskInfo * const workTask)
             SendingWait(stm, failCount);
             stm->SetStreamAsyncRecycleFlag(false);
             error = stm->CheckContextTaskSend(workTask);
-            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x.", static_cast<uint32_t>(error));
+            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check the context status for the task. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
         } else {
             break;
         }
@@ -913,7 +911,7 @@ void Engine::RecycleCtrlTask(CtrlStream* const stm, const uint32_t sqPos)
         workTask = device_->GetCtrlResEntry()->GetTask(taskId);
         if (workTask == nullptr) {
             stm->DelPosToCtrlTaskIdMap(static_cast<uint16_t>(pos));
-            RT_LOG(RT_LOG_INFO, "[ctrlsq]Can't find ctrl task from res, pos=%u is deleted.", pos);
+            RT_LOG(RT_LOG_INFO, "[ctrlsq] Cannot find ctrl task from res, pos=%u is deleted.", pos);
             pos = ((pos + stm->sqDepth) - 1U) % stm->sqDepth;
             continue;
         }
@@ -942,7 +940,7 @@ void Engine::CtrlTaskReclaim(CtrlStream*const stm)
 
     const rtError_t error = stm->GetHeadPosFromCtrlSq(currPosId);
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "GetHeadPosFromCtrlSq fail, error=%d.", error);
+        RT_LOG(RT_LOG_ERROR, "Failed to get head position from ctrl sq, retCode=%d.", error);
         return;
     }
     RT_LOG(RT_LOG_INFO, "[ctrlsq]reclaim ctrl task sqHead=%u.", currPosId);
@@ -1032,7 +1030,7 @@ rtError_t Engine::SendCommand(TaskInfo * const workTask, rtTsCommand_t &cmdLocal
 
     error = WaitExecFinish(workTask);
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "WaitExecFinish Failed. taskType = %u, error = %#x, [%s].",
+        RT_LOG(RT_LOG_ERROR, "Failed to wait for execution finish, taskType=%u, retCode=%#x, [%s].",
             static_cast<int32_t>(workTask->type), error, GetTsErrDescByRtErr(error));
         return error;
     }
@@ -1050,13 +1048,14 @@ TIMESTAMP_EXTERN(CommandOccupyNormal);
 rtError_t Engine::SendTask(TaskInfo * const workTask, uint16_t &taskId, uint32_t * const flipTaskId)
 {
     Stream * const stm = workTask->stream;
-    COND_RETURN_ERROR_MSG_INNER(((stm->Flags() & RT_STREAM_CP_PROCESS_USE) != 0U), RT_ERROR_STREAM_INVALID,
-    "Kernel launch with args failed, the stm[%u] can not be coprocessor stream flag=%u.",
-            stm->Id_(), stm->Flags());
+    COND_RETURN_AND_MSG_OUTER(((stm->Flags() & RT_STREAM_CP_PROCESS_USE) != 0U), RT_ERROR_STREAM_INVALID,
+        ErrorCode::EE1017, __func__, "stream flags",
+        "Stream " + std::to_string(stm->Id_()) + " with the flag RT_STREAM_CP_PROCESS_USE cannot be used for kernel launch");
 
     TIMESTAMP_BEGIN(TryRecycleTask);
     rtError_t error = TryRecycleTask(stm);
     TIMESTAMP_END(TryRecycleTask);
+
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Try recycle task failed, retCode=%#x.",
         static_cast<uint32_t>(error));
 
@@ -1072,7 +1071,7 @@ rtError_t Engine::SendTask(TaskInfo * const workTask, uint16_t &taskId, uint32_t
         TIMESTAMP_END(TaskSendLimited);
         if ((tryCount % perDetectTimes) == 0) {
             error = stm->CheckContextTaskSend(workTask);
-            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "context is abort, status=%#x", static_cast<uint32_t>(error));
+            COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to check the context status for the task. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
         }
         tryCount++;
     }
@@ -1083,7 +1082,7 @@ rtError_t Engine::SendTask(TaskInfo * const workTask, uint16_t &taskId, uint32_t
     const uint32_t cqId = stm->GetCqId();
     const uint32_t sendSqeNum = GetSendSqeNum(workTask);
     uint32_t pos = 0U;
-    COND_RETURN_ERROR_MSG_INNER(devDrv == nullptr, RT_ERROR_DRV_ERR, "Can't find device driver.");
+    COND_RETURN_ERROR(devDrv == nullptr, RT_ERROR_DRV_ERR, "Failed to find device driver.");
     StreamSqCqManage * const stmSqCqManage = const_cast<StreamSqCqManage *>(device_->GetStreamSqCqManage());
 
     std::mutex * const sqMutex = stmSqCqManage->GetSqMutex(sqId);

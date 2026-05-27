@@ -34,18 +34,16 @@ rtError_t Bitmap::AllocBitmap()
     }
     uint64_t *tmpBitmap = nullptr;
     COND_PROC_RETURN_ERROR_MSG_INNER((maxIdCount_ == 0U), RT_ERROR_POOL_RESOURCE, mutex_.unlock(),
-        "Alloc bitmap failed, Bitmap maxId Count should be larger than 0, "
-        "current maxIdCount is 0");
+        "Failed to allocate bitmap because max ID count is 0.");
     const uint32_t maxBitmapIdx = (maxIdCount_ - 1U) / 64U; // 64:bit of uint64_t
     tmpBitmap = new (std::nothrow) uint64_t[maxBitmapIdx + 1U];
-    COND_PROC_RETURN_ERROR_MSG_INNER((tmpBitmap == nullptr), RT_ERROR_MEMORY_ALLOCATION, mutex_.unlock(),
-        "Alloc new Bitmap failed, size=%zu(bytes)", static_cast<size_t>(maxBitmapIdx + 1U) * sizeof(uint64_t));
+    COND_PROC_RETURN_AND_MSG_OUTER((tmpBitmap == nullptr), RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, mutex_.unlock(), std::to_string(static_cast<size_t>(maxBitmapIdx + 1U) * sizeof(uint64_t)).c_str());
 
     for (uint32_t i = 0U; i <= maxBitmapIdx; i++) {
-        tmpBitmap[i] = static_cast<uint64_t>(-1);  // 1-Free; 0-Occupied
+        tmpBitmap[i] = static_cast<uint64_t>(-1); // 1-Free; 0-Occupied
     }
     if ((maxIdCount_ % 64U) != 0U) { // 64 bit
-        // Invalid highest bits
         tmpBitmap[maxBitmapIdx] = (1ULL << (static_cast<uint64_t>(maxIdCount_) % 64ULL)) - 1ULL;
     }
     freeBitmap_ = tmpBitmap;
@@ -58,7 +56,7 @@ int32_t Bitmap::AllocId(uint32_t maxAllocCount)
 {
     const rtError_t error = AllocBitmap();
     COND_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), -1,
-                                "Alloc bitmap failed, retCode=%#x", static_cast<uint32_t>(error));
+                                "Failed to allocate bitmap, retCode=%#x", static_cast<uint32_t>(error));
 
     int32_t maxAllocBitmapIdx;
     // calculate the correct max count and max bitmap index for allocation

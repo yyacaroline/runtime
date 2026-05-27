@@ -79,7 +79,7 @@ rtError_t Notify::AllocId()
     COND_PROC((dev_ == nullptr || driver_ == nullptr), return RT_ERROR_NOTIFY_NULL);
 
     const rtError_t error = driver_->NotifyIdAlloc(static_cast<int32_t>(deviceId_), &notifyid_, dev_->DevGetTsId(), notifyFlag_);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "NotifyIdAlloc failed, device_id=%u, retCode=%#x!",
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to allocate notify id, device_id=%u, retCode=%#x.",
             deviceId_, static_cast<uint32_t>(error));
 
     dev_->RemoveNotify(this);
@@ -90,7 +90,7 @@ rtError_t Notify::AllocId()
 rtError_t Notify::Setup()
 {
     Runtime* runtime = Runtime::Instance();
-    NULL_PTR_RETURN_MSG(runtime, RT_ERROR_INSTANCE_NULL);
+    NULL_PTR_RETURN(runtime, RT_ERROR_INSTANCE_NULL);
     Context * const curCtx = runtime->CurrentContext();
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
 
@@ -99,7 +99,7 @@ rtError_t Notify::Setup()
 
     rtError_t error = driver_->GetDevicePhyIdByIndex(deviceId_, &phyId_);
     if (error != RT_ERROR_NONE) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "GetPhyIdByLogicIndex failed, device_id=%u, phydevice_id=%u, retCode=%#x!",
+        RT_LOG(RT_LOG_ERROR, "Failed to get phy id by logic index, device_id=%u, phydevice_id=%u, retCode=%#x.",
             deviceId_, phyId_, static_cast<uint32_t>(error));
         return error;
     }
@@ -107,7 +107,7 @@ rtError_t Notify::Setup()
     RT_LOG(RT_LOG_INFO, "notify_flag=%u", notifyFlag_);
     error = driver_->NotifyIdAlloc(static_cast<int32_t>(deviceId_), &curNotifyId, dev->DevGetTsId(), notifyFlag_);
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_WARNING, "NotifyIdAlloc failed, device_id=%u, retCode=%#x!",
+        RT_LOG(RT_LOG_WARNING, "Failed to allocate notify id, device_id=%u, retCode=%#x.",
             deviceId_, static_cast<uint32_t>(error));
         return error;
     }
@@ -125,13 +125,13 @@ rtError_t Notify::ReAllocId() const
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
     Device * const dev = curCtx->Device_();
     const rtError_t ret = driver_->ReAllocResourceId(deviceId_, dev->DevGetTsId(), 0U, notifyid_, DRV_NOTIFY_ID);
-    ERROR_RETURN(ret, "NotifyId ReAlloc failed, notifyid=%u, device_id=%u, retCode=%d!", notifyid_, deviceId_, ret);
+    ERROR_RETURN(ret, "Failed to realloc notify id, notifyid=%u, device_id=%u, retCode=%#x.", notifyid_, deviceId_, static_cast<uint32_t>(ret));
     return RT_ERROR_NONE;
 }
 
 rtError_t Notify::Record(Stream * const streamIn)
 {
-    NULL_PTR_RETURN_MSG(streamIn, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(streamIn, RT_ERROR_STREAM_NULL);
     Device * const dev = streamIn->Device_();
     TaskInfo submitTask = {};
     rtError_t errorReason;
@@ -178,7 +178,7 @@ ERROR_RECYCLE:
 
 rtError_t Notify::Reset(Stream * const streamIn) const
 {
-    NULL_PTR_RETURN_MSG(streamIn, RT_ERROR_STREAM_NULL);
+    NULL_PTR_RETURN_MSG_OUTER(streamIn, RT_ERROR_STREAM_NULL);
     Device * const dev = streamIn->Device_();
     if (dev->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_CTRL_SQ)) {
         return dev->GetCtrlSQ().SendNotifyResetMsg(notifyid_);
@@ -193,10 +193,10 @@ rtError_t Notify::Reset(Stream * const streamIn) const
     CommonCmdTaskInit(notifyTask, CMD_NOTIFY_RESET, &cmdInfo);
 
     auto error = dev->SubmitTask(notifyTask, (streamIn->Context_())->TaskGenCallback_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit notify reset Task, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit notify reset task, retCode=%#x", static_cast<uint32_t>(error));
 
     error = streamIn->Synchronize();
-    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize notify reset Task, streamId=%d, retCode=%#x",
+    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize notify reset task, streamId=%d, retCode=%#x.",
         streamIn->Id_(), static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
@@ -257,23 +257,21 @@ rtError_t Notify::RevisedWait(Stream * const streamIn, const uint32_t timeout)
 
     const uint32_t eventId = RT_NOTIFY_GET_EVENT_ID(notifyid_);
     rtError_t error = EventWaitTaskInit(waitTask, nullptr, static_cast<int32_t>(eventId), timeout, 1U);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_WAIT, "Failed to init event wait task, notifyid=%u, "
-                                                    "retCode=%#x!", notifyid_, static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_RECYCLE_WAIT, "Failed to initialize event wait task, notifyid=%u, retCode=%#x.", notifyid_, static_cast<uint32_t>(error));
 
     error = dev->SubmitTask(waitTask, (streamIn->Context_())->TaskGenCallback_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_WAIT, "Failed to submit event wait task, retCode=%#x!",
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_WAIT, "Failed to submit event wait task, retCode=%#x.",
                          static_cast<uint32_t>(error));
 
     resetTask = streamIn->AllocTask(&submitResetTask, TS_TASK_TYPE_EVENT_RESET, errorReason);
     NULL_PTR_RETURN_MSG(resetTask, errorReason);
 
     error = EventResetTaskInit(resetTask, nullptr, true, static_cast<int32_t>(eventId));
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_RESET, "Failed to init event reset task, notifyid=%u, "
-                                                     "retCode=%#x!", notifyid_, static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_RECYCLE_RESET, "Failed to initialize event reset task, notifyid=%u, retCode=%#x.", notifyid_, static_cast<uint32_t>(error));
 
     error = dev->SubmitTask(resetTask, (streamIn->Context_())->TaskGenCallback_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_RESET, "Failed to submit event reset task, retCode=%#x!",
-                         static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE_RESET, "Failed to submit event reset task, retCode=%#x.",
+        static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
 ERROR_RECYCLE_RESET:
@@ -329,7 +327,7 @@ rtError_t Notify::CreateIpcNotify(char_t * const ipcNotifyName, const uint32_t l
 {
     COND_RETURN_ERROR_MSG_INNER(isIpcNotify_, RT_ERROR_NOTIFY_TYPE,
         "Create ipc notify failed, ipc notify flag can not be true");
-    NULL_PTR_RETURN_MSG(driver_, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(driver_, RT_ERROR_DRV_NULL);
     uint32_t curNotifyId = notifyid_;
 
     rtError_t error = driver_->CreateIpcNotify(ipcNotifyName, len, static_cast<int32_t>(deviceId_),
@@ -355,7 +353,7 @@ rtError_t Notify::CreateIpcNotify(char_t * const ipcNotifyName, const uint32_t l
 
 rtError_t Notify::GetAddrOffset(uint64_t * const devAddrOffset)
 {
-    NULL_PTR_RETURN_MSG(driver_, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(driver_, RT_ERROR_DRV_NULL);
     return driver_->NotifyGetAddrOffset(static_cast<int32_t>(deviceId_), notifyid_, devAddrOffset, tsId_);
 }
 
@@ -363,11 +361,11 @@ rtError_t Notify::CheckIpcNotifyDevId()
 {
     if (isIpcNotify_) {
         Runtime *runtime = Runtime::Instance();
-        NULL_PTR_RETURN_MSG(runtime, RT_ERROR_INSTANCE_NULL);
+        NULL_PTR_RETURN(runtime, RT_ERROR_INSTANCE_NULL);
         Context *const curCtx = runtime->CurrentContext();
         CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
         Device *dev = curCtx->Device_();
-        NULL_PTR_RETURN_MSG(dev, RT_ERROR_DEVICE_NULL);
+        NULL_PTR_RETURN(dev, RT_ERROR_DEVICE_NULL);
         RT_LOG(RT_LOG_INFO, "name=%s, phyId=%u ctx_device_id=%u",
             ipcName_.c_str(), phyId_, dev->Id_());
         
@@ -401,7 +399,7 @@ rtError_t Notify::OpenIpcNotify(const char_t * const ipcNotifyName, uint32_t fla
         (ipcNotifyName == nullptr) ? "(null)" : ipcNotifyName);
 
     Runtime* runtime = Runtime::Instance();
-    NULL_PTR_RETURN_MSG(runtime, RT_ERROR_INSTANCE_NULL);
+    NULL_PTR_RETURN(runtime, RT_ERROR_INSTANCE_NULL);
     Context * const curCtx = runtime->CurrentContext();
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
 
@@ -417,16 +415,16 @@ rtError_t Notify::OpenIpcNotify(const char_t * const ipcNotifyName, uint32_t fla
 
     IpcNotifyOpenPara openPara = {ipcNotifyName, flag, localDevId_, dev->DevGetTsId()};
     rtError_t error = driver_->OpenIpcNotify(openPara, &phyId_, &curNotifyId, &curTsId, &isPod, &adcDieId_);
-    ERROR_RETURN_MSG_INNER(error, "Failed to OpenIpcNotify, retCode=%#x!", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to open ipc notify, retCode=%#x.", static_cast<uint32_t>(error));
 
     uint64_t vaAddr = 0ULL;
     error = GetIpcNotifyVa(curNotifyId, driver_, localDevId_, phyId_, vaAddr);
-    ERROR_RETURN_MSG_INNER(error, "Failed to GetIpcNotifyVa, retCode=%#x!", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to get ipc notify va, retCode=%#x.", static_cast<uint32_t>(error));
 
     SetNotifyInfo(vaAddr, ipcNotifyName, curNotifyId, curTsId);
 
     error = driver_->EnableP2PNotify(localDevId_, phyId_, flag);
-    ERROR_RETURN_MSG_INNER(error, "Failed to EnableP2PNotify, retCode=%#x!", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to enable p2p notify, retCode=%#x.", static_cast<uint32_t>(error));
 
     InitEmbeddedInnerHandle<Notify>(this);
 
@@ -443,12 +441,12 @@ rtError_t Notify::OpenIpcNotify(const char_t * const ipcNotifyName, uint32_t fla
             return RT_ERROR_NONE;
         }
         error = driver_->GetDeviceIndexByPhyId(phyId_, &deviceId_);
-        ERROR_RETURN_MSG_INNER(error, "Failed to get devId, retCode=%#x, PhyId=%u",
+        ERROR_RETURN(error, "Failed to get device id, retCode=%#x, phyId=%u",
             static_cast<uint32_t>(error), phyId_);
         RT_LOG(RT_LOG_INFO, "name=%s, phyId=%u, deviceId=%u, srvId=%u", ipcNotifyName, phyId_, deviceId_, srvId_);
     } else {
         error = driver_->ParseSDID(phyId_, &srvId_, &chipId_, &dieId_, &deviceId_);
-        ERROR_RETURN_MSG_INNER(error, "phyId=%u", phyId_);
+        ERROR_RETURN(error, "Failed to parse sdid, phyId=%u", phyId_);
         RT_LOG(RT_LOG_INFO, "sdid=%#x, srvId=%u, chipId=%u, dieId=%u, adcDieId=%u, deviceId=%u",
             phyId_, srvId_, chipId_, dieId_, adcDieId_, deviceId_);
         isPod_ = true;

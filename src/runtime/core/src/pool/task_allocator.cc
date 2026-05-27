@@ -87,7 +87,7 @@ void TaskAllocator::FreeById(const Stream * const stm, const int32_t taskId, boo
     const int32_t bufferId = idManager->mapTaskIds[taskId];
     if (bufferId < 0) {
         idLock.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Invalid para,stream_id=%d and task_id=%d does not exist", streamId, taskId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Invalid para, stream_id=%d and task_id=%d does not exist", streamId, taskId);
         return;
     }
 
@@ -112,9 +112,12 @@ int32_t TaskAllocator::AllocId(const Stream * const stm, rtError_t &errCode)
     const int32_t streamId = stm->Id_();
     TaskIdManager *idManager = nullptr;
 
-    COND_PROC_RETURN_ERROR_MSG_INNER(static_cast<uint32_t>(streamId) >= RT_MAX_STREAM_ID,
-        RT_INVALID_ID, errCode = RT_ERROR_STREAM_INVALID,
-        "Alloc id failed, stream id is invalid, stream_id=%d", streamId);
+    if (static_cast<uint32_t>(streamId) >= RT_MAX_STREAM_ID) {
+        RT_LOG(RT_LOG_ERROR, "Invalid streamId in AllocTaskInfo. streamId=%d. "
+            "This should not happen as Stream ensures valid ID.", streamId);
+        errCode = RT_ERROR_STREAM_INVALID;
+        return RT_INVALID_ID;
+    }
     std::unique_lock<std::mutex> vecIdLock(vecIdManagerLock_);
     const auto vecIdIterator = vecIdManager_[static_cast<uint32_t>(streamId)];
     if (vecIdIterator != nullptr) {

@@ -98,7 +98,7 @@ rtError_t DirectHwtsEngine::Init()
     SetWaitTimeout(device_->GetDevProperties().reportWaitTimeout);
     Driver * const devDrv = device_->Driver_();
     bool isFastCq = false;
-    COND_RETURN_ERROR_MSG_INNER((devDrv == nullptr), RT_ERROR_DRV_NULL, "Not found drv info.");
+    COND_RETURN_ERROR((devDrv == nullptr), RT_ERROR_DRV_NULL, "Failed to find driver info.");
     rtError_t error = devDrv->LogicCqAllocate(device_->Id_(), device_->DevGetTsId(),
                                               MAX_UINT32_NUM, false, logicCqId_, isFastCq, false);
     if (error != RT_ERROR_NONE) {
@@ -109,7 +109,7 @@ rtError_t DirectHwtsEngine::Init()
     if (error == RT_ERROR_DRV_INPUT) {
         return error;
     }
-    ERROR_RETURN_MSG_INNER(error, "shmCq_ Init failed, device id: %u retCode: %#x",
+    ERROR_RETURN_MSG_INNER(error, "Failed to initialize shmCq_, device_id=%u, retCode=%#x.",
         device_->Id_(), static_cast<uint32_t>(error));
 
     return RT_ERROR_NONE;
@@ -131,7 +131,7 @@ void DirectHwtsEngine::Run(const void * const param)
             break;
         }
         default: {
-            RT_LOG(RT_LOG_ERROR, "Unknown thread type");
+            RT_LOG(RT_LOG_ERROR, "Failed to run engine thread. Unknown thread type.");
             break;
         }
     }
@@ -139,9 +139,8 @@ void DirectHwtsEngine::Run(const void * const param)
 
 rtError_t DirectHwtsEngine::Start()
 {
-    // check if engine is started.
     COND_RETURN_ERROR_MSG_INNER((monitorThread_ != nullptr), RT_ERROR_ENGINE_THREAD,
-                                "DirectHwtsEngine already start.");
+                                "Failed to start DirectHwtsEngine. Reason: engine had been started.");
 
     rtError_t error;
     int32_t err = EN_OK;
@@ -152,11 +151,13 @@ rtError_t DirectHwtsEngine::Start()
     threadName = (device_->DevGetTsId() == static_cast<uint32_t>(RT_TSC_ID)) ?
                  "MONITOR_0" : "MONITOR_1";
     monitorThread_ = OsalFactory::CreateThread(threadName, this, monitor);
-    NULL_PTR_GOTO_MSG_INNER(monitorThread_, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION);
+    COND_GOTO_MSG_OUTER(monitorThread_ == nullptr, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, std::to_string(OsalFactory::GetThreadObjectSize()));
+    
     monitorThreadRunFlag_ = true;
     err = monitorThread_->Start();
     COND_PROC_GOTO_MSG_INNER(err != EN_OK, ERROR_RETURN, error = RT_ERROR_MEMORY_ALLOCATION;,
-        "monitor thread start failed");
+        "Failed to start monitor thread.");
 
     if (device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_TASK_RECYCLE_THREAD)) {
         if ((device_->Driver_()->GetRunMode() == RT_RUN_MODE_ONLINE)) {
@@ -166,7 +167,7 @@ rtError_t DirectHwtsEngine::Start()
             GetDevice()->SetIsChipSupportEventThread(true);
         }
         error = CreateRecycleThread();
-        ERROR_GOTO_MSG_INNER(error, ERROR_RETURN, "create recycle thread failed");
+        ERROR_GOTO_MSG_INNER(error, ERROR_RETURN, "Failed to create recycle thread for Runtime.");
     }
 
     return RT_ERROR_NONE;
@@ -203,19 +204,19 @@ rtError_t DirectHwtsEngine::CreateRecycleThread(void)
     void * const recycle = RtValueToPtr<void *>(THREAD_RECYCLE);
     recycleThread_ = OsalFactory::CreateThread("RT_RECYCLE", this, recycle);
     if (recycleThread_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "create recycle thread failed");
+        RT_LOG(RT_LOG_ERROR, "Failed to create recycle thread for Runtime.");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(OsalFactory::GetThreadObjectSize()));
         return RT_ERROR_MEMORY_ALLOCATION;
     }
 
     const rtError_t error = mmSemInit(&recycleThreadSem_, 0U);
     if (error != RT_ERROR_NONE) {
         DELETE_O(recycleThread_);
-        RT_LOG(RT_LOG_ERROR, "create sem failed,retCode=%d", error);
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "semaphore", "sem_init");
         return RT_ERROR_MEMORY_ALLOCATION;
     }
 
     recycleThreadRunFlag_ = true;
-
     const int32_t err = recycleThread_->Start();
     if (err != EN_OK) {
         recycleThreadRunFlag_ = false;
@@ -242,7 +243,7 @@ void DirectHwtsEngine::DestroyRecycleThread(void)
 
 void DirectHwtsEngine::RecycleThreadRun(void)
 {
-    RT_LOG(RT_LOG_INFO, "RecycleThreadRun thread enter.");
+    RT_LOG(RT_LOG_INFO, "RecycleThreadRun thread start.");
     while (recycleThreadRunFlag_) {
         (void)mmSemWait(&recycleThreadSem_);
         RecycleThreadDo();
@@ -312,7 +313,10 @@ void DirectHwtsEngine::ProcessFastCqTask(const uint32_t streamId, const uint32_t
         shmInfo->taskId = taskId;
     } else {
         shmInfo = TaskStatusAlloc(streamId);
-        COND_RETURN_VOID(shmInfo == nullptr, "new shmInfo memory fail");
+        if (shmInfo == nullptr) {
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtShmQuery_t)).c_str());
+            return;
+        }
         shmInfo->taskId = taskId;
     }
 }
@@ -345,9 +349,9 @@ rtError_t DirectHwtsEngine::SyncTask(Stream * const stm, const uint32_t taskId,
     const uint32_t streamId = static_cast<uint32_t>(stm->Id_());
 
     StreamSqCqManage * const stmSqCqManage = const_cast<StreamSqCqManage *>(device_->GetStreamSqCqManage());
-    COND_RETURN_ERROR_MSG_INNER(stmSqCqManage == nullptr, RT_ERROR_INVALID_VALUE, "Get manage fail.");
+    COND_RETURN_ERROR(stmSqCqManage == nullptr, RT_ERROR_INVALID_VALUE, "Failed to get StreamSqCqManage.");
     rtError_t error = stmSqCqManage->AllocLogicCq(streamId, stm->IsSteamNeedFastCq(), cqId, isFastCq);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Alloc logic cq failed.");
+    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to allocate logic CQ.");
     COND_PROC((!isFastCq) && (!isStreamSync), SyncTaskQueryShm(streamId, taskId, cqId))
 
     bool isNotified = false;
@@ -430,7 +434,7 @@ rtError_t DirectHwtsEngine::SyncTask(Stream * const stm, const uint32_t taskId,
                 "Task Wait: sync task timeout! timeout=%dms, remainTime=%dms, cnt=%u.", timeout, remainTime, cnt);
         } else {
             COND_RETURN_ERROR((timeout > 0) && (remainTime == 0) && (cnt == 0U), RT_ERROR_STREAM_SYNC_TIMEOUT,
-                "Task Wait: sync task timeout! timeout=%dms, remainTime=%dms, cnt=%u.", timeout, remainTime, cnt);
+                "Failed to synchronize task. Task wait timeout, timeout=%dms, remainTime=%dms, cnt=%u.", timeout, remainTime, cnt);
         }
 
         const bool abortFlag = (device_->GetIsRingbufferGetErr()) && (abortTryCount++ >= 3) && (ctx!=nullptr) && ctx->GetCtxMode() == STOP_ON_FAILURE && (stm != ctx->DefaultStream_());
@@ -528,7 +532,7 @@ rtError_t DirectHwtsEngine::TaskReclaimAllForNoRes(const bool limited, uint32_t 
         std::shared_ptr<Stream> stm = nullptr;
         error = device_->GetStreamSqCqManage()->GetStreamSharedPtrById(static_cast<uint32_t>(streamLoop), stm);
         COND_RETURN_ERROR_MSG_INNER(((error != RT_ERROR_NONE) || (stm == nullptr)), error,
-            "Query stream failed, stream_id=%u, retCode=%#x.", streamLoop, static_cast<uint32_t>(error));
+            "Failed to query stream by id, stream_id=%u, retCode=%#x.", streamLoop, static_cast<uint32_t>(error));
         stm->StreamSyncLock();
         error = QueryShmInfo(streamLoop, limited, taskId);
         stm->StreamSyncUnLock();
@@ -550,7 +554,7 @@ rtError_t DirectHwtsEngine::TryRecycleTask(Stream * const stm)
     if ((lastTaskId % TASK_QUERY_INTERVAL_NUM) == 0U) {
         rtShmQuery_t shareMemInfo;
         error = shmCq_.QueryCqShm(static_cast<uint32_t>(stm->Id_()), shareMemInfo);
-        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Query Task status failed, retCode=%#x",
+        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to query task status, retCode=%#x.",
                                     static_cast<uint32_t>(error));
         const uint32_t taskIdVar = shareMemInfo.taskId;
         // device execute slowly
@@ -758,7 +762,7 @@ rtError_t DirectHwtsEngine::SubmitSend(TaskInfo * const workTask, uint32_t * con
     rtError_t error = SendTask(workTask, taskId, flipTaskId);
     if (error != RT_ERROR_NONE) {
         TaskFinished(stm->Device_()->Id_(), workTask);
-        RT_LOG(RT_LOG_ERROR, "SendTask fail, streamId=%d, taskId=%hu, taskType=%u, "
+        RT_LOG(RT_LOG_ERROR, "Failed to send task, stream_id=%d, task_id=%hu, task_type=%u, "
                              "retCode=%#x.", stm->Id_(), workTask->id, workTask->type, error);
         return error;
     };
@@ -813,7 +817,7 @@ rtError_t DirectHwtsEngine::SubmitSend(TaskInfo * const workTask, uint32_t * con
         halfRecordtask->u.eventRecordTaskInfo.event->EventIdCountSub(halfRecordtask->u.eventRecordTaskInfo.eventid);
         (void)device_->GetTaskFactory()->Recycle(halfRecordtask);
     }
-    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "SendTask fail, streamId=%d, taskId=%hu, retCode=%#x",
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error, "Failed to send task, stream_id=%d, task_id=%hu, retCode=%#x.",
         stm->Id_(), workTask->id, error);
 
     TIMESTAMP_END(HalfEventProc);
@@ -1003,7 +1007,7 @@ bool DirectHwtsEngine::UpdateTaskIdForTaskStatus(const uint32_t streamId, const 
     } else {
         shmInfo = TaskStatusAlloc(streamId);
         if (shmInfo == nullptr) {
-            RT_LOG(RT_LOG_DEBUG, "new shmInfo memory fail, stream_id=%u", streamId);
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtShmQuery_t)).c_str());
             return false;
         }
     }
@@ -1052,7 +1056,7 @@ std::string DirectHwtsEngine::GetKernelNameForAiCoreorAiv(const uint32_t streamI
     TaskInfo * const workTask = device_->GetTaskFactory()->GetTask(static_cast<int32_t>(streamId),
                                                                    static_cast<uint16_t>(taskId));
     if (workTask == nullptr) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can't find task from factory, stream_id=%u, task_id=%u.", streamId, taskId);
+        RT_LOG(RT_LOG_ERROR, "Failed to find task from task factory, stream_id=%u, task_id=%u.", streamId, taskId);
         return "unknown";
     }
 
@@ -1139,7 +1143,7 @@ bool DirectHwtsEngine::ProcessReport(const rtTaskReport_t * const report,
             }
         }
     } else {  // parse task NULL
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Get null task from report stream_id=%hu, task_id=%hu",
+        RT_LOG(RT_LOG_ERROR, "Failed to get task from report stream, stream_id=%hu, task_id=%hu.",
                          streamId, report->taskID);
     }
 
@@ -1160,14 +1164,14 @@ bool DirectHwtsEngine::PreProcessTask(TaskInfo *preTask, const uint32_t deviceId
     do {
         const rtError_t error = stm->GetRecycleTaskHeadId(endTaskId, preRecycleTaskId);
         if (error != RT_ERROR_NONE) {
-            RT_LOG(RT_LOG_ERROR, "Delete task failed,stream_id=%d,tail_task_id=%hu,"
-                "del_task_id=%hu,retCode=%#x.", streamId, endTaskId, preRecycleTaskId, error);
+            RT_LOG(RT_LOG_ERROR, "Failed to delete task, stream_id=%d, tail_task_id=%hu, "
+                "del_task_id=%hu, retCode=%#x.", streamId, endTaskId, preRecycleTaskId, error);
             return false;
         }
 
         preTask = device_->GetTaskFactory()->GetTask(streamId, preRecycleTaskId);
         if (preTask == nullptr) {
-            RT_LOG(RT_LOG_ERROR, "Can't find task from factory,stream_id=%d,task_id=%hu.",
+            RT_LOG(RT_LOG_ERROR, "Failed to find task from task factory, stream_id=%d, task_id=%hu.",
                 streamId, preRecycleTaskId);
             return false;
         }

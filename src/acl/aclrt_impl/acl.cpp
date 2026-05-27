@@ -78,7 +78,7 @@ namespace {
 #ifdef __GNUC__
         const char *socName = aclrtGetSocNameImpl();
         if (socName == nullptr) {
-            ACL_LOG_ERROR("Init SocVersion failed");
+            ACL_LOG_ERROR("Failed to init SocVersion.");
             return ACL_ERROR_INTERNAL_ERROR;
         }
         // call after aclInit
@@ -86,14 +86,14 @@ namespace {
 
         // init platform info
         if (fe::PlatformInfoManager::GeInstance().InitializePlatformInfo() != 0U) {
-            ACL_LOG_INNER_ERROR("init runtime platform info failed, SocVersion = %s", socVersion.c_str());
+            ACL_LOG_INNER_ERROR("Failed to init runtime platform info, SocVersion = %s.", socVersion.c_str());
             return ACL_ERROR_INTERNAL_ERROR;
         }
 
         fe::PlatFormInfos platformInfos;
         fe::OptionalInfos optionalInfos;
         if (fe::PlatformInfoManager::GeInstance().GetPlatformInfos(socVersion, platformInfos, optionalInfos) != 0U) {
-            ACL_LOG_INNER_ERROR("get platform info failed, SocVersion = %s", socVersion.c_str());
+            ACL_LOG_INNER_ERROR("Failed to get platform info, SocVersion = %s.", socVersion.c_str());
             return ACL_ERROR_INTERNAL_ERROR;
         }
         std::string strVal;
@@ -105,7 +105,7 @@ namespace {
         try {
             *value = std::stoll(strVal);
         } catch (...) {
-            ACL_LOG_INNER_ERROR("strVal[%s] cannot be converted to digital value", strVal.c_str());
+            ACL_LOG_INNER_ERROR("Failed to convert strVal[%s] to digital value.", strVal.c_str());
             return ACL_ERROR_INTERNAL_ERROR;
         }
         ACL_LOG_INFO("Successfully get platform info, key = %s, value = %ld", key.c_str(), *value);
@@ -443,8 +443,8 @@ aclError aclInitImpl(const char *configPath)
         ret = acl::InitCallbackManager::GetInstance().NotifyInitCallback(ACL_REG_TYPE_ACL_OP_EXECUTOR,
                                                                          cfgStr, cfgLen);
         if (ret != ACL_SUCCESS) {
-          ACL_LOG_INNER_ERROR("call acl_op_executor init callback failed, ret:%d", ret);
-          return ret;
+            ACL_LOG_INNER_ERROR("call acl_op_executor init callback failed, ret:%d.", ret);
+            return ret;
         }
 
         ACL_LOG_INFO("set HandleDefaultDeviceAndStackSize in aclInit");
@@ -506,7 +506,7 @@ aclError aclInitImpl(const char *configPath)
             if (rtRegErr == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
                 ACL_LOG_WARN("can not register kernel launch fill function, feature not support.");
             } else {
-                ACL_LOG_INNER_ERROR("[Init][RegFillFunc]register failed, ret = %d.", rtRegErr);
+                ACL_LOG_INNER_ERROR("[Init][RegFillFunc]Failed to register kernel launch fill function, ret = %d.", rtRegErr);
                 return ACL_GET_ERRCODE_RTS(rtRegErr);
             }
         }
@@ -543,7 +543,7 @@ aclError aclFinalizeInternal()
     acl::ResourceStatistics::GetInstance().TraverseStatistics();
     const int32_t profRet = MsprofFinalize();
     if (profRet != MSPROF_ERROR_NONE) {
-        ACL_LOG_CALL_ERROR("[Finalize][Profiling]failed to call MsprofFinalize, prof errorCode = %d", profRet);
+        ACL_LOG_CALL_ERROR("[Finalize][Profiling]Failed to call MsprofFinalize, prof errorCode = %d.", profRet);
     }
 
     auto ret = acl::InitCallbackManager::GetInstance().NotifyFinalizeCallback(ACL_REG_TYPE_ACL_OP_COMPILER);
@@ -581,7 +581,7 @@ aclError aclFinalizeInternal()
             if (rtRegErr == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
                 ACL_LOG_WARN("can not unregister kernel launch fill function, feature not support.");
             } else {
-                ACL_LOG_INNER_ERROR("[Finalize][UnRegFillFunc]unregister failed, ret = %d.", rtRegErr);
+                ACL_LOG_INNER_ERROR("[Finalize][UnRegFillFunc]Failed to unregister kernel launch fill function, ret = %d.", rtRegErr);
                 return ACL_GET_ERRCODE_RTS(rtRegErr);
             }
         }
@@ -773,14 +773,14 @@ aclError GetCANNVersionInternal(const aclCANNPackageName name, aclCANNPackageVer
 
     std::string versionInfo;
     if (!ParseVersionInfo(versionInfoPath, versionInfo)) {
-        ACL_LOG_ERROR("[Check]failed to parse versionInfo, the versionInfoPath is [%s].",
+        ACL_LOG_ERROR("[Check]Failed to parse versionInfo, the versionInfoPath is [%s].",
             versionInfoPath.c_str());
         return ACL_ERROR_INVALID_FILE;
     }
 
     ACL_LOG_INFO("versionInfo is [%s].", versionInfo.c_str());
     if (!FillinPackageVersion(versionInfo, version)) {
-        ACL_LOG_ERROR("[Check]failed to run FillinPackageVersion.");
+        ACL_LOG_ERROR("[Check]Failed to run FillinPackageVersion.");
         return ACL_ERROR_INVALID_FILE;
     }
 
@@ -839,7 +839,7 @@ bool GetPkgPath(const std::string &ascendInstallPath, std::string &pkgPath, cons
 
     std::ifstream ifs(ascendInstallPath, std::ifstream::in);
     if (!ifs.is_open()) {
-        std::string errMsg = acl::AclErrorLogManager::FormatStr("failed to open file, %s", strerror(errno));
+        std::string errMsg = acl::AclErrorLogManager::FormatStr("Failed to open file, %s", strerror(errno));
         acl::AclErrorLogManager::ReportInputError(acl::INVALID_FILE_MSG,
             std::vector<const char *>({"path", "reason"}),
             std::vector<const char *>({ascendInstallPath.c_str(), errMsg.c_str()}));
@@ -1267,7 +1267,7 @@ aclError aclGetCannAttributeListImpl(const aclCannAttr **cannAttrList, size_t *n
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(num);
     const aclError ret = acl::CannInfoUtils::GetAttributeList(cannAttrList, num);
     if (ret != ACL_SUCCESS) {
-        ACL_LOG_ERROR("failed to get attrList, ret = %d", ret);
+        ACL_LOG_ERROR("Failed to get attrList, ret = %d.", ret);
         return ret;
     }
     ACL_LOG_INFO("execute aclGetCannAttributeList successfully.");
@@ -1279,7 +1279,7 @@ aclError aclGetCannAttributeImpl(aclCannAttr cannAttr, int32_t *value)
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(value);
     const aclError ret = acl::CannInfoUtils::GetAttribute(cannAttr, value);
     if (ret != ACL_SUCCESS) {
-        ACL_LOG_ERROR("failed to check, attr value = %d, ret = %d", static_cast<int32_t>(cannAttr), ret);
+        ACL_LOG_ERROR("Failed to check, attr value = %d, ret = %d.", static_cast<int32_t>(cannAttr), ret);
         return ret;
     }
     ACL_LOG_INFO("execute aclGetCannAttribute successfully.");
@@ -1300,7 +1300,7 @@ aclError aclGetDeviceCapabilityImpl(uint32_t deviceId, aclDeviceInfo deviceInfo,
         ACL_LOG_ERROR("%s failed because deviceId %u greater than deviceNum %d.",
             __func__, deviceId, count);
         const std::string deviceIdVal = std::to_string(deviceId);
-        std::string errMsg = acl::AclErrorLogManager::FormatStr("deviceId %u greater than deviceNum %d.", deviceId, count);
+        std::string errMsg = acl::AclErrorLogManager::FormatStr("deviceId %u greater than deviceNum %d", deviceId, count);
         acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
             std::vector<const char *>({"func", "value", "param", "reason"}),
             std::vector<const char *>({__func__, deviceIdVal.c_str(), "deviceId", errMsg.c_str()}));

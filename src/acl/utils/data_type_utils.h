@@ -12,10 +12,13 @@
 #define ACL_UTILS_DATA_TYPE_UTILS_H
 
 #include <unordered_map>
+#include <memory>
 #include "acl/acl_base.h"
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt_queue.h"
 #include "runtime/base.h"
+#include "acl/acl_tdt.h"
+#include "tdt/data_common.h"
 
 namespace acl {
 
@@ -162,6 +165,20 @@ inline const char* GetAllocBufTypeDesc(acltdtAllocBufType type) {
     return (it != allocBufTypeDescMap.end()) ? it->second : "UNKNOWN";
 }
 
+inline const char* GetTensorTypeDesc(acltdtTensorType type) {
+    static const std::unordered_map<acltdtTensorType, const char*> tensorTypeDescMap = {
+        {ACL_TENSOR_DATA_UNDEFINED,    "ACL_TENSOR_DATA_UNDEFINED"},
+        {ACL_TENSOR_DATA_TENSOR,       "ACL_TENSOR_DATA_TENSOR"},
+        {ACL_TENSOR_DATA_END_OF_SEQUENCE, "ACL_TENSOR_DATA_END_OF_SEQUENCE"},
+        {ACL_TENSOR_DATA_ABNORMAL,     "ACL_TENSOR_DATA_ABNORMAL"},
+        {ACL_TENSOR_DATA_SLICE_TENSOR, "ACL_TENSOR_DATA_SLICE_TENSOR"},
+        {ACL_TENSOR_DATA_END_TENSOR,   "ACL_TENSOR_DATA_END_TENSOR"},
+    };
+
+    auto it = tensorTypeDescMap.find(type);
+    return (it != tensorTypeDescMap.end()) ? it->second : "UNKNOWN";
+}
+
 inline const char* GetSysParamOptDesc(aclSysParamOpt opt) {
     static const std::unordered_map<aclSysParamOpt, const char*> sysParamOptDescMap = {
         {ACL_OPT_DETERMINISTIC,       "ACL_OPT_DETERMINISTIC"},
@@ -202,6 +219,34 @@ inline const char* GetMemAllocationTypeDesc(aclrtMemAllocationType type) {
 
     auto it = memAllocationTypeDescMap.find(type);
     return (it != memAllocationTypeDescMap.end()) ? it->second : "UNKNOWN";
+}
+
+inline const char* GetTdtDataTypeDesc(tdt::TdtDataType type) {
+    static const std::unordered_map<tdt::TdtDataType, const char*> tdtDataTypeDescMap = {
+        {tdt::TDT_IMAGE_LABEL,      "TDT_IMAGE_LABEL"},
+        {tdt::TDT_TFRECORD,         "TDT_TFRECORD"},
+        {tdt::TDT_DATA_LABEL,       "TDT_DATA_LABEL"},
+        {tdt::TDT_END_OF_SEQUENCE,  "TDT_END_OF_SEQUENCE"},
+        {tdt::TDT_TENSOR,           "TDT_TENSOR"},
+        {tdt::TDT_ABNORMAL,         "TDT_ABNORMAL"},
+        {tdt::TDT_DATATYPE_MAX,     "TDT_DATATYPE_MAX"},
+    };
+
+    auto it = tdtDataTypeDescMap.find(type);
+    return (it != tdtDataTypeDescMap.end()) ? it->second : "UNKNOWN";
+}
+
+inline const char* GetTdtDataTypeDescV2(int32_t type) {
+    static const std::unordered_map<int32_t, const char*> tdtDataTypeDescV2Map = {
+        {0, "TDT_TENSOR(0)"},
+        {1, "TDT_END_OF_SEQUENCE(1)"},
+        {2, "TDT_ABNORMAL(2)"},
+        {3, "TDT_SLICE_TENSOR(3)"},
+        {4, "TDT_END_TENSOR(4)"},
+    };
+
+    auto it = tdtDataTypeDescV2Map.find(type);
+    return (it != tdtDataTypeDescV2Map.end()) ? it->second : "UNKNOWN";
 }
 
 } // namespace acl

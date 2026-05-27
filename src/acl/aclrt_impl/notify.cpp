@@ -101,7 +101,6 @@ aclError aclrtNotifyBatchResetImpl(aclrtNotify *notifies, size_t num)
     ACL_PROFILING_REG(acl::AclProfType::AclrtNotifyBatchReset);
     ACL_LOG_INFO("start to execute aclrtNotifyBatchReset, num is [%zu]", num);
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(notifies);
-
     const rtError_t rtErr = rtsNotifyBatchReset(notifies, static_cast<uint32_t>(num));
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("call rtsNotifyBatchReset failed, runtime result = %d", rtErr);
@@ -229,7 +228,6 @@ aclError aclrtCntNotifyWaitWithTimeoutImpl(aclrtCntNotify cntNotify, aclrtStream
     ACL_PROFILING_REG(acl::AclProfType::AclrtCntNotifyWaitWithTimeout);
     ACL_LOG_INFO("start to execute aclrtCntNotifyWaitWithTimeout");
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(info);
-
     const rtError_t rtErr = rtsCntNotifyWaitWithTimeout(cntNotify, stream, reinterpret_cast<rtCntNotifyWaitInfo_t *>(info));
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("call rtsCntNotifyWaitWithTimeout failed, runtime result = %d", static_cast<int32_t>(rtErr));

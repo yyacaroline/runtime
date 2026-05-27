@@ -89,10 +89,13 @@ TEST_F(RtErrorCodeTest, PrintErrMsgToLog)
  
     std::vector<std::string> values8 = {"rtModelExecute", "stream"};
     PrintErrMsgToLog(ErrorCode::EE1010, "file", 1000, "func", values8);
- 
+
     std::vector<std::string> values1011 = {"rtMemCpy", "0", "size", "size is not 0"};
     PrintErrMsgToLog(ErrorCode::EE1011, "file", 1000, "func", values1011);
-    
+}
+
+TEST_F(RtErrorCodeTest, PrintErrMsgToLog2)
+{
     std::vector<std::string> values1012 = {"NotifyWait", "0", "current deviceId", "The current device cannot deliver Notify Wait"};
     PrintErrMsgToLog(ErrorCode::EE1012, "file", 1000, "func", values1012);
 
@@ -120,6 +123,9 @@ TEST_F(RtErrorCodeTest, PrintErrMsgToLog)
     std::vector<std::string> values1020 = {"rtGetSocVersion", "memcpy_s", "1", "count is greater than dest_max",
         "src=0x1, dest=0x2, dest_max=10, count=11."};
     PrintErrMsgToLog(ErrorCode::EE1020, "file", 1000, "func", values1020);
+
+    std::vector<std::string> values1021 = {"semaphore", "aclrtCreateStream"};
+    PrintErrMsgToLog(ErrorCode::EE1021, "file", 1000, "func", values1021);
 
     std::vector<std::string> values9 = {"1, 2, 2", "SetVisible", "not repeat"};
     PrintErrMsgToLog(ErrorCode::EE2002, "file", 1000, "func", values9);
@@ -151,6 +157,7 @@ TEST_F(RtErrorCodeTest, RePortErrCode)
     RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1018, "aclrtSetLabel", "Before setting the label using aclrtSetLabel, you need to call aclrtCreateLabelList to create a label list");
     RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1019, "AddTaskToList", "stream task public buffer is full");
     RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1020, "rtGetSocVersion", "memcpy_s", "1", "count is greater than dest_max", "src=0x1, dest=0x2, dest_max=10, count=11.");
+    RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "semaphore", "aclrtCreateStream");
     RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE2002, "1, 2, 2", "SetVisible", "not repeat");
     RT_LOG_OUTER_MSG_IMPL(ErrorCode::WE0001, "set the saturation mode", "only the Inf/NaN mode can be set and the saturation mode");
 }
@@ -179,7 +186,11 @@ TEST_F(RtErrorCodeTest, CheckErrCodeParams)
     EXPECT_EQ(names, (std::vector<std::string>{"func", "object"}));
     names = GetParamNames(ErrorCode::EE1011);
     EXPECT_EQ(names, (std::vector<std::string>{"func", "value", "param", "reason"}));
-    names = GetParamNames(ErrorCode::EE1012);
+}
+
+TEST_F(RtErrorCodeTest, CheckErrCodeParams2)
+{
+    auto names = GetParamNames(ErrorCode::EE1012);
     EXPECT_EQ(names, (std::vector<std::string>{"func", "value", "param", "reason"}));
     names = GetParamNames(ErrorCode::EE1013);
     EXPECT_EQ(names, (std::vector<std::string>{"buf_size"}));
@@ -197,6 +208,8 @@ TEST_F(RtErrorCodeTest, CheckErrCodeParams)
     EXPECT_EQ(names, (std::vector<std::string>{"func", "reason"}));
     names = GetParamNames(ErrorCode::EE1020);
     EXPECT_EQ(names, (std::vector<std::string>{"func1", "func2", "ret_code", "reason", "extend_info"}));
+    names = GetParamNames(ErrorCode::EE1021);
+    EXPECT_EQ(names, (std::vector<std::string>{"resource_type", "api"}));
     names = GetParamNames(ErrorCode::EE2002);
     EXPECT_EQ(names, (std::vector<std::string>{"value", "env", "expect"}));
     names = GetParamNames(ErrorCode::EE_NO_ERROR);
@@ -220,8 +233,8 @@ TEST_F(RtErrorCodeTest, ErrorCodeTableParamCountMatchesMessageFormat)
         {ErrorCode::EE1010, 2}, {ErrorCode::EE1011, 4}, {ErrorCode::EE1012, 4},
         {ErrorCode::EE1013, 1}, {ErrorCode::EE1014, 1}, {ErrorCode::EE1015, 2},
         {ErrorCode::EE1016, 2}, {ErrorCode::EE1017, 3}, {ErrorCode::EE1018, 2},
-        {ErrorCode::EE1019, 2}, {ErrorCode::EE1020, 5}, {ErrorCode::EE2002, 3},
-        {ErrorCode::WE0001, 2},
+        {ErrorCode::EE1019, 2}, {ErrorCode::EE1020, 5}, {ErrorCode::EE1021, 2},
+        {ErrorCode::EE2002, 3}, {ErrorCode::WE0001, 2},
     };
     for (const auto& info : allCodes) {
         auto names = GetParamNames(info.code);

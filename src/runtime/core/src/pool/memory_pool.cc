@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "memory_pool.hpp"
+#include "error_message_manage.hpp"
 
 namespace cce {
 namespace runtime {
@@ -52,8 +53,9 @@ rtError_t MemoryPool::Init()
     NULL_PTR_RETURN(addr_ , RT_ERROR_MEMORY_ALLOCATION);
 
     memoryList_ = new (std::nothrow) MemoryList();
-    NULL_PTR_RETURN(memoryList_ , RT_ERROR_MEMORY_ALLOCATION);
-    return memoryList_->AddBlock(addr_, POOL_SIZE_2M); 
+    COND_RETURN_AND_MSG_OUTER(memoryList_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        std::to_string(sizeof(MemoryList)).c_str());
+    return memoryList_->AddBlock(addr_, POOL_SIZE_2M);
 }
 
 // 分配内存

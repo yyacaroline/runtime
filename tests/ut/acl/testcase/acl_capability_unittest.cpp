@@ -14,6 +14,9 @@
 #include "acl/acl.h"
 #include "acl_stub.h"
 #include "nlohmann/json.hpp"
+#define private public
+#include "utils/cann_info_utils.h"
+#undef private
 
 using namespace testing;
 
@@ -367,4 +370,27 @@ TEST_F(UTEST_ACL_Capability, aclGetCannAttributeList_Fail_NullInput)
     // case: nullptr input num
     ret = aclGetCannAttributeList(&attrArray, nullptr);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+}
+
+TEST_F(UTEST_ACL_Capability, aclGetCannAttribute_Fail_GetAttrConfigFromFileError)
+{
+    auto oldFlag = acl::CannInfoUtils::initFlag_;
+    auto attrNum = acl::CannInfoUtils::attrNum_;
+    acl::CannInfoUtils::initFlag_ = false;
+    acl::CannInfoUtils::attrNum_ = 0;
+
+    aclCannAttr cannAttr = ACL_CANN_ATTR_INF_NAN;
+    int32_t value;
+
+    dirUtils.MakeFakeConfigFile();
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), mmDladdr(_, _))
+        .WillOnce(Invoke(MockMmpa::mmDladdrFail2))
+        .WillRepeatedly(Invoke(MockMmpa::mmDladdr));
+
+    aclError ret = aclGetCannAttribute(cannAttr, &value);
+    EXPECT_EQ(ret, ACL_ERROR_INTERNAL_ERROR);
+
+    acl::CannInfoUtils::initFlag_ = oldFlag;
+    acl::CannInfoUtils::attrNum_ = attrNum;
 }

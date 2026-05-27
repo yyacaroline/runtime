@@ -159,7 +159,7 @@ aclError aclmdlRIDebugJsonPrintImpl(aclmdlRI modelRI, const char *path, uint32_t
     const rtError_t rtErr = rtModelDebugJsonPrint(static_cast<rtStream_t>(modelRI), path, flags);
     if (rtErr != RT_ERROR_NONE) {
         if (rtErr == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
-            ACL_LOG_WARN("print model debug info unSupported, runtime result = %d", rtErr);        
+            ACL_LOG_WARN("print model debug info unsupported, runtime result = %d.", rtErr);
         } else {
             ACL_LOG_CALL_ERROR("print model debug info failed, runtime result = %d", rtErr);
         }
@@ -440,7 +440,6 @@ aclError aclmdlRIAbortImpl(aclmdlRI modelRI)
 aclError aclmdlRIGetStreamsImpl(aclmdlRI modelRI, aclrtStream *streams, uint32_t *numStreams)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclmdlRIGetStreams);
-
     const rtError_t rtErr = rtModelGetStreams(static_cast<rtModel_t>(modelRI),  static_cast<rtStream_t *>(streams), numStreams);
     if (rtErr != RT_ERROR_NONE) {
         ACL_LOG_CALL_ERROR("call rtModelGetStreams failed, runtime result = %d", static_cast<int32_t>(rtErr));

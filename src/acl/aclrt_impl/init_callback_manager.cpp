@@ -77,7 +77,7 @@ aclError InitCallbackManager::NotifyInitCallback(aclRegisterCallbackType type,
 }
 
 aclError InitCallbackManager::RegFinalizeCallback(aclRegisterCallbackType type, aclFinalizeCallbackFunc cbFunc,
-                                                  void *userData)
+    void *userData)
 {
     if (cbFunc == nullptr) {
         return ACL_ERROR_INVALID_PARAM;

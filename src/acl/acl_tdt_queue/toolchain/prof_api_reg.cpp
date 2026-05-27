@@ -148,7 +148,7 @@ namespace acl {
         if (dataType == RT_PROF_CTRL_SWITCH) {
             const aclError ret = ProcessProfData(data, dataLen);
             if (ret != ACL_SUCCESS) {
-                ACL_LOG_INNER_ERROR("[Process][ProfSwitch]failed to call ProcessProfData, result is %u", ret);
+                ACL_LOG_INNER_ERROR("[Process][ProfSwitch]failed to call ProcessProfData, result is %u.", ret);
                 return ret;
             }
             return ACL_SUCCESS;

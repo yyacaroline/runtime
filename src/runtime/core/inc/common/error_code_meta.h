@@ -134,6 +134,11 @@
       "%s failed. Reason: Standard function %s failed. "                      \
       "[Errno %s] %s. %s ErrorCode=EE1020.\n",                                \
       DLOG_ERROR)                                                             \
+    /* EE1021 - Resource_Error */                                               \
+    X(EE1021, "EE1021",                                                         \
+      ("resource_type", "api"),                                                 \
+      "The runtime module failed to create host %s through API %s. ErrorCode=EE1021.\n", \
+      DLOG_ERROR)                                                               \
     /* EE2002 - Config_Error_Invalid_Environment_Variable */                  \
     X(EE2002, "EE2002",                                                       \
       ("value", "env", "expect"),                                             \

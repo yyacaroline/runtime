@@ -69,19 +69,22 @@ namespace acl {
             switch (env_) {
                 case ACL_ENV_HOST:
                     queueProcessProc_ = std::unique_ptr<QueueProcessorHost>(new (std::nothrow)QueueProcessorHost());
+                    ACL_CHECK_MALLOC_RESULT_REPORT_RET(queueProcessProc_.get(), sizeof(QueueProcessorHost), nullptr);
                     break;
                 case ACL_ENV_DEVICE_SP:
                     queueProcessProc_ = std::unique_ptr<QueueProcessorSp>(new (std::nothrow)QueueProcessorSp());
+                    ACL_CHECK_MALLOC_RESULT_REPORT_RET(queueProcessProc_.get(), sizeof(QueueProcessorSp), nullptr);
                     break;
                 case ACL_ENV_DEVICE_CCPU:
                     queueProcessProc_ = std::unique_ptr<QueueProcessorCcpu>(new (std::nothrow)QueueProcessorCcpu());
+                    ACL_CHECK_MALLOC_RESULT_REPORT_RET(queueProcessProc_.get(), sizeof(QueueProcessorCcpu), nullptr);
                     break;
                 default:
-                    ACL_LOG_INNER_ERROR("[Check][Runenv]check runenv failed.");
+                    ACL_LOG_INNER_ERROR("Failed to check runenv.");
                     return nullptr;
             }
         } catch (...) {
-            ACL_LOG_INNER_ERROR("[Define][Object]define object queue processor with unique_ptr failed.");
+            ACL_LOG_INNER_ERROR("Failed to create queue processor with unique_ptr.");
             return nullptr;
         }
         return queueProcessProc_.get();

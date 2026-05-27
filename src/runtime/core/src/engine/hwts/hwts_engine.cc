@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #include "hwts_engine.hpp"
 #include <ctime>
 #include "base.hpp"
@@ -41,11 +42,11 @@ void HwtsEngine::ProcessOverFlowReport(const rtTaskReport_t * const errorReport,
            errorReport->SQ_id, streamId, errorReport->taskID, errorReport->SQ_head);
 
     TaskFactory * const taskGenerator = device_->GetTaskFactory();
-    COND_RETURN_VOID(taskGenerator == nullptr, "task factory is nullptr.");
+    COND_RETURN_VOID(taskGenerator == nullptr, "Failed to get task factory.");
 
     TaskInfo * const reportTask = taskGenerator->GetTask(static_cast<int32_t>(streamId), errorReport->taskID);
     if (reportTask == nullptr) {
-        RT_LOG(RT_LOG_WARNING, "can't find task from factory.");
+        RT_LOG(RT_LOG_WARNING, "Failed to find task from task factory.");
         ProcessNullTaskOverFlowReport(static_cast<uint32_t>(streamId),
                                       static_cast<uint32_t>(errorReport->taskID), tsRetCode);
         return;

@@ -124,10 +124,10 @@ int32_t BufferAllocator::AllocBitMap(uint32_t curCount)
 
 int32_t BufferAllocator::AllocIdWithoutRetry(const bool isLogError)
 {
-    COND_RETURN_ERROR(pool_ == nullptr, -1, "pool array is null");
+    COND_RETURN_ERROR(pool_ == nullptr, -1, "Failed to allocate ID because pool array is null.");
     uint32_t curCount = currentCount_;
     int32_t id = AllocBitMap(curCount);
-    while (unlikely((id < 0) && (curCount < maxCount_))) {  // No enough ID
+    while (unlikely((id < 0) && (curCount < maxCount_))) { // No enough ID
         uint32_t newCount = GetIncreasedCount(curCount);
         newCount = (newCount > maxCount_) ? maxCount_ : newCount;
         if (CompareAndExchange(&currentCount_, curCount, newCount)) {
@@ -135,8 +135,8 @@ int32_t BufferAllocator::AllocIdWithoutRetry(const bool isLogError)
             const uint32_t poolIdx = GetPoolIndex(newCount - 1U);
             const auto ptr = allocFunc_(newPoolSize, para_);
             if (ptr == nullptr) {
-                allocFuncState_ = false;  // allocFunc fail
-                RtLogErrorLevelControl(isLogError, "allocFunc failed, new size count=%u, pool index=%u",
+                allocFuncState_ = false; // allocFunc fail
+                RtLogErrorLevelControl(isLogError, "Failed to call allocFunc, newPoolSize=%zu, poolIdx=%u",
                     newPoolSize, poolIdx);
                 return -1;
             }
@@ -198,13 +198,13 @@ int32_t BufferAllocator::GetIdByItem(const void * const item) const
 
 rtError_t BufferAllocator::MemsetBuffers(Device *device, uint32_t value)
 {
-    NULL_PTR_RETURN_MSG(device, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(device, RT_ERROR_INVALID_VALUE);
     const uint64_t memSize = initCount_ * itemSize_;
 
     for (uint32_t bufIdx = 0U; bufIdx < poolSize_; ++bufIdx) {
         if (pool_[bufIdx] != nullptr) {
             const rtError_t error = device->Driver_()->MemSetSync(pool_[bufIdx], memSize, value, memSize);
-            ERROR_RETURN(error, "Memset sync failed, destMax=%" PRIu64 ", value=%u, count=%" PRIu64,
+            ERROR_RETURN(error, "Failed to call MemSetSync, destMax=%" PRIu64 ", value=%u, count=%" PRIu64,
                 memSize, value, memSize);
         }
     }

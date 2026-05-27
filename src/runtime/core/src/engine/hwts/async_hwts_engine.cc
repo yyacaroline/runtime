@@ -62,8 +62,8 @@ rtError_t AsyncHwtsEngine::Init()
 {
     if (scheduler_ == nullptr) {
         scheduler_ = new (std::nothrow) FifoScheduler();
-        COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, scheduler_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-            "Init engine failed, new FifoScheduler failed.");
+        COND_RETURN_AND_MSG_OUTER(scheduler_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+            sizeof(FifoScheduler));
         RT_LOG(RT_LOG_INFO, "new FifoScheduler ok,Runtime_alloc_size %zu.", sizeof(FifoScheduler));
     }
     return RT_ERROR_NONE;
@@ -71,34 +71,36 @@ rtError_t AsyncHwtsEngine::Init()
 
 rtError_t AsyncHwtsEngine::Start()
 {
-    // check if engine is started.
     COND_RETURN_ERROR_MSG_INNER((notifier_ != nullptr), RT_ERROR_ENGINE_THREAD,
-                                "Engine start failed, notifier_ can not be nullptr.");
+                                "Failed to start engine. Reason: engine has already been started, notifier_ is not nullptr.");
 
     rtError_t error;
     int32_t err = EN_OK;
     void *send = nullptr;
     void *recv = nullptr;
     notifier_ = OsalFactory::CreateNotifier();
-    NULL_PTR_GOTO_MSG_INNER(notifier_, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION);
+    COND_GOTO_MSG_OUTER(notifier_ == nullptr, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION, 
+        ErrorCode::EE1013, sizeof(Notifier));
 
     send = RtValueToPtr<void *>(THREAD_SENDING);
     sendThread_ = OsalFactory::CreateThread("RT_SEND", this, send);
-    NULL_PTR_GOTO_MSG_INNER(sendThread_, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION);
+    COND_GOTO_MSG_OUTER(sendThread_ == nullptr, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, std::to_string(OsalFactory::GetThreadObjectSize()));
 
     recv = RtValueToPtr<void *>(THREAD_RECVING);
     receiveThread_ = OsalFactory::CreateThread("RT_RECV", this, recv);
-    NULL_PTR_GOTO_MSG_INNER(receiveThread_, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION);
+    COND_GOTO_MSG_OUTER(receiveThread_ == nullptr, ERROR_RETURN, error, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, std::to_string(OsalFactory::GetThreadObjectSize()));
 
     sendRunFlag_ = true;
     receiveRunFlag_ = true;
     err = sendThread_->Start();
     COND_PROC_GOTO_MSG_INNER(err != EN_OK, ERROR_RETURN, error = RT_ERROR_MEMORY_ALLOCATION;,
-        "send thread start failed");
+         "Failed to start send thread.");
 
     err = receiveThread_->Start();
     COND_PROC_GOTO_MSG_INNER(err != EN_OK, ERROR_RETURN, error = RT_ERROR_MEMORY_ALLOCATION;,
-        "receive thread start failed");
+         "Failed to start receive thread.");
 
     return RT_ERROR_NONE;
 
@@ -143,7 +145,7 @@ void AsyncHwtsEngine::Run(const void * const param)
             break;
         }
         default: {
-            RT_LOG(RT_LOG_ERROR, "Unknown thread type");
+            RT_LOG(RT_LOG_ERROR, "Failed to run engine thread. Unknown thread type.");
             break;
         }
     }
@@ -252,7 +254,7 @@ void AsyncHwtsEngine::ReceivingRun(void)
                        TS_REPORT_MSG_TYPE_STARS_CQE : TS_REPORT_MSG_TYPE_TS_REPORT;
     device_->GetStreamSqCqManage()->GetDefaultCqId(&cqId);
 
-    COND_RETURN_VOID(devDrv == nullptr, "Can't find device driver.");
+    COND_RETURN_VOID(devDrv == nullptr, "Failed to find device driver.");
     while (receiveRunFlag_) {
         rtError_t error;
         cnt = 0;
@@ -405,7 +407,7 @@ rtError_t AsyncHwtsEngine::SubmitPush(TaskInfo * const workTask, uint32_t * cons
     pendingNum_.Add(1U);
     if (unlikely((stm->AbortedStreamToFull() == TRUE) && (workTask->type != TS_TASK_TYPE_MAINTENANCE))) {
         error = RT_ERROR_STREAM_FULL;
-        RT_LOG(RT_LOG_WARNING, "SubmitTask fail for stream full in failure abort,stream_id=%d,pendingNum=%u",
+        RT_LOG(RT_LOG_WARNING, "SubmitTask fail for stream full in failure abort, stream_id=%d, pendingNum=%u.",
             stm->Id_(), stm->GetPendingNum());
     } else {
         error = scheduler_->PushTask(workTask);
@@ -413,7 +415,7 @@ rtError_t AsyncHwtsEngine::SubmitPush(TaskInfo * const workTask, uint32_t * cons
 
     TIMESTAMP_END(PushTask);
     if (error != RT_ERROR_NONE) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Push task failed, stream_id=%d,task_id=%hu,task type=%d,task_name=%s,retCode=%#x.",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to push task, stream_id=%d, task_id=%hu, task_type=%d, task_name=%s, retCode=%#x.",
             workTask->stream->Id_(), workTask->id, static_cast<int32_t>(workTask->type), workTask->typeName,
             static_cast<uint32_t>(error));
         workTask->error = TASK_ERROR_SUBMIT_FAIL;
@@ -441,9 +443,11 @@ rtError_t AsyncHwtsEngine::PushFlipTask(const uint16_t preTaskId, Stream *stm)
     error = SubmitPush(fliptask);
     RT_LOG(RT_LOG_INFO, "PushFlipTask dev_id=%u,stream_id=%d,task_id=%hu,flipNum=%hu",
         device_->Id_(), stm->Id_(), fliptask->id, fliptask->u.flipTask.flipNumReport);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "PushFlipTask failed, dev_id=%u,stream_id=%d,task_id=%hu,flipNumReport=%hu,retCode=%#x.",
-        device_->Id_(), stm->Id_(), fliptask->id, fliptask->u.flipTask.flipNumReport, error);
+    if (unlikely(error != RT_ERROR_NONE)) {
+        RT_LOG(RT_LOG_ERROR, "Failed to push flip task, dev_id=%u, stream_id=%d, task_id=%hu, flipNumReport=%hu, retCode=%#x.",
+            device_->Id_(), stm->Id_(), fliptask->id, fliptask->u.flipTask.flipNumReport, error);
+        goto ERROR_RECYCLE;
+    }
 
     return RT_ERROR_NONE;
 

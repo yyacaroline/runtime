@@ -32,8 +32,8 @@ rtError_t IpcEvent::IpcVaAndPaOperation(size_t granularity, rtDrvMemProp_t *prop
     const size_t p2pSize = GetAlignedSize(IPC_EVENT_P2P_SIZE, granularity);
     // 1.2 halMemAddressReserve get deviceMemVa
     rtError_t error = NpuDriver::ReserveMemAddress(&deviceMemVa, p2pSize, 0, nullptr, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: ReserveMemAddress failed, error=%#x.", static_cast<uint32_t>(error));
     currentDeviceMem_ = deviceMemVa;
     currentHostMem_ = deviceMemVa;
 
@@ -41,25 +41,25 @@ rtError_t IpcEvent::IpcVaAndPaOperation(size_t granularity, rtDrvMemProp_t *prop
     prop->devid = device_->Id_();
     prop->side = MEM_DEV_SIDE;
     error = NpuDriver::MallocPhysical(&deviceMemPa, p2pSize, prop, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: MallocPhysical failed, error=%#x.", static_cast<uint32_t>(error));
     deviceMemPa_ = deviceMemPa;
 
     // 1.4 halMemMap map va to pa size
     error = NpuDriver::MapMem(deviceMemVa, p2pSize, 0, deviceMemPa, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: MapMem failed, error=%#x.", static_cast<uint32_t>(error));
     mapFlag_ |= DEV_MEM_MAP_FLAG;;
     error = device_->Driver_()->MemSetSync(deviceMemVa, p2pSize, 0U, p2pSize);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event MemSetSync failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: MemSetSync failed, error=%#x.", static_cast<uint32_t>(error));
     // 1.5 halMemExportToShareableHandle pa for handle, SetMemShareHandleDisablePidVerify close whitelist
     error = NpuDriver::ExportToShareableHandle(deviceMemPa, RT_MEM_HANDLE_TYPE_NONE, IPC_EVENT_P2P_NO_CHECK_FLAG, deviceMemHandle); 
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: ExportToShareableHandle failed, error=%#x.", static_cast<uint32_t>(error));
     error = NpuDriver::SetMemShareHandleDisablePidVerify(*deviceMemHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: SetMemShareHandleDisablePidVerify failed, error=%#x.", static_cast<uint32_t>(error));
 
     // 1.6 halMemSetAccess p2p to host
     rtMemAccessDesc memAccessDesc = {};
@@ -68,8 +68,8 @@ rtError_t IpcEvent::IpcVaAndPaOperation(size_t granularity, rtDrvMemProp_t *prop
     memAccessDesc.location.type = RT_MEMORY_LOC_HOST;
 
     error = NpuDriver::MemSetAccess(deviceMemVa, p2pSize, &memAccessDesc, MEM_SET_ACCESS_NUM);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: MemSetAccess failed, error=%#x.", static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "MemSetAccess success.");
     return error;
 }
@@ -83,37 +83,38 @@ rtError_t IpcEvent::IpcHandleAllocAndExport(size_t granularity, rtDrvMemProp_t *
 
     // 2.1 halMemAddressReserve get ipcHandleVa
     rtError_t error = NpuDriver::ReserveMemAddress(&ipcHandleVa, ipcHandleSize, 0, nullptr, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event ReserveMemAddress failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: ReserveMemAddress failed, error=%#x.", static_cast<uint32_t>(error));
     ipcHandleVa_ = RtPtrToPtr<IpcHandleVa*>(ipcHandleVa);
 
     // 2.2 halMemCreate get ipcHandlePa
     prop->devid = 0U;
     prop->side = MEM_HOST_SIDE;
     error = NpuDriver::MallocPhysical(&ipcHandlePa, ipcHandleSize, prop, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event MallocPhysical failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: MallocPhysical failed, error=%#x.", static_cast<uint32_t>(error));
     ipcHandlePa_ = ipcHandlePa;
 
     // 2.3 map ipcHandleVa to ipcHandlePa
     error = NpuDriver::MapMem(ipcHandleVa, ipcHandleSize, 0, ipcHandlePa, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: MapMem failed, error=%#x.", static_cast<uint32_t>(error));
     mapFlag_ |= IPC_HANDLE_MAP_FLAG;
     error = device_->Driver_()->MemSetSync(ipcHandleVa, ipcHandleSize, 0U, ipcHandleSize);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event MemSetSync failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: MemSetSync failed, error=%#x.", static_cast<uint32_t>(error));
 
     // init lock
     IpcVaLockInit();
 
     // 2.4 halMemExportToShareableHandle pa for ipcHandle, SetMemShareHandleDisablePidVerify close whitelist
     error = NpuDriver::ExportToShareableHandle(ipcHandlePa, RT_MEM_HANDLE_TYPE_NONE, IPC_EVENT_P2P_NO_CHECK_FLAG, ipcHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: ExportToShareableHandle failed, error=%#x.", static_cast<uint32_t>(error));
     error = NpuDriver::SetMemShareHandleDisablePidVerify(*ipcHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to allocate ipc handle. Reason: SetMemShareHandleDisablePidVerify failed, error=%#x.", static_cast<uint32_t>(error));
     return error;
 }
 
@@ -135,8 +136,8 @@ rtError_t IpcEvent::Setup()
     prop.module_id = static_cast<uint16_t>(RUNTIME);
     prop.pg_type = MEM_NORMAL_PAGE_TYPE;
     error = NpuDriver::GetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event setup failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: GetAllocationGranularity failed, error=%#x.", static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "GetAllocationGranularity success.");
     std::function<void()> const recycleFunc = [this]() {
         ReleaseDrvResource();
@@ -145,13 +146,13 @@ rtError_t IpcEvent::Setup()
 
     // p2p proc
     error = IpcVaAndPaOperation(granularity, &prop, &deviceMemHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event IpcVaAndPaOperation failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: IpcVaAndPaOperation failed, error=%#x.", static_cast<uint32_t>(error));
 
     // share handle proc
     error = IpcHandleAllocAndExport(granularity, &prop, &ipcHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event IpcHandleAllocAndExport failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to setup ipc event. Reason: IpcHandleAllocAndExport failed, error=%#x.", static_cast<uint32_t>(error));
     errRecycle.ReleaseGuard();
 
     ipcHandle_ = ipcHandle;
@@ -176,22 +177,22 @@ rtError_t IpcEvent::IpcHandleAllocAndImport(size_t granularity, rtIpcEventHandle
     rtDrvMemHandle ipcHandlePa = nullptr;
     const size_t ipcHandleSize = GetAlignedSize(sizeof(IpcHandleVa), granularity);
     rtError_t error = NpuDriver::ReserveMemAddress(&ipcHandleVa, ipcHandleSize, 0, nullptr, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: ReserveMemAddress failed, error=%#x.", static_cast<uint32_t>(error));
     ipcHandleVa_ = RtPtrToPtr<IpcHandleVa*>(ipcHandleVa);
 
     // 1.2 import ipcHandlePa from ipcHandle
     uint64_t ipcHandle;
     memcpy_s(&ipcHandle, sizeof(uint64_t), static_cast<void*>(ipcEventHandle), sizeof(uint64_t));
     error = NpuDriver::ImportFromShareableHandle(ipcHandle, IMPORT_DEVICE_ID, &ipcHandlePa);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: ImportFromShareableHandle failed, error=%#x.", static_cast<uint32_t>(error));
     ipcHandlePa_ = ipcHandlePa;
 
     // 1.3 map ipcHandleVa to ipcHandlePa
     error = NpuDriver::MapMem(ipcHandleVa, ipcHandleSize, 0, ipcHandlePa, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: MapMem failed, error=%#x.", static_cast<uint32_t>(error));
     mapFlag_ |= IPC_HANDLE_MAP_FLAG;
 
     ipcHandle_ = ipcHandle;
@@ -201,8 +202,8 @@ rtError_t IpcEvent::EnableP2PForIpc(uint64_t deviceMemHandle) const
 {
     uint32_t peerPhyDeviceId = 0U;
     rtError_t error = NpuDriver::GetPhyDevIdByMemShareHandle(deviceMemHandle, &peerPhyDeviceId);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc GetPhyDevIdByMemShareHandle failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to enable p2p for ipc. Reason: GetPhyDevIdByMemShareHandle failed, error=%#x.", static_cast<uint32_t>(error));
     // enable p2p
     Device* const dev = context_->Device_();
     error = dev->EnableP2PWithOtherDevice(peerPhyDeviceId);
@@ -218,8 +219,8 @@ rtError_t IpcEvent::IpcMemHandleImport(size_t granularity, bool hostFlag, uint64
     // 2.1 alloc va for p2p open
     const size_t p2pSize = GetAlignedSize(IPC_EVENT_P2P_SIZE, granularity);
     rtError_t error = NpuDriver::ReserveMemAddress(&MemVa, p2pSize, 0, nullptr, 0);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to import ipc memory handle. Reason: ReserveMemAddress failed, error=%#x.", static_cast<uint32_t>(error));
     if (hostFlag) {
         currentHostMem_ = MemVa;
     } else {
@@ -228,8 +229,8 @@ rtError_t IpcEvent::IpcMemHandleImport(size_t granularity, bool hostFlag, uint64
 
     // 2.2 import pa by deviceMemHandle
     error = NpuDriver::ImportFromShareableHandle(deviceMemHandle, currentId, &MemPa);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to import ipc memory handle. Reason: ImportFromShareableHandle failed, error=%#x.", static_cast<uint32_t>(error));
     if (hostFlag) {
         hostMemPa_ = MemPa;
     } else {
@@ -238,8 +239,8 @@ rtError_t IpcEvent::IpcMemHandleImport(size_t granularity, bool hostFlag, uint64
 
     // 2.3 map MemVa to MemPa
     error = NpuDriver::MapMem(MemVa, p2pSize, 0, MemPa, 0);    
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to import ipc memory handle. Reason: MapMem failed, error=%#x.", static_cast<uint32_t>(error));
     if (hostFlag) {
         mapFlag_ |= HOST_MEM_MAP_FLAG;
     } else {
@@ -256,7 +257,7 @@ rtError_t IpcEvent::IpcOpenEventHandle(rtIpcEventHandle_t *ipcEventHandle)
         "Not support Ipc event in current drv version, version",
         FEATURE_SVM_VMM_NORMAL_GRANULARITY);
     RT_LOG(RT_LOG_INFO, "IpcOpenEventHandle start");
-    NULL_PTR_RETURN_MSG(ipcEventHandle, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(ipcEventHandle, RT_ERROR_INVALID_VALUE);
     rtError_t error = RT_ERROR_NONE;
 
     // get granularity
@@ -268,8 +269,8 @@ rtError_t IpcEvent::IpcOpenEventHandle(rtIpcEventHandle_t *ipcEventHandle)
     prop.pg_type = MEM_NORMAL_PAGE_TYPE;
     size_t granularity = 0U;
     error = NpuDriver::GetAllocationGranularity(&prop, RT_MEM_ALLOC_GRANULARITY_MINIMUM, &granularity);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event open failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: GetAllocationGranularity failed, error=%#x.", static_cast<uint32_t>(error));
     RT_LOG(RT_LOG_INFO, "GetAllocationGranularity success, granularity=%u.", granularity);
     std::function<void()> const recycleFunc = [this]() {
         ReleaseDrvResource();
@@ -278,26 +279,26 @@ rtError_t IpcEvent::IpcOpenEventHandle(rtIpcEventHandle_t *ipcEventHandle)
 
     // share handle proc
     error = IpcHandleAllocAndImport(granularity, ipcEventHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event IpcHandleAllocAndImport failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: IpcHandleAllocAndImport failed, error=%#x.", static_cast<uint32_t>(error));
 
     uint64_t deviceMemHandle = 0U;
     deviceMemHandle = RtPtrToValue(ipcHandleVa_->deviceMemHandle);
 
     // enable p2p
     error = EnableP2PForIpc(deviceMemHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event enable p2p failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: EnableP2PForIpc failed, error=%#x.", static_cast<uint32_t>(error));
 
     // host import
     error = IpcMemHandleImport(granularity, true, deviceMemHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event IpcHandleAllocAndImport failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: IpcMemHandleImport failed, error=%#x.", static_cast<uint32_t>(error));
 
     // device import
     error = IpcMemHandleImport(granularity, false, deviceMemHandle);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error,
-        "ipc event IpcHandleAllocAndImport failed, error=%#x.", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR(error != RT_ERROR_NONE, error,
+        "Failed to open ipc event. Reason: IpcMemHandleImport failed, error=%#x.", static_cast<uint32_t>(error));
     errRecycle.ReleaseGuard();
 
     deviceMemSize_ = IPC_EVENT_P2P_SIZE;
@@ -334,11 +335,11 @@ rtError_t IpcEvent::IpcEventRecord(Stream * const stm)
     TaskInfo submitTask = {};
     TaskInfo *tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_IPC_RECORD, errorReason);
     COND_RETURN_ERROR_MSG_INNER((tsk == nullptr), errorReason,
-                                "Failed to alloc task when ipc record, stream_id=%d.", stm->Id_());
+                                "Failed to allocate task for ipc record, stream_id=%d.", stm->Id_());
     uint16_t curIndex = 0U;
     error = GetIpcRecordIndex(&curIndex);
     COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, (void)dev->GetTaskFactory()->Recycle(tsk),
-        "context is abort, status=%#x.", static_cast<uint32_t>(error));
+        "Failed to get ipc record index. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
     std::function<void()> const errRecycle = [&dev, &tsk, this]() {
         IpcVaLock();
         ipcHandleVa_->deviceMemRef[ipcHandleVa_->currentIndex]--;
@@ -349,7 +350,7 @@ rtError_t IpcEvent::IpcEventRecord(Stream * const stm)
     ScopeGuard tskErrRecycle(errRecycle);
     uint8_t* addr = RtPtrToPtr<uint8_t*>(currentDeviceMem_) + curIndex;
     error = MemWriteValueTaskInit(tsk, RtPtrToPtr<void*>(addr), static_cast<uint64_t>(1U));
-    ERROR_RETURN_MSG_INNER(error, "mem write value init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Failed to initialize mem write value task, stream_id=%d, task_id=%hu, retCode=%#x.",
         stm->Id_(), tsk->id, static_cast<uint32_t>(error));
     tsk->typeName = "IPC_RECORD";
     tsk->type = TS_TASK_TYPE_IPC_RECORD;
@@ -388,7 +389,7 @@ rtError_t IpcEvent::IpcEventWait(Stream * const stm)
     tsk = stm->AllocTask(&submitTask, TS_TASK_TYPE_IPC_WAIT, errorReason, MEM_WAIT_SQE_NUM);
     COND_PROC_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, tsk == nullptr, errorReason,
         IpcVaLock(); ipcHandleVa_->deviceMemRef[ipcHandleVa_->currentIndex]--; IpcVaUnLock(),
-        "task alloc fail err:%#x", static_cast<uint32_t>(errorReason));
+        "Failed to allocate task for ipc wait, retCode=%#x.", static_cast<uint32_t>(errorReason));
     std::function<void()> const errRecycle = [&dev, &tsk, this]() {
         IpcVaLock();
         ipcHandleVa_->deviceMemRef[ipcHandleVa_->currentIndex]--;
@@ -401,7 +402,7 @@ rtError_t IpcEvent::IpcEventWait(Stream * const stm)
     tsk->typeName = "IPC_WAIT";
     tsk->type = TS_TASK_TYPE_IPC_WAIT;
     error = MemWaitValueTaskInit(tsk, RtPtrToPtr<void*>(addr), 1, 0x0);
-    ERROR_RETURN_MSG_INNER(error, "mem wait value init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
+    ERROR_RETURN_MSG_INNER(error, "Failed to initialize mem wait value task, stream_id=%d, task_id=%hu, retCode=%#x.",
         stm->Id_(), tsk->id, static_cast<uint32_t>(error));
     MemWaitValueTaskInfo *memWaitValueTask = &tsk->u.memWaitValueTask;
     memWaitValueTask->curIndex = curIndex;
@@ -419,7 +420,7 @@ rtError_t IpcEvent::IpcEventWait(Stream * const stm)
 rtError_t IpcEvent::IpcEventQuery(rtEventStatus_t * const status)
 {
     rtError_t error = context_->CheckStatus();
-    ERROR_RETURN(error, "context is abort, status=%#x.", static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to query ipc event status. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
     IpcVaLock();
     uint16_t curIndex = ipcHandleVa_->currentIndex;
     if (ipcHandleVa_->deviceMemRef[curIndex] == 0U) {
@@ -442,7 +443,7 @@ rtError_t IpcEvent::IpcEventQuery(rtEventStatus_t * const status)
 rtError_t IpcEvent::IpcEventSync(int32_t timeout)
 {
     rtError_t error = context_->CheckStatus();
-    ERROR_RETURN(error, "context is abort, status=%#x.", static_cast<uint32_t>(error));
+    ERROR_RETURN(error, "Failed to synchronize ipc event. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
     IpcVaLock();
     uint16_t curIndex = ipcHandleVa_->currentIndex;
     RT_LOG(RT_LOG_INFO, "current index=%u.", curIndex);
@@ -457,7 +458,7 @@ rtError_t IpcEvent::IpcEventSync(int32_t timeout)
     const mmTimespec beginTimeSpec = mmGetTickCount();
     while ((*hostaddr == 0U) || IsIpcFinished()) {
         error = context_->CheckStatus();
-        ERROR_RETURN(error, "context is abort, status=%#x.", static_cast<uint32_t>(error));
+        ERROR_RETURN(error, "Failed to synchronize ipc event. Reason: context is abort, status=%#x.", static_cast<uint32_t>(error));
         queryTimes++;
         if (queryTimes == 1000U) {
             (void)mmSleep(100U);
@@ -516,8 +517,8 @@ void IpcEvent::FreeMemForVaUse()
 rtError_t IpcEvent::ReleaseDrvResource()
 {
     const std::lock_guard<std::mutex> lock(eventResLock_);
-    NULL_PTR_RETURN_MSG(device_, RT_ERROR_INVALID_VALUE);
-    NULL_PTR_RETURN_MSG(device_->Driver_(), RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(device_, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN(device_->Driver_(), RT_ERROR_INVALID_VALUE);
     FreeMemForVaUse();
     if (deviceMemPa_ != nullptr) {
         (void)NpuDriver::FreePhysical(deviceMemPa_);

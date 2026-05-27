@@ -77,11 +77,9 @@ void EventPool::TryAllocEventIdForPool()
 
 rtError_t EventPool::FreeEventId(const int32_t eventId)
 {
-    // 1. first free id.
     const rtError_t error = device_->FreeEventIdFromDrv(eventId);
-    COND_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), error, "Event Id Free failed, retCode=%#x.",
+    COND_RETURN_ERROR_MSG_INNER((error != RT_ERROR_NONE), error, "Failed to free event id from driver, retCode=%#x.",
                                 static_cast<uint32_t>(error));
-    // 2. if queue not empty need alloc; else return.
     (void)TryAllocEventIdForPool();
     RT_LOG(RT_LOG_INFO, "device_id=%u, free event_id=%d, pool event_num =%d", device_->Id_(), eventId,
            GetQueueAvilableNum());
@@ -122,7 +120,6 @@ bool EventPool::AllocEventIdFromPool(int32_t *eventId)
 
 rtError_t EventPool::EventIdReAlloc()
 {
-    // 如果队列为空，直接返回
     if (eventQueueHead_ == eventQueueTail_) {
         RT_LOG(RT_LOG_INFO, "Event pool is empty, drv devId=%u", device_->Id_());
         return RT_ERROR_NONE;
@@ -130,14 +127,14 @@ rtError_t EventPool::EventIdReAlloc()
 
     const std::lock_guard<std::mutex> lock(lk_);
     Driver *devDrv = device_->Driver_();
-    NULL_PTR_RETURN_MSG(devDrv, RT_ERROR_DRV_NULL);
+    NULL_PTR_RETURN(devDrv, RT_ERROR_DRV_NULL);
     uint32_t index = eventQueueHead_;
     while (index != eventQueueTail_) {
         const int32_t eventId = eventQueue_[index];
         const rtError_t error = devDrv->ReAllocResourceId(
             device_->Id_(), device_->DevGetTsId(), 0U, static_cast<uint32_t>(eventId), DRV_EVENT_ID);
         ERROR_RETURN(error,
-            "Reallocate event id failed, eventId=%d, drv devId=%u, retCode=%#x.",
+            "Failed to reallocate event id, eventId=%d, drv devId=%u, retCode=%#x.",
             eventId,
             device_->Id_(),
             error);

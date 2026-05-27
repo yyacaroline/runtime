@@ -24,6 +24,7 @@
 #include "runtime/context.h"
 #include "runtime/rts/rts_mem.h"
 #include "utils/file_utils.h"
+#include "utils/data_type_utils.h"
 
 namespace {
     std::mutex aclChannleMutex;
@@ -170,7 +171,10 @@ namespace acl {
                 break;
             }
             default: {
-                ACL_LOG_ERROR("[Check][Type]unknown acltdtTensorType %d.", aclType);
+                acl::AclErrorLogManager::ReportInputError(acl::INVALID_VALUE_MSG,
+                    std::vector<const char *>({"func", "value", "param", "expect"}),
+                    std::vector<const char *>({__func__, acl::GetTensorTypeDesc(aclType),
+                        "aclType", "ACL_TENSOR_DATA_END_OF_SEQUENCE or ACL_TENSOR_DATA_TENSOR or ACL_TENSOR_DATA_ABNORMAL"}));
                 return ACL_ERROR_INVALID_PARAM;
             }
         }
@@ -193,7 +197,10 @@ namespace acl {
                 break;
             }
             default: {
-                ACL_LOG_INNER_ERROR("[Check][Type]unknown acltdtTensorType %d.", aclType);
+                acl::AclErrorLogManager::ReportInputError(acl::INVALID_VALUE_MSG,
+                    std::vector<const char *>({"func", "value", "param", "expect"}),
+                    std::vector<const char *>({__func__, acl::GetTensorTypeDesc(aclType),
+                        "aclType", "ACL_TENSOR_DATA_END_OF_SEQUENCE or ACL_TENSOR_DATA_TENSOR or ACL_TENSOR_DATA_ABNORMAL"}));
                 return ACL_ERROR_INVALID_PARAM;
             }
         }
@@ -216,7 +223,10 @@ namespace acl {
                 break;
             }
             default: {
-                ACL_LOG_INNER_ERROR("[Check][Datatype]unknown TdtDataType %d.", tdtDataType);
+                acl::AclErrorLogManager::ReportInputError(acl::INVALID_VALUE_MSG,
+                    std::vector<const char *>({"func", "value", "param", "expect"}),
+                    std::vector<const char *>({__func__, acl::GetTdtDataTypeDesc(tdtDataType), "tdtDataType",
+                        "TDT_END_OF_SEQUENCE or TDT_TENSOR or TDT_ABNORMAL"}));
                 return ACL_ERROR_UNSUPPORTED_DATA_TYPE;
             }
         }
@@ -247,7 +257,10 @@ namespace acl {
                 break;
             }
             default: {
-                ACL_LOG_INNER_ERROR("[Check][Datatype]unknown TdtDataType %d.", tdtDataType);
+                acl::AclErrorLogManager::ReportInputError(acl::INVALID_VALUE_MSG,
+                    std::vector<const char *>({"func", "value", "param", "expect"}),
+                    std::vector<const char *>({__func__, acl::GetTdtDataTypeDescV2(tdtDataType), "tdtDataType",
+                        "[TDT_TENSOR(0), TDT_END_OF_SEQUENCE(1), TDT_ABNORMAL(2), TDT_SLICE_TENSOR(3), TDT_END_TENSOR(4)]"}));
                 return ACL_ERROR_UNSUPPORTED_DATA_TYPE;
             }
         }
@@ -309,7 +322,11 @@ namespace acl {
     {
         ACL_REQUIRES_NOT_NULL(dataset);
         if (dataset->blobs.size() != 0) {
-            ACL_LOG_INNER_ERROR("[Check][Dataset]Dataset size[%zu] is not empty", dataset->blobs.size());
+            const std::string sizeVal = std::to_string(dataset->blobs.size());
+            acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
+                std::vector<const char *>({"func", "value", "param", "reason"}),
+                std::vector<const char *>({__func__, sizeVal.c_str(), "dataset->blobs.size",
+                    "dataset must be empty before deserialization"}));
             return ACL_ERROR_INVALID_PARAM;
         }
         aclError ret = ACL_SUCCESS;
@@ -381,7 +398,11 @@ namespace acl {
     {
         ACL_REQUIRES_NOT_NULL(dataset);
         if (!dataset->blobs.empty() && !dataset->freeSelf) {
-            ACL_LOG_INNER_ERROR("[Check][Dataset]Dataset size[%zu] is not empty", dataset->blobs.size());
+            const std::string sizeVal = std::to_string(dataset->blobs.size());
+            acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
+                std::vector<const char *>({"func", "value", "param", "reason"}),
+                std::vector<const char *>({__func__, sizeVal.c_str(), "dataset->blobs.size",
+                    "dataset must be empty or freeSelf must be true before deserialization"}));
             return ACL_ERROR_INVALID_PARAM;
         }
         for (auto it = dataset->blobs.begin(); it != dataset->blobs.end(); ++it) {
@@ -393,7 +414,7 @@ namespace acl {
             acltdtTensorType aclType;
             ret = GetAclTypeByTdtDataTypeV2(itemVec[i].ctrlInfo.dataType, aclType);
             if (ret != ACL_SUCCESS) {
-                ACL_LOG_INNER_ERROR("[Check][Dataset]TensorDatasetDeserializes failed, invalid data type %d",
+                ACL_LOG_INNER_ERROR("[Check][Dataset]Failed to convert TdtDataType %d to acltdtTensorType.",
                     itemVec[i].ctrlInfo.dataType);
                 break;
             }
@@ -588,7 +609,7 @@ namespace acl {
         std::vector<acl::aclTdtDataItemInfo> itemVec;
         auto ret = acl::TensorDatasetSerializesV2(dataset, itemVec);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_INNER_ERROR("[Serialize][Dataset]failed to TensorDatasetSerializesV2, device is %u, name is %s",
+            ACL_LOG_INNER_ERROR("[Serialize][Dataset]Failed to TensorDatasetSerializesV2, device is %u, name is %s.",
                 handle->devId, handle->name.c_str());
             itemVec.clear();
             return ret;
@@ -597,7 +618,7 @@ namespace acl {
         std::vector<rtMemQueueBuffInfo> queueBufInfoVec;
         ret = acl::TensorDataitemSerialize(itemVec, dataset->memType, queueBufInfoVec, ctrlSharedPtrVec);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_INNER_ERROR("[Serialize][Dataset]failed to TensorDataitemSerialize, device is %u, name is %s",
+            ACL_LOG_INNER_ERROR("[Serialize][Dataset]Failed to TensorDataitemSerialize, device is %u, name is %s.",
                 handle->devId, handle->name.c_str());
             return ret;
         }
@@ -701,7 +722,7 @@ namespace acl {
             return ret;
         }
         if (ret != RT_ERROR_NONE) {
-            ACL_LOG_ERROR("failed to rtMemQueueDeQueueBuf, device is %u, name is %s",
+            ACL_LOG_ERROR("Failed to rtMemQueueDeQueueBuf, device is %u, name is %s.",
                 handle->devId, handle->name.c_str());
             return ret;
         }
@@ -709,17 +730,17 @@ namespace acl {
         std::vector<acl::aclTdtDataItemInfo> itemVec;
         ret = acl::UnpackageRecvDataInfo(static_cast<uint8_t *>(hostPtr), bufLen, itemVec);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_ERROR("failed to UnpackageRecvDataInfo, device is %u, name is %s",
+            ACL_LOG_ERROR("Failed to unpackage received data, device is %u, name is %s.",
                 handle->devId, handle->name.c_str());
             return ret;
         }
         ret = acl::TensorDatasetDeserializesV2(itemVec, dataset);
         if (ret != ACL_SUCCESS) {
-            ACL_LOG_INNER_ERROR("[Deserialize][Dataset]failed to TensorDatasetDeserializesV2, device is %u, name is %s",
+            ACL_LOG_INNER_ERROR("[Deserialize][Dataset]Failed to deserialize tensor dataset, device is %u, name is %s.",
                 handle->devId, handle->name.c_str());
             return ret;
         }
-        ACL_LOG_INFO("success to execute acltdtReceiveTensorV2, device is %u, name is %s",
+        ACL_LOG_INFO("success to execute acltdtReceiveTensorV2, device is %u, name is %s.",
             handle->devId, handle->name.c_str());
         return ACL_SUCCESS;
     }
@@ -832,7 +853,8 @@ acltdtDataItem *acltdtCreateDataItem(acltdtTensorType tdtType,
         std::string value = std::to_string(*dims) + "/" + std::to_string(dimNum);
         acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
             std::vector<const char *>({"func", "value", "param", "reason"}),
-            std::vector<const char *>({__func__, value.c_str(), "dims/dimNum", "If dims is not nullptr, dimNum should be greater than 0"}));
+            std::vector<const char *>({__func__, value.c_str(),
+                "dims/dimNum", "If dims is not nullptr, dimNum should be greater than 0"}));
         return nullptr;
     }
 
@@ -1125,12 +1147,13 @@ aclError acltdtSendTensor(const acltdtChannelHandle *handle, const acltdtDataset
         return acl::acltdtSendTensorV2(handle, dataset, timeout);
     }
     // -1 represents infinite wait, it is must be -1 now
-    ACL_CHECK_INVALID_PARAM_WITH_REASON(timeout != -1, timeout, "Only never timeout is supported, timeout can only be set to -1");
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(timeout != -1, timeout,
+        "Only never timeout is supported, timeout can only be set to -1");
 
     std::vector<tdt::DataItem> itemVec;
     auto ret = acl::TensorDatasetSerializes(dataset, itemVec);
     if (ret != ACL_SUCCESS) {
-        ACL_LOG_INNER_ERROR("[Serialize][Dataset]failed to TensorDatasetSerializes, device is %u, name is %s",
+        ACL_LOG_INNER_ERROR("[Serialize][Dataset]Failed to TensorDatasetSerializes, device is %u, name is %s.",
             handle->devId, handle->name.c_str());
         itemVec.clear();
         return ret;
@@ -1142,7 +1165,7 @@ aclError acltdtSendTensor(const acltdtChannelHandle *handle, const acltdtDataset
     }
     int32_t sendRet = tdtHostPushData(handle->name, itemVec, 0);
     if (sendRet != 0) {
-        ACL_LOG_INNER_ERROR("[Push][Data]failed to send, tdt result = %d, device is %u, name is %s",
+        ACL_LOG_INNER_ERROR("[Push][Data]Failed to push data, tdt result = %d, device is %u, name is %s.",
             sendRet, handle->devId, handle->name.c_str());
         return ACL_ERROR_FAILURE;
     }
@@ -1163,7 +1186,8 @@ aclError acltdtReceiveTensor(const acltdtChannelHandle *handle, acltdtDataset *d
         return acl::acltdtReceiveTensorV2(handle, dataset, timeout);
     }
     // -1 represents infinite wait, it is must be -1 now
-    ACL_CHECK_INVALID_PARAM_WITH_REASON(timeout != -1, timeout, "Only never timeout is supported, timeout can only be set to -1");
+    ACL_CHECK_INVALID_PARAM_WITH_REASON(timeout != -1, timeout,
+        "Only never timeout is supported, timeout can only be set to -1");
 
     if (handle->recvName.empty()) {
         ACL_LOG_ERROR("[Check][Recvname]it is not a receive channel, failed to receive, device is %u, name is %s",
@@ -1178,14 +1202,14 @@ aclError acltdtReceiveTensor(const acltdtChannelHandle *handle, acltdtDataset *d
     }
     int32_t recvRet = tdtHostPopData(handle->recvName, itemVec);
     if (recvRet != 0) {
-        ACL_LOG_INNER_ERROR("[Pop][Data]failed to receive, tdt result = %d, device is %u, name is %s",
+        ACL_LOG_INNER_ERROR("[Pop][Data]Failed to receive, tdt result = %d, device is %u, name is %s.",
             recvRet, handle->devId, handle->name.c_str());
         return ACL_ERROR_FAILURE;
     }
 
     auto ret = acl::TensorDatasetDeserializes(itemVec, dataset);
     if (ret != ACL_SUCCESS) {
-        ACL_LOG_INNER_ERROR("[Deserialize][Dataset]failed to TensorDatasetDeserializes, device is %u, name is %s",
+        ACL_LOG_INNER_ERROR("[Deserialize][Dataset]Failed to TensorDatasetDeserializes, device is %u, name is %s.",
             handle->devId, handle->name.c_str());
         return ret;
     }

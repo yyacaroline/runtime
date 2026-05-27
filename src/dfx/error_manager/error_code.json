@@ -614,6 +614,17 @@
     },
     {
       "errClass": "RTS Errors",
+      "errTitle": "Resource_Error",
+      "ErrCode": "EE1021",
+      "ErrMessage": "The runtime module failed to create host %s through API %s.",
+      "Arglist": "resource_type, api",
+      "suggestion": {
+        "Possible Cause": "Failed to create resources such as semaphores, locks, or threads due to insufficient system resources.",
+        "Solution": "Stop unnecessary threads and ensure that the required resource is available."
+      }
+    },
+    {
+      "errClass": "RTS Errors",
       "errTitle": "Config_Error_Invalid_Environment_Variable",
       "ErrCode": "EE2002",
       "ErrMessage": "Value %s for environment variable %s is invalid. Expected value: %s.",

@@ -1418,7 +1418,7 @@ rtError_t ApiImpl::StreamCreate(Stream ** const stm, const int32_t priority, con
         error = (*stm)->SetFailMode(failMode);
         if (error != RT_ERROR_NONE) {
             RT_LOG(RT_LOG_ERROR,
-                "Failed to set stream failure mode, failMode = %llu, stream_id=%d, device_id=%u, error=%d",
+                "Failed to set stream failure mode, failMode = %llu, stream_id=%d, device_id=%u, retCode=%d",
                 failMode, (*stm)->Id_(), dev->Id_(), error);
             // 因为返回error日志，所以需要释放掉已经创建好的stream
             (void)StreamDestroy(*stm, false);
@@ -3808,8 +3808,11 @@ rtError_t ApiImpl::ContextCreate(Context ** const inCtx, const int32_t devId)
 rtError_t ApiImpl::ContextDestroy(Context * const inCtx)
 {
     CHECK_CONTEXT_VALID_WITH_RETURN(inCtx, RT_ERROR_CONTEXT_NULL);
-    COND_RETURN_ERROR_MSG_INNER(inCtx->IsPrimary(), RT_ERROR_CONTEXT_NULL, "Can not destroy primary ctx.");
-    COND_RETURN_ERROR_MSG_INNER(!inCtx->TearDownIsCanExecute(), RT_ERROR_CONTEXT_DEL, "Ctx is destroying.");
+
+    COND_RETURN_AND_MSG_OUTER(inCtx->IsPrimary(), RT_ERROR_CONTEXT_NULL, ErrorCode::EE1017,
+        __func__, "context", "Primary context cannot be destroyed explicitly");
+    COND_RETURN_AND_MSG_OUTER(!inCtx->TearDownIsCanExecute(), RT_ERROR_CONTEXT_DEL, ErrorCode::EE1017,
+        __func__, "context", "Context is being destroyed");
 
     /* first call back default stream, make sure that the slave stream is destroyed behind the mainstream */
     if (inCtx->Device_()->PrimaryStream_() != inCtx->DefaultStream_()) {
@@ -3818,7 +3821,7 @@ rtError_t ApiImpl::ContextDestroy(Context * const inCtx)
     const rtError_t error = inCtx->TearDown();
     if (error != RT_ERROR_NONE) {
         inCtx->SetTearDownExecuteResult(TEARDOWN_ERROR);
-        RT_LOG(RT_LOG_ERROR, "Context destroy failed, tear down failed, retCode=%#x", error);
+        RT_LOG(RT_LOG_ERROR, "Failed to destroy context because TearDown failed, retCode=%#x", static_cast<uint32_t>(error));
         return error;
     }
     inCtx->SetTearDownExecuteResult(TEARDOWN_SUCCESS);
@@ -5213,11 +5216,11 @@ rtError_t ApiImpl::LabelListCpy(Label ** const lbl, const uint32_t labelNumber, 
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
 
     const Stream *stm = lbl[0]->Stream_();
-    NULL_PTR_RETURN_MSG(stm, RT_ERROR_LABEL_STREAM);
+    NULL_PTR_RETURN_MSG_OUTER(stm, RT_ERROR_LABEL_STREAM);
 
     const Model *mdl = stm->Model_();
     COND_RETURN_ERROR_MSG_INNER(mdl == nullptr, RT_ERROR_STREAM_MODEL,
-                                "Model is nullptr, stream is not in model");
+        "Model is nullptr, stream is not in model");
 
     const uint32_t modelId = mdl->Id_();
 
@@ -5944,8 +5947,8 @@ rtError_t ApiImpl::GetOpTimeOutInterval(uint64_t *interval)
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_PTR_RETURN_MSG(rtInstance, RT_ERROR_INSTANCE_NULL);
     const RtTimeoutConfig &timeoutCfg = rtInstance->GetTimeoutConfig();
-    COND_RETURN_ERROR_MSG_INNER((timeoutCfg.isInit == false), RT_ERROR_DEVICE_RETAIN,
-        "Get op timeout interval failed, must set device first.");
+    COND_RETURN_AND_MSG_OUTER((timeoutCfg.isInit == false), RT_ERROR_DEVICE_RETAIN, ErrorCode::EE1018,
+        __func__, "Device is not initialized, call rtSetDevice API first");
 
     *interval = static_cast<uint64_t>(timeoutCfg.interval);
     RT_LOG(RT_LOG_INFO, "Get op timeout interval successfully, interval=%" PRIu64 "us.", *interval);
@@ -5959,11 +5962,11 @@ rtError_t ApiImpl::SetOpExecuteTimeOutV2(uint64_t timeout, uint64_t *actualTimeo
     Runtime * const rtInstance = Runtime::Instance();
     NULL_PTR_RETURN_MSG(rtInstance, RT_ERROR_INSTANCE_NULL);
     const RtTimeoutConfig &timeoutCfg = rtInstance->GetTimeoutConfig();
-    COND_RETURN_ERROR_MSG_INNER((timeoutCfg.isInit == false), RT_ERROR_DEVICE_RETAIN,
-        "set op execute timeout failed, must set device first.");
+    COND_RETURN_AND_MSG_OUTER((timeoutCfg.isInit == false), RT_ERROR_DEVICE_RETAIN, ErrorCode::EE1018,
+        __func__, "Device is not initialized, call rtSetDevice API first");
 
     const rtError_t error = rtInstance->SetTimeoutConfig(RT_TIMEOUT_TYPE_OP_EXECUTE, timeout, RT_TIME_UNIT_TYPE_US);
-    ERROR_RETURN_MSG_INNER(error, "set op execute timeout failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_RETURN_MSG_INNER(error, "Failed to set op execute timeout, retCode=%#x.", static_cast<uint32_t>(error));
 
     if ((timeoutCfg.isOpTimeoutMs) && (timeoutCfg.isCfgOpExcTaskTimeout) &&
         (timeoutCfg.opExcTaskTimeout == 0UL)) {
@@ -7318,13 +7321,13 @@ rtError_t ApiImpl::StreamClear(Stream * const stm, rtClearStep_t step)
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
     Device * const dev = curCtx->Device_();
     if (!dev->IsStarsPlatform()) {
-        RT_LOG(RT_LOG_ERROR, "feature support only in stars platform");
+        RT_LOG(RT_LOG_ERROR, "Failed to clear stream because StreamClear is only supported on stars platform.");
         RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return RT_ERROR_FEATURE_NOT_SUPPORT;
     }
 
     if (!dev->CheckFeatureSupport(TS_FEATURE_MC2_ENHANCE)) {
-        RT_LOG(RT_LOG_ERROR, "feature not support because tsch version too low");
+        RT_LOG(RT_LOG_ERROR, "Failed to clear stream because tsch version does not support this feature.");
         return RT_ERROR_FEATURE_NOT_SUPPORT;
     }
 
@@ -8517,7 +8520,7 @@ rtError_t ApiImpl::LoopMemcpyAsync(void** const dsts, const size_t* const destMa
             NULL_STREAM_PTR_RETURN_MSG(curStm);
 
             error = StreamSynchronize(curStm, -1); // timeout 设置为默认值
-            ERROR_RETURN(error, "StreamSynchronize failed, stream_id=%d.", curStm->Id_());
+            ERROR_RETURN_MSG_INNER(error, "Failed to synchronize stream for unregistered memory copy, stream_id=%d, retCode=%#x.", curStm->Id_(), static_cast<uint32_t>(error));
             RT_LOG(RT_LOG_DEBUG, "Stream Synchronize success, stream_id=%d.", curStm->Id_());
 
             error = MemCopySync(dsts[i], destMaxs[i], srcs[i], sizes[i], kind);
@@ -8525,8 +8528,8 @@ rtError_t ApiImpl::LoopMemcpyAsync(void** const dsts, const size_t* const destMa
             error = MemcpyAsync(dsts[i], destMaxs[i], srcs[i], sizes[i], kind, stm, nullptr, nullptr, false, nullptr);
         }
 
-        COND_RETURN_ERROR((error != RT_ERROR_NONE) && (error != RT_ERROR_DRV_NOT_SUPPORT), error,
-            "Memcpy async failed, count=%" PRIu64 ", kind=%d.", sizes[i], kind);
+        COND_RETURN_AND_MSG_INNER((error != RT_ERROR_NONE) && (error != RT_ERROR_DRV_NOT_SUPPORT), error,
+            "Failed to copy memory asynchronously, count=%" PRIu64 ", kind=%d, retCode=%#x.", sizes[i], kind, static_cast<uint32_t>(error));
     }
 
     return error;
@@ -9052,7 +9055,7 @@ rtError_t ApiImpl::TaskSetParams(rtTask_t task, rtTaskParams* const params)
         case RT_TASK_EVENT_RECORD:
         case RT_TASK_EVENT_WAIT:
         case RT_TASK_EVENT_RESET:
-            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1001, "cannot update the event task params yet");
+            RT_LOG_OUTER_MSG_INVALID_PARAM(params->type, "RT_TASK_KERNEL or RT_TASK_VALUE_WRITE or RT_TASK_VALUE_WAIT");
             error = RT_ERROR_INVALID_VALUE;
             break;
         case RT_TASK_VALUE_WRITE:
@@ -9163,7 +9166,7 @@ rtError_t ApiImpl::ModelTaskDisable(rtTask_t task)
         "get task type failed, retCode=%#x.", error);
     COND_PROC(taskType == RT_TASK_DEFAULT, captureModel->SetCaptureModelStatus(RtCaptureModelStatus::FAULT));
     COND_RETURN_AND_MSG_OUTER((taskType == RT_TASK_DEFAULT), RT_ERROR_INVALID_VALUE,
-        ErrorCode::EE1001, "current task type can not be RT_TASK_DEFAULT.");
+        ErrorCode::EE1017, __func__, "taskType", "Current task type is RT_TASK_DEFAULT which cannot be reset");
 
     captureModel->ClearShapeInfo(taskInfo->stream->Id_(), GetTaskId(taskInfo));
     captureModel->ClearTaskExtendInfo(taskInfo->stream->Id_(), GetTaskId(taskInfo));

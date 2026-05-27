@@ -172,8 +172,7 @@ set(libruntime_src_files_include_for_tiny
     ${RUNTIME_CORE_DIR}/src/pool/event_expanding_tiny_stub.cc
     ${RUNTIME_DIR}/src/runtime/driver/npu_driver_tiny_stub.cc
     ${RUNTIME_CORE_DIR}/src/engine/engine_factory_tiny_stub.cc
-    ${RUNTIME_CORE_DIR}/src/kernel/binary_loader.cc
-    ${RUNTIME_CORE_DIR}/src/kernel/json_parse.cc
+    ${RUNTIME_CORE_DIR}/src/kernel/binary_loader_tiny_stub.cc
     ${RUNTIME_CORE_DIR}/src/task/tiny/rdma_task_tiny_stub.cc
     ${RUNTIME_FEATURE_DIR}/ffts/ffts_task_tiny_stub.cc
     ${RUNTIME_CORE_DIR}/src/task/tiny/task_tiny_stub.cc

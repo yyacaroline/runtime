@@ -40,10 +40,10 @@ SpmPool::~SpmPool()
 rtError_t SpmPool::Init()
 {
     COND_RETURN_ERROR_MSG_INNER((spmPageNum_ == 0U), RT_ERROR_POOL_RESOURCE,
-        "Spm pool init failed, page num can not be 0.");
+        "Failed to initialize SPM pool because page number is 0.");
     spmBases_ = new (std::nothrow) uint64_t[spmPageNum_];
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, spmBases_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-        "Spm pool init failed, new memory failed.");
+    COND_RETURN_AND_MSG_OUTER(spmBases_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, std::to_string(sizeof(uint64_t) * spmPageNum_).c_str());
     RT_LOG(RT_LOG_INFO, "new buffer ok, Runtime_alloc_size %zu", sizeof(uint64_t) * spmPageNum_);
 
     uint32_t i = 0U;
@@ -56,8 +56,8 @@ rtError_t SpmPool::Init()
     spmAllocator_ = new (std::nothrow) BufferAllocator(spmItemSize_, spmpoolSize, spmPageNum_ * spmInitCount_,
         BufferAllocator::LINEAR, &DrvAllocSPM, &DrvFreeSPM, this);
 
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, spmAllocator_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
-        "Spm pool init failed, new BufferAllocator failed.");
+    COND_RETURN_AND_MSG_OUTER(spmAllocator_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, std::to_string(sizeof(BufferAllocator)).c_str());
     RT_LOG(RT_LOG_INFO, "new BufferAllocator ok, Runtime_alloc_size %zu", sizeof(BufferAllocator));
 
     return RT_ERROR_NONE;

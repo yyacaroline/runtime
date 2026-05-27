@@ -52,7 +52,7 @@ rtError_t ApiImplDavid::LaunchKernelV2(Kernel * const kernel, uint32_t blockDim,
         const uint8_t prefetchCnt = PREFETCH_CNT_CLOUD_V2;
         for (uint8_t cntIdx = 0U; cntIdx < prefetchCnt; cntIdx++) {
             error = NopTask(curStm);
-            ERROR_RETURN_MSG_INNER(error, "Failed to launch NOP task, error=%#x.", error);
+            ERROR_RETURN_MSG_INNER(error, "Failed to launch NOP task, retCode=%#x.", error);
         }
     }
 
