@@ -11,6 +11,10 @@
 #include "kernel.hpp"
 #include "program.hpp"
 #include "runtime.hpp"
+#include "load_policy.hpp"
+#include "task_info.hpp"
+#include "stars_arg_manager.hpp"
+#include "stream_david.hpp"
 
 namespace cce {
 namespace runtime {
@@ -68,6 +72,40 @@ rtError_t GetPrefetchCnt(Kernel * const kernel)
     RT_LOG(RT_LOG_DEBUG, "get prefetch cnt success, kernel_name=%s, prefetchCnt1=%u, prefetchCnt2=%u, mixtype=%hu.",
            kernel->Name_().c_str(), kernel->PrefetchCnt1_(), kernel->PrefetchCnt2_(), mixtype);
     return RT_ERROR_NONE;
+}
+
+rtError_t LoadKernelArgs(Stream* stm, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result)
+{
+    return stm->LoadArgsInfo(argsInfo, false, &result, LoadPolicy::LP_GENERIC);
+}
+
+rtError_t PostUpdateKernelParams(TaskInfo* taskInfo)
+{
+    UNUSED(taskInfo);
+    return RT_ERROR_NONE;
+}
+
+void SetAicoreArgsSuperKernel(TaskInfo* taskInfo, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result)
+{
+    AicTaskInfo *aicTask = &(taskInfo->u.aicTaskInfo);
+    aicTask->comm.argsSize = argsInfo->argsSize;
+    aicTask->comm.args = result.kerArgs;
+    if (result.handle != nullptr) {
+        aicTask->comm.argHandle = result.handle;
+        taskInfo->needPostProc = true;
+    }
+    taskInfo->stmArgPos = static_cast<DavidStream *>(taskInfo->stream)->GetArgPos();
+    result.stmArgPos = UINT32_MAX;
+    result.handle = nullptr;
+}
+
+void BackupTaskArgHandle(TaskInfo* taskInfo)
+{
+    AicTaskInfo* aicTask = &(taskInfo->u.aicTaskInfo);
+    if (aicTask->comm.argHandle != nullptr) {
+        static_cast<DavidStream*>(taskInfo->stream)->AddArgHandleToRecycleList(aicTask->comm.argHandle);
+        aicTask->comm.argHandle = nullptr;
+    }
 }
 
 }  // namespace runtime

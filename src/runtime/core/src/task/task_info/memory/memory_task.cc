@@ -1777,6 +1777,7 @@ rtError_t UpdateWriteValueTaskParams(TaskInfo* const taskInfo, rtTaskParams* con
     taskInfo->u.memWriteValueTask.awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
     taskInfo->type = TS_TASK_TYPE_MEM_WRITE_VALUE;
     taskInfo->typeName = "MEM_WRITE_VALUE";
+    SetWriteValueSqeNum(taskInfo);
 
     Stream* stm = taskInfo->stream;
     Device* dev = stm->Device_();
@@ -1795,6 +1796,7 @@ rtError_t UpdateWaitValueTaskParams(TaskInfo* const taskInfo, rtTaskParams* cons
     // 需要先赋值类型，此类型会影响Init中的内存申请方式
     taskInfo->type = TS_TASK_TYPE_MEM_WAIT_VALUE;
     taskInfo->typeName = "MEM_WAIT_VALUE";
+    SetWaitValueSqeNum(taskInfo);
     rtError_t error = MemWaitValueTaskInit(taskInfo, params->valueWaitTaskParams.devAddr,
         params->valueWaitTaskParams.value, params->valueWaitTaskParams.flag);
     ERROR_RETURN_MSG_INNER(error, "mem wait value init failed, retCode=%#x.", error);

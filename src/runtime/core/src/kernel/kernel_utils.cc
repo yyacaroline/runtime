@@ -16,6 +16,7 @@
 #include "stars_arg_manager.hpp"
 #include "error_message_manage.hpp"
 #include "task/task_info.hpp"
+#include "stream_david.hpp"
 
 namespace cce {
 namespace runtime {
@@ -87,7 +88,7 @@ rtError_t ConvertTaskType(const TaskInfo * const task, rtTaskType *type)
         case TS_TASK_TYPE_DAVID_EVENT_WAIT:
             taskType = RT_TASK_EVENT_WAIT;
             break;
-        case TS_TASK_TYPE_MEM_WAIT_VALUE: 
+        case TS_TASK_TYPE_MEM_WAIT_VALUE:
             taskType = RT_TASK_VALUE_WAIT;
             break;
         case TS_TASK_TYPE_EVENT_RECORD:
@@ -149,6 +150,7 @@ static rtError_t UpdateKernelTaskInfoWithArgsAndCfg(
 {
     Stream* stm = taskInfo->stream;
     Device* dev = stm->Device_();
+    BackupTaskArgHandle(taskInfo);
     TaskUnInitProc(taskInfo);
     uint8_t mixType = NO_MIX;
     uint32_t prefetchCnt1 = 0U;
@@ -160,7 +162,7 @@ static rtError_t UpdateKernelTaskInfoWithArgsAndCfg(
         stm->Id_(), taskInfo->id);
     rtKernelAttrType kernelAttrType = kernel->GetKernelAttrType();
     StarsArgLoaderResult result = {};
-    error = stm->LoadArgsInfo(argsInfo, false, &result, LoadPolicy::LP_NO_MIX);
+    error = LoadKernelArgs(stm, argsInfo, result);
     ERROR_RETURN(
         error, "failed to load args, retCode=%#x, device_id=%u, stream_id=%d, task_id=%hu.", error, dev->Id_(),
         stm->Id_(), taskInfo->id);
@@ -180,10 +182,7 @@ static rtError_t UpdateKernelTaskInfoWithArgsAndCfg(
     kernel->SetPrefetchCnt1_(prefetchCnt1);
     kernel->SetPrefetchCnt2_(prefetchCnt2);
 
-    if (result.handle != nullptr) {
-        SetAicoreArgs(taskInfo, result.kerArgs, argsInfo->argsSize, result.handle);
-        result.handle = nullptr;
-    }
+    SetAicoreArgsSuperKernel(taskInfo, argsInfo, result);
 
     RT_LOG(
         RT_LOG_INFO,
@@ -228,8 +227,8 @@ rtError_t UpdateKernelParams(TaskInfo* const taskInfo, rtTaskParams* const param
     argsInfo.isNoNeedH2DCopy = (kernelTaskParams->isHostArgs == 0U) ? 1U : 0U;
     error = UpdateKernelTaskInfoWithArgsAndCfg(taskInfo, kernel, &argsInfo, &taskCfg, kernelTaskParams->numBlocks);
     ERROR_RETURN(error, "update task info failed, retCode=%#x.", error);
-    error = WaitAsyncCopyComplete(taskInfo);
-    ERROR_RETURN(error, "WaitAsyncCopyComplete Failed");
+    error = PostUpdateKernelParams(taskInfo);
+    ERROR_RETURN(error, "PostUpdateKernelParams Failed");
 
     Stream* stm = taskInfo->stream;
     Model* mdl = stm->Model_();

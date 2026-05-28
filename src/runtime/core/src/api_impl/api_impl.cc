@@ -9008,6 +9008,15 @@ rtError_t ApiImpl::TaskGetParams(rtTask_t task, rtTaskParams* const params)
         case TS_TASK_TYPE_EVENT_RESET:
             error = GetEventResetTaskParams(taskInfo, params);
             break;
+        case TS_TASK_TYPE_DAVID_EVENT_RECORD:
+            error = GetEventRecordTaskParamsStarsV2(taskInfo, params);
+            break;
+        case TS_TASK_TYPE_DAVID_EVENT_WAIT:
+            error = GetEventWaitTaskParamsStarsV2(taskInfo, params);
+            break;
+        case TS_TASK_TYPE_DAVID_EVENT_RESET:
+            error = GetEventResetTaskParamsStarsV2(taskInfo, params);
+            break;
         case TS_TASK_TYPE_CAPTURE_RECORD:
             error = GetCaptureRecordTaskParams(taskInfo, params);
             break;

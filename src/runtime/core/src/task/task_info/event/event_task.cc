@@ -488,6 +488,36 @@ rtError_t GetEventResetTaskParams(const TaskInfo* const taskInfo, rtTaskParams* 
 
     return RT_ERROR_NONE;
 }
+
+rtError_t GetEventRecordTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params)
+{
+    params->type = RT_TASK_EVENT_RECORD;
+    params->eventRecordTaskParams.event = taskInfo->u.davidEventRecordTaskInfo.event;
+    NULL_PTR_RETURN_MSG_OUTER(taskInfo->u.davidEventRecordTaskInfo.event, RT_ERROR_INVALID_VALUE);
+    params->eventRecordTaskParams.eventFlag = taskInfo->u.davidEventRecordTaskInfo.event->GetEventFlag();
+
+    return RT_ERROR_NONE;
+}
+
+rtError_t GetEventWaitTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params)
+{
+    params->type = RT_TASK_EVENT_WAIT;
+    params->eventWaitTaskParams.event = taskInfo->u.davidEventWaitTaskInfo.event;
+    NULL_PTR_RETURN_MSG_OUTER(taskInfo->u.davidEventWaitTaskInfo.event, RT_ERROR_INVALID_VALUE);
+    params->eventWaitTaskParams.eventFlag = taskInfo->u.davidEventWaitTaskInfo.event->GetEventFlag();
+
+    return RT_ERROR_NONE;
+}
+
+rtError_t GetEventResetTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params)
+{
+    params->type = RT_TASK_EVENT_RESET;
+    params->eventResetTaskParams.event = taskInfo->u.davidEventResetTaskInfo.event;
+    NULL_PTR_RETURN_MSG_OUTER(taskInfo->u.davidEventResetTaskInfo.event, RT_ERROR_INVALID_VALUE);
+    params->eventResetTaskParams.eventFlag = taskInfo->u.davidEventResetTaskInfo.event->GetEventFlag();
+
+    return RT_ERROR_NONE;
+}
 #endif
 }  // namespace runtime
 }  // namespace cce

@@ -33,6 +33,7 @@
 #include "davinci_kernel_task.h"
 #include "context.hpp"
 #include "stream_david.hpp"
+#include "kernel_utils.hpp"
 #include "task_david.hpp"
 #include "task_res_da.hpp"
 #include "stream_sqcq_manage.hpp"
@@ -707,6 +708,55 @@ TEST_F(DavidStreamTest, DavidrtStreamStop_03)
     EXPECT_EQ(error, RT_ERROR_NONE);
 }
 
+TEST_F(DavidStreamTest, AddArgHandleToRecycleList_Normal)
+{
+    // 测试正常添加 argHandle
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    void* handle1 = reinterpret_cast<void*>(0x12345678);
+    void* handle2 = reinterpret_cast<void*>(0x87654321);
+    
+    stream->AddArgHandleToRecycleList(handle1);
+    stream->AddArgHandleToRecycleList(handle2);
+    
+    EXPECT_EQ(stream->argHandleRecycleList_.size(), 2U);
+    EXPECT_EQ(stream->argHandleRecycleList_[0], handle1);
+    EXPECT_EQ(stream->argHandleRecycleList_[1], handle2);
+    
+    delete stream;
+}
+
+TEST_F(DavidStreamTest, AddArgHandleToRecycleList_Nullptr)
+{
+    // 测试添加 nullptr
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    
+    stream->AddArgHandleToRecycleList(nullptr);
+    
+    EXPECT_EQ(stream->argHandleRecycleList_.size(), 0U);
+    
+    delete stream;
+}
+
+TEST_F(DavidStreamTest, Destructor_ArgHandleRecycleList)
+{
+    // 测试析构函数中回收 argHandleRecycleList_
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    void* handle1 = reinterpret_cast<void*>(0x12345678);
+    void* handle2 = reinterpret_cast<void*>(0x87654321);
+    
+    stream->argHandleRecycleList_.push_back(handle1);
+    stream->argHandleRecycleList_.push_back(handle2);
+    
+    // mock RecycleDevLoader
+    if (stream->argManage_ != nullptr) {
+        MOCKER_CPP_VIRTUAL(stream->argManage_, &StarsArgManager::RecycleDevLoader)
+            .stubs()
+            .will(returnValue(RT_ERROR_NONE));
+    }
+    
+    delete stream;
+}
+
 TEST_F(DavidStreamTest, DavidrtStreamRecover_01)
 {
     RawDevice *device = new RawDevice(0);
@@ -1188,4 +1238,59 @@ TEST_F(DavidStreamTest, Destructor_ArgHandleNull)
     res = rtStreamDestroy(streamHandle);
     EXPECT_EQ(res, RT_ERROR_NONE);
     GlobalMockObject::verify();
+}
+
+TEST_F(DavidStreamTest, SetAicoreArgsSuperKernel_HandleNull)
+{
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    TaskInfo taskInfo = {0};
+    taskInfo.stream = stream;
+    
+    rtArgsEx_t argsInfo = {0};
+    argsInfo.argsSize = 512;
+    
+    StarsArgLoaderResult result = {0};
+    result.kerArgs = reinterpret_cast<void*>(0x11111111);
+    result.handle = nullptr;
+    
+    SetAicoreArgsSuperKernel(&taskInfo, &argsInfo, result);
+    
+    EXPECT_EQ(taskInfo.u.aicTaskInfo.comm.argsSize, 512U);
+    EXPECT_EQ(taskInfo.u.aicTaskInfo.comm.args, reinterpret_cast<void*>(0x11111111));
+    EXPECT_EQ(taskInfo.u.aicTaskInfo.comm.argHandle, nullptr);
+    EXPECT_FALSE(taskInfo.needPostProc);
+    EXPECT_EQ(result.handle, nullptr);
+    
+    delete stream;
+}
+
+TEST_F(DavidStreamTest, BackupTaskArgHandle_ArgHandleNull)
+{
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    TaskInfo taskInfo = {0};
+    taskInfo.stream = stream;
+    taskInfo.u.aicTaskInfo.comm.argHandle = nullptr;
+    
+    BackupTaskArgHandle(&taskInfo);
+    
+    EXPECT_EQ(stream->argHandleRecycleList_.size(), 0U);
+    EXPECT_EQ(taskInfo.u.aicTaskInfo.comm.argHandle, nullptr);
+    
+    delete stream;
+}
+
+TEST_F(DavidStreamTest, BackupTaskArgHandle_Normal)
+{
+    DavidStream *stream = new DavidStream(device_, 0, 0, nullptr);
+    TaskInfo taskInfo = {0};
+    taskInfo.stream = stream;
+    taskInfo.u.aicTaskInfo.comm.argHandle = reinterpret_cast<void*>(0x12345678);
+    
+    BackupTaskArgHandle(&taskInfo);
+    
+    EXPECT_EQ(stream->argHandleRecycleList_.size(), 1U);
+    EXPECT_EQ(stream->argHandleRecycleList_[0], reinterpret_cast<void*>(0x12345678));
+    EXPECT_EQ(taskInfo.u.aicTaskInfo.comm.argHandle, nullptr);
+    
+    delete stream;
 }

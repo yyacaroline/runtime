@@ -13,6 +13,7 @@
 #include "runtime.hpp"
 #include "rt_inner_task.h"
 #include "kernel.h"
+#include "stars_arg_manager.hpp"
 
 namespace cce {
 namespace runtime {
@@ -24,6 +25,10 @@ namespace runtime {
     rtError_t GetOpExecuteMsTimeout(uint32_t *const timeout, uint64_t *customTimeout=nullptr);
     void SetKernelLaunchParams(const Stream *const stm, const rtArgsEx_t *const argsInfo, TaskInfo &task);
     rtError_t CopyKernelParamsToBuffer(const Kernel *kernel, void **argsArray, void *dest);
+    rtError_t LoadKernelArgs(Stream* stm, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result);
+    rtError_t PostUpdateKernelParams(TaskInfo* taskInfo);
+    void SetAicoreArgsSuperKernel(TaskInfo* taskInfo, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result);
+    void BackupTaskArgHandle(TaskInfo* taskInfo);
 }  // namespace runtime
 }  // namespace cce
 #endif  // __CCE_RUNTIME_KERNEL_UTILS_HPP__

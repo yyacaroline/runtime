@@ -77,6 +77,7 @@ public:
     {
         return argManage_;
     }
+    void AddArgHandleToRecycleList(void* argHandle);
     rtError_t LoadArgsFromArray(
         const bool useArgPool, const Kernel* kernel, void** argsArray, StarsArgLoaderResult* result) const
     {
@@ -114,6 +115,8 @@ private:
     uint32_t publicQueueHead_{0U};
     uint32_t publicQueueTail_{0U};
     void FreeStreamIdAndSqCq();
+    
+    std::vector<void*> argHandleRecycleList_;
 };
 
 }  // namespace runtime

@@ -10,6 +10,10 @@
 
 #include "kernel.hpp"
 #include "program.hpp"
+#include "stream.hpp"
+#include "load_policy.hpp"
+#include "task_info.hpp"
+#include "stars_arg_manager.hpp"
 
 namespace cce {
 namespace runtime {
@@ -18,6 +22,29 @@ rtError_t GetPrefetchCnt(Kernel * const kernel)
 {
     UNUSED(kernel);
     return RT_ERROR_NONE;
+}
+
+rtError_t LoadKernelArgs(Stream* stm, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result)
+{
+    return stm->LoadArgsInfo(argsInfo, false, &result, LoadPolicy::LP_NO_MIX);
+}
+
+rtError_t PostUpdateKernelParams(TaskInfo* taskInfo)
+{
+    return WaitAsyncCopyComplete(taskInfo);
+}
+
+void SetAicoreArgsSuperKernel(TaskInfo* taskInfo, const rtArgsEx_t* argsInfo, StarsArgLoaderResult& result)
+{
+    if (result.handle != nullptr) {
+        SetAicoreArgs(taskInfo, result.kerArgs, argsInfo->argsSize, result.handle);
+        result.handle = nullptr;
+    }
+}
+
+void BackupTaskArgHandle(TaskInfo* taskInfo)
+{
+    UNUSED(taskInfo);
 }
 
 }  // namespace runtime

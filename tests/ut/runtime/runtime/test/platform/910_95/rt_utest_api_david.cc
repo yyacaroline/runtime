@@ -65,6 +65,9 @@
 #include "aicpu_c.hpp"
 #include "aix_c.hpp"
 #include "memory_task.h"
+#include "event_task.h"
+#include "kernel_utils.hpp"
+#include "event_david.hpp"
 #include "stream_sqcq_manage.hpp"
 #include "stars_cond_isa_helper.hpp"
 #include "capture_model_utils.hpp"
@@ -10791,14 +10794,195 @@ TEST_F(ApiDavidTest, StreamWriteValuePtr_InvalidSize)
     EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
 }
 
+TEST_F(ApiDavidTest, TestLoadKernelArgsStarsV2)
+{
+    rtArgsEx_t argsInfo = {};
+    uint8_t argsData[32] = {0};
+    argsInfo.args = argsData;
+    argsInfo.argsSize = sizeof(argsData);
+    argsInfo.isNoNeedH2DCopy = 1U;
+
+    StarsArgLoaderResult result = {};
+    MOCKER_CPP(&DavidStream::LoadArgsInfo<rtArgsEx_t>).stubs().will(returnValue(RT_ERROR_NONE));
+    rtError_t error = LoadKernelArgs(stream_, &argsInfo, result);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, TestPostUpdateKernelParamsStarsV2)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.stream = stream_;
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    rtError_t error = PostUpdateKernelParams(&taskInfo);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, TestTaskGetParamsStarsV2Case)
+{
+    ApiImplDavid apiImpl;
+    rtError_t error;
+    rtEvent_t event;
+
+    error = rtEventCreate(&event);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    DavidEvent* evt = static_cast<DavidEvent*>(rt_ut::UnwrapOrNull<Event>(event));
+
+    MOCKER(CheckCaptureModelSupportSoftwareSq).stubs().will(returnValue(RT_ERROR_NONE));
+
+    TaskInfo task = {};
+    task.stream = stream_;
+    task.taskOwner = static_cast<uint8_t>(TaskOwner::RT_TASK_USER);
+    task.typeName = "DAVID_EVENT_RECORD";
+    rtTaskParams params = {};
+
+    task.type = TS_TASK_TYPE_DAVID_EVENT_RECORD;
+    task.u.davidEventRecordTaskInfo.event = evt;
+    error = apiImpl.TaskGetParams(static_cast<rtTask_t>(&task), &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    task.type = TS_TASK_TYPE_DAVID_EVENT_WAIT;
+    task.typeName = "DAVID_EVENT_WAIT";
+    task.u.davidEventWaitTaskInfo.event = evt;
+    (void)memset_s(&params, sizeof(rtTaskParams), 0, sizeof(rtTaskParams));
+    error = apiImpl.TaskGetParams(static_cast<rtTask_t>(&task), &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    task.type = TS_TASK_TYPE_DAVID_EVENT_RESET;
+    task.typeName = "DAVID_EVENT_RESET";
+    task.u.davidEventResetTaskInfo.event = evt;
+    (void)memset_s(&params, sizeof(rtTaskParams), 0, sizeof(rtTaskParams));
+    error = apiImpl.TaskGetParams(static_cast<rtTask_t>(&task), &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtEventDestroy(event);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, TestGetDavidEventTaskParamsStarsV2)
+{
+    rtError_t error;
+    rtEvent_t event;
+
+    error = rtEventCreate(&event);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    DavidEvent* evt = static_cast<DavidEvent*>(rt_ut::UnwrapOrNull<Event>(event));
+
+    TaskInfo taskRecord = {};
+    taskRecord.type = TS_TASK_TYPE_DAVID_EVENT_RECORD;
+    taskRecord.stream = stream_;
+    taskRecord.u.davidEventRecordTaskInfo.event = evt;
+
+    rtTaskParams params = {};
+    error = GetEventRecordTaskParamsStarsV2(&taskRecord, &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(params.type, RT_TASK_EVENT_RECORD);
+    EXPECT_EQ(params.eventRecordTaskParams.event, evt);
+
+    TaskInfo taskWait = {};
+    taskWait.type = TS_TASK_TYPE_DAVID_EVENT_WAIT;
+    taskWait.stream = stream_;
+    taskWait.u.davidEventWaitTaskInfo.event = evt;
+
+    (void)memset_s(&params, sizeof(rtTaskParams), 0, sizeof(rtTaskParams));
+    error = GetEventWaitTaskParamsStarsV2(&taskWait, &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(params.type, RT_TASK_EVENT_WAIT);
+    EXPECT_EQ(params.eventWaitTaskParams.event, evt);
+
+    TaskInfo taskReset = {};
+    taskReset.type = TS_TASK_TYPE_DAVID_EVENT_RESET;
+    taskReset.stream = stream_;
+    taskReset.u.davidEventResetTaskInfo.event = evt;
+
+    (void)memset_s(&params, sizeof(rtTaskParams), 0, sizeof(rtTaskParams));
+    error = GetEventResetTaskParamsStarsV2(&taskReset, &params);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    EXPECT_EQ(params.type, RT_TASK_EVENT_RESET);
+    EXPECT_EQ(params.eventResetTaskParams.event, evt);
+
+    error = rtEventDestroy(event);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
 TEST_F(ApiDavidTest, StreamWriteValuePtr_UnalignedAddr)
 {
     rtWriteValueInfo_t writeValueInfo = {};
-    writeValueInfo.size = WRITE_VALUE_SIZE_TYPE_64BIT; // 4, 64-bit write
-    writeValueInfo.addr = 0x1; // Not 8-byte aligned, triggers alignment check
+    writeValueInfo.size = WRITE_VALUE_SIZE_TYPE_64BIT;
+    writeValueInfo.addr = 0x1;
     uint8_t value = 0;
     writeValueInfo.value = &value;
 
     rtError_t error = StreamWriteValuePtr(&writeValueInfo, stream_, nullptr);
     EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_Success)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(AllocTaskInfoForCapture).stubs().will(invoke(AllocTaskInfoSuccessMock));
+    MOCKER(MemWriteValueTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(DavidSendTask).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(SubmitTaskPostProc).stubs().will(returnValue(RT_ERROR_NONE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_CheckTaskCanSendFail)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_NE(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_AllocTaskInfoFail)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(AllocTaskInfoForCapture).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_NE(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_MemWriteValueTaskInitFail)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(AllocTaskInfoForCapture).stubs().will(invoke(AllocTaskInfoSuccessMock));
+    MOCKER(MemWriteValueTaskInit).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER(TaskUnInitProc).stubs().will(returnValue(RT_ERROR_NONE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_NE(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_DavidSendTaskFail)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(AllocTaskInfoForCapture).stubs().will(invoke(AllocTaskInfoSuccessMock));
+    MOCKER(MemWriteValueTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(DavidSendTask).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER(TaskUnInitProc).stubs().will(returnValue(RT_ERROR_NONE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_NE(error, RT_ERROR_NONE);
+}
+
+TEST_F(ApiDavidTest, MemWriteValue_SubmitTaskPostProcFail)
+{
+    ApiImplDavid apiImpl;
+    MOCKER(CheckTaskCanSend).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(AllocTaskInfoForCapture).stubs().will(invoke(AllocTaskInfoSuccessMock));
+    MOCKER(MemWriteValueTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(DavidSendTask).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER(SubmitTaskPostProc).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+
+    rtError_t error = apiImpl.MemWriteValue(nullptr, 0, 0, stream_);
+    EXPECT_NE(error, RT_ERROR_NONE);
 }

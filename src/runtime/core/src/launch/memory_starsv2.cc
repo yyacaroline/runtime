@@ -108,13 +108,40 @@ rtError_t SubmitReduceTask(void * const dst, const void * const src, const uint6
 rtError_t MemWriteValue(const void * const devAddr, const uint64_t value, const uint32_t flag, Stream * const stm)
 {
     UNUSED(flag);
-
-    rtWriteValueInfo_t info;
-    info.addr = RtPtrToValue(devAddr);
-    uint64_t writeValue = value;
-    info.value = RtPtrToPtr<uint8_t*>(&writeValue);
-    info.size = WRITE_VALUE_SIZE_TYPE_64BIT;
-    return StreamWriteValue(&info, stm);
+    const int32_t streamId = stm->Id_();
+    rtError_t error = CheckTaskCanSend(stm);
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream, stream_id=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    TaskInfo *rtMemWriteValueTask = nullptr;
+    uint32_t pos = 0xFFFFU;
+    Stream *dstStm = stm;
+    std::function<void()> const errRecycle = [&rtMemWriteValueTask, &stm, &pos, &dstStm]() {
+        TaskUnInitProc(rtMemWriteValueTask);
+        TaskRollBack(dstStm, pos);
+        stm->StreamUnLock();
+    };
+    stm->StreamLock();
+    error = AllocTaskInfoForCapture(&rtMemWriteValueTask, stm, pos, dstStm);
+    ERROR_PROC_RETURN_MSG_INNER(error, stm->StreamUnLock();, "Failed to allocate task, stream_id=%d, retCode=%#x.",
+        streamId, static_cast<uint32_t>(error));
+    SaveTaskCommonInfo(rtMemWriteValueTask, dstStm, pos);
+    ScopeGuard tskErrRecycle(errRecycle);
+    rtMemWriteValueTask->typeName = "MEM_WRITE_VALUE";
+    rtMemWriteValueTask->type = TS_TASK_TYPE_MEM_WRITE_VALUE;
+    error = MemWriteValueTaskInit(rtMemWriteValueTask, devAddr, value);
+    ERROR_RETURN_MSG_INNER(error, "Failed to initialize memory wait value task, stream_id=%d, retCode=%#x.",
+        streamId, static_cast<uint32_t>(error));
+    MemWriteValueTaskInfo *memWriteValueTask = &rtMemWriteValueTask->u.memWriteValueTask;
+    memWriteValueTask->awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
+    rtMemWriteValueTask->stmArgPos = static_cast<DavidStream *>(dstStm)->GetArgPos();
+    error = DavidSendTask(rtMemWriteValueTask, dstStm);
+    ERROR_RETURN_MSG_INNER(error, "Failed to submit memory wait value task, stream_id=%d, pos=%u, retCode=%#x.",
+        streamId, pos, static_cast<uint32_t>(error));
+    tskErrRecycle.ReleaseGuard();
+    stm->StreamUnLock();
+    SET_THREAD_TASKID_AND_STREAMID(dstStm->GetExposedStreamId(), rtMemWriteValueTask->taskSn);
+    error = SubmitTaskPostProc(dstStm, pos);
+    ERROR_RETURN_MSG_INNER(error, "Failed to recycle task, stream_id=%d, retCode=%#x.", streamId, static_cast<uint32_t>(error));
+    return RT_ERROR_NONE;
 }
 
 rtError_t MemWaitValue(const void * const devAddr, const uint64_t value, const uint32_t flag, Stream * const stm)

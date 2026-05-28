@@ -231,6 +231,7 @@ rtError_t EvtWaitSoftwareMode(Event * const evt, Stream * const stm)
         "Failed to initialize task, stream_id=%d, retCode=%#x.",
         stm->Id_(), static_cast<uint32_t>(error));
     MemWaitValueTaskInfo *memWaitValueTask = &tsk->u.memWaitValueTask;
+    memWaitValueTask->event = davidEvt;
     memWaitValueTask->awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_8BIT;
 
     tsk->stmArgPos = (static_cast<DavidStream *>(dstStm))->GetArgPos();
@@ -308,6 +309,7 @@ rtError_t EvtResetSoftwareMode(Event * const evt, Stream * const stm)
     tsk->typeName = "EVENT_RESET";
     tsk->type = TS_TASK_TYPE_MEM_WRITE_VALUE;
     MemWriteValueTaskInfo *memWriteValueTask = &tsk->u.memWriteValueTask;
+    memWriteValueTask->event = davidEvt;
     memWriteValueTask->awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_8BIT;
 
     tsk->stmArgPos = (static_cast<DavidStream *>(dstStm))->GetArgPos();

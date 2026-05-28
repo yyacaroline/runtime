@@ -45,6 +45,11 @@ void SetStarsResultForEventWaitTask(TaskInfo *taskInfo, const rtLogicCqReport_t 
 rtError_t GetEventRecordTaskParams(const TaskInfo* const taskInfo, rtTaskParams* const params);
 rtError_t GetEventWaitTaskParams(const TaskInfo* const taskInfo, rtTaskParams* const params);
 rtError_t GetEventResetTaskParams(const TaskInfo* const taskInfo, rtTaskParams* const params);
+
+rtError_t GetEventRecordTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params);
+rtError_t GetEventWaitTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params);
+rtError_t GetEventResetTaskParamsStarsV2(const TaskInfo* const taskInfo, rtTaskParams* const params);
+
 void TryToFreeEventIdAndDestroyEvent(Event **eventPtr, int32_t freeId, bool isNeedDestroy,
                                      bool isCaptureDestroy = false);
 rtError_t DestroyEventSync(Event *evt);

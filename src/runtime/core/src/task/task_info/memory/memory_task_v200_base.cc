@@ -540,5 +540,15 @@ void ConstructDavidSqeForMemWriteValueTask(TaskInfo *const taskInfo, rtDavidSqe_
 }
 #endif
 
+void SetWriteValueSqeNum(TaskInfo* taskInfo)
+{
+    taskInfo->sqeNum = 1U;
+}
+
+void SetWaitValueSqeNum(TaskInfo* taskInfo)
+{
+    taskInfo->sqeNum = MEM_WAIT_V2_SQE_NUM;
+}
+
 }  // namespace runtime
 }  // namespace cce

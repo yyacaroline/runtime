@@ -34,6 +34,7 @@
 #include "raw_device.hpp"
 #include "aix_c.hpp"
 #include "capture_model_utils.hpp"
+#include "kernel_utils.hpp"
 
 namespace cce {
 namespace runtime {
@@ -47,6 +48,13 @@ DavidStream::DavidStream(Device * const dev, const uint32_t prio, const uint32_t
 
 DavidStream::~DavidStream()
 {
+    for (auto handle : argHandleRecycleList_) {
+        if (argManage_ != nullptr) {
+            argManage_->RecycleDevLoader(handle);
+        }
+    }
+    argHandleRecycleList_.clear();
+    
     if (this->GetArgHandle() != nullptr) {
         this->ArgManagePtr()->RecycleDevLoader(this->GetArgHandle());
         this->SetArgHandle(nullptr);
@@ -146,6 +154,13 @@ void DavidStream::FreeStreamIdAndSqCq()
     }
     if (GetSqIdMemAddr() != 0UL) {
         device_->FreeSqIdMemAddr(GetSqIdMemAddr());
+    }
+}
+
+void DavidStream::AddArgHandleToRecycleList(void* argHandle)
+{
+    if (argHandle != nullptr) {
+        argHandleRecycleList_.push_back(argHandle);
     }
 }
 
@@ -1559,7 +1574,7 @@ rtError_t DavidStream::HandleTaskDisable(TaskInfo* workTask, CaptureModel* model
     RT_LOG(RT_LOG_INFO, "disable task, stream_id=%d, task_id=%hu, task_type=%d(%s).", streamId_, workTask->id,
         workTask->type, workTask->typeName);
     // 保存argsHandle到stream上
-
+    BackupTaskArgHandle(workTask);
     // 释放老的taskInfo 释放mix任务的subContext
     (void)device_->GetTaskFactory()->Recycle(workTask);
     return RT_ERROR_NONE;
