@@ -317,7 +317,7 @@ description: 用于 Runtime 场景下新增 aclrt 接口开发，覆盖需求澄
 | `tests/depends/runtime/src/runtime_stub.cpp` | RT stub 实现 |
 | `tests/ut/acl/testcase/compatibility/cast_to_other_check.cpp` | ACL 与 RT 枚举转换校验 |
 | `tests/ut/runtime/runtime/test/platform/910B/xxx.cc` | 910B 芯片相关 UT 文件 |
-| `tests/ut/runtime/runtime/test/platform/910_95/xxx.cc` | 910_95 芯片相关 UT 文件 |
+| `tests/ut/runtime/runtime/test/platform/950/xxx.cc` | 950 芯片相关 UT 文件 |
 
 ### 输出要求
 
