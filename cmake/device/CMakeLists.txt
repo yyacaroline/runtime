@@ -48,6 +48,12 @@ add_dependencies(mmpa c_sec)
 add_dependencies(static_mmpa c_sec)
 add_dependencies(platform c_sec)
 
+get_filename_component(PROTOBUF_ABS_PATH "${PROTOBUF_STATIC_FINAL_PATH}" REALPATH)
+install(FILES
+    ${PROTOBUF_ABS_PATH}
+    DESTINATION ${DEVICE_LIBRARY_PATH} COMPONENT npu-runtime
+)
+
 sign_file(
   OUTPUT_TARGET sign_tsch_fw
   INPUT "${CMAKE_BINARY_DIR}/lib_acl/libtsch_fw_plugin_910b.o"
