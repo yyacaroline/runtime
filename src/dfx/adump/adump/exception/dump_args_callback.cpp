@@ -207,7 +207,7 @@ int32_t DumpArgsCallback::Dump()
 
 void DumpArgsCallback::RecordDumpLog(const std::string &log)
 {
-    IDE_LOGI("%s", log.c_str());
+    IDE_LOGE("%s", log.c_str());
     logRecord_.emplace_back(log + "\n");
 }
 

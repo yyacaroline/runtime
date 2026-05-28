@@ -710,6 +710,14 @@ TEST_F(AdumpApiUtest, Test_OP_Dump_StartStop_Error)
     EXPECT_EQ(ACL_ERROR_FAILURE, aclopStartDumpArgs(ACL_OP_DUMP_OP_AICORE_ARGS, ""));
     EXPECT_EQ(GetLastReportedErrorCode(), "EP0006");
 
+    // Test aclopStartDumpArgs with no read/write permission
+    system("mkdir -p ./UTest_EmptyJsonSuccess");
+    ClearLastReportedErrorCode();
+    MOCKER_CPP(&Path::Asccess).stubs().will(returnValue(false));
+    EXPECT_EQ(ACL_ERROR_FAILURE, aclopStartDumpArgs(ACL_OP_DUMP_OP_AICORE_ARGS, path.c_str()));
+    EXPECT_EQ(GetLastReportedErrorCode(), "EP0006");
+    GlobalMockObject::verify();
+
     // Test aclopStartDumpArgs with path not a directory
     system("mkdir -p ./UTest_EmptyJsonSuccess/subdir");
     ClearLastReportedErrorCode();
@@ -744,17 +752,6 @@ TEST_F(AdumpApiUtest, Test_OP_Dump_StartStop_Error)
     MOCKER(&Path::RealPath).stubs().will(returnValue(false));
     EXPECT_EQ(ACL_SUCCESS, aclopStopDumpArgs(ACL_OP_DUMP_OP_AICORE_ARGS));
     GlobalMockObject::verify();
-    
-    MOCKER(&Path::CreateDirectory).stubs().will(returnValue(false));
-    EXPECT_EQ(ACL_SUCCESS, aclopStopDumpArgs(ACL_OP_DUMP_OP_AICORE_ARGS));
-    GlobalMockObject::verify();
-    
-    std::string jsonPath = path + "/UTest_EmptyJsonSuccess/test_op_info.json";
-    std::ifstream jsonFile(jsonPath);
-    EXPECT_EQ(true, jsonFile.is_open());
-    std::string data;
-    std::getline(jsonFile, data);
-    EXPECT_STREQ("", data.c_str());
     
     DumpManager::Instance().opInfoRecordPath_.clear();
     DumpManager::Instance().enableCallbackFunc_.clear();

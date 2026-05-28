@@ -79,7 +79,7 @@ void DfxArgsParser::LogArgsInfo()
 
 void DfxArgsParser::RecordDumpLog(const std::string &log)
 {
-    IDE_LOGI("%s", log.c_str());
+    IDE_LOGE("%s", log.c_str());
     logRecords_.emplace_back(log + "\n");
 }
 

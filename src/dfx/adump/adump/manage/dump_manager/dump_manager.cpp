@@ -687,6 +687,13 @@ int32_t DumpManager::StartDumpArgs(const std::string& dumpPath)
                 ADUMP_REASON_PARAM_PATH_NOT_DIRECTORY);
             return -1;
         }
+        constexpr uint32_t accessMode = static_cast<uint32_t>(M_R_OK) | static_cast<uint32_t>(M_W_OK);
+        if (!path.Asccess(accessMode)) {
+            REPORT_EP0006_INVALID_ARGUMENT(
+                FUNC_NAME_ACL_OP_START_DUMP_ARGS, dumpPath, FUNC_ACL_OP_START_DUMP_ARGS_PARAM_PATH,
+                ADUMP_REASON_PATH_NO_PERMISSION);
+            return -1;
+        }
 
         dumpSwitch |= OP_INFO_RECORD_DUMP;
         dumpSetting_.InitDumpSwitch(dumpSwitch);
