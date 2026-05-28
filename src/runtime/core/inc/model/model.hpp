@@ -204,6 +204,7 @@ public:
     rtError_t AiCpuModelSyncExecute();
     rtError_t GetStreamToAsyncExecute(Stream *stm);
     rtError_t GetStreamToSyncExecute(int32_t timeout = -1);
+    Stream *GetExecuteStream();
     rtError_t CheckBindStream(const Stream * const streamIn) const;
     uint32_t ModelGetNodes(void) const;
     rtError_t ModelDebugDotPrint(void) const;

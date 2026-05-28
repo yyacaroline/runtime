@@ -1081,18 +1081,20 @@ rtError_t Model::SynchronizeExecute(Stream * const stm, int32_t timeout)
     return RT_ERROR_NONE;
 }
 
+Stream *Model::GetExecuteStream()
+{
+    Stream *onlineStream = context_->OnlineStream_();
+    if (onlineStream != nullptr) {
+        RT_LOG(RT_LOG_DEBUG, "use online stream for model execute, model_id=%d.", id_);
+        return onlineStream;
+    }
+    RT_LOG(RT_LOG_DEBUG, "use default stream for model execute, model_id=%d.", id_);
+    return context_->DefaultStream_();
+}
+
 rtError_t Model::GetStreamToSyncExecute(int32_t timeout)
 {
-    Stream *executeStream = nullptr;
-    Stream *onlineStream = context_->OnlineStream_();
-    Stream *defaultStream = context_->DefaultStream_();
-    if (onlineStream != nullptr) {
-        executeStream = onlineStream;
-        RT_LOG(RT_LOG_DEBUG, "use online stream for model execute, model_id=%d.", id_);
-    } else {
-        executeStream = defaultStream;
-        RT_LOG(RT_LOG_DEBUG, "use default stream for model execute, model_id=%d.", id_);
-    }
+    Stream *executeStream = GetExecuteStream();
     SetExeStream(executeStream);
     const rtError_t error = SynchronizeExecute(executeStream, timeout);
     if (error != RT_ERROR_NONE) {
@@ -1337,7 +1339,7 @@ rtError_t Model::ExecuteSync(int32_t timeout)
 
     RT_LOG(RT_LOG_INFO, "synchronize execute model, timeout=%dms.", timeout);
     const mmTimespec timeBegin = mmGetTickCount();
-    Stream *executeStream = context_->DefaultStream_();
+    Stream *executeStream = GetExecuteStream();
     SetExeStream(executeStream);
     error = SynchronizeExecute(executeStream, timeout);
     if (error != RT_ERROR_NONE) {

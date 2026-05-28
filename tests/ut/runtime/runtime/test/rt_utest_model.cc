@@ -319,6 +319,66 @@ TEST_F(ModelTest, TestGetStreamToSyncExecute)
     ((Runtime *)Runtime::Instance())->DeviceRelease(device);
 }
 
+TEST_F(ModelTest, TestExecuteSyncWithOnlineStream)
+{
+    rtError_t error;
+    rtModel_t rtModel;
+
+    Device *device = ((Runtime *)Runtime::Instance())->DeviceRetain(0, 0);
+    error = rtModelCreate(&rtModel, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    Model *model = rt_ut::UnwrapOrNull<Model>(rtModel);
+    MOCKER_CPP(&Model::SynchronizeExecute).stubs().will(returnValue(RT_ERROR_NONE));
+    error = model->ExecuteSync();
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtModelDestroy(rtModel);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    ((Runtime *)Runtime::Instance())->DeviceRelease(device);
+}
+
+TEST_F(ModelTest, TestExecuteSyncWithOnlineStreamFailed)
+{
+    rtError_t error;
+    rtModel_t rtModel;
+
+    Device *device = ((Runtime *)Runtime::Instance())->DeviceRetain(0, 0);
+    error = rtModelCreate(&rtModel, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    Model *model = rt_ut::UnwrapOrNull<Model>(rtModel);
+    MOCKER_CPP(&Model::SynchronizeExecute).stubs().will(returnValue(RT_ERROR_DRV_ERR));
+    error = model->ExecuteSync();
+    EXPECT_EQ(error, RT_ERROR_DRV_ERR);
+
+    error = rtModelDestroy(rtModel);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    ((Runtime *)Runtime::Instance())->DeviceRelease(device);
+}
+
+TEST_F(ModelTest, TestExecuteSyncWithDefaultStreamWhenNoOnlineStream)
+{
+    rtError_t error;
+    rtModel_t rtModel;
+
+    Device *device = ((Runtime *)Runtime::Instance())->DeviceRetain(0, 0);
+    error = rtModelCreate(&rtModel, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    Model *model = rt_ut::UnwrapOrNull<Model>(rtModel);
+    MOCKER_CPP(&Model::SynchronizeExecute).stubs().will(returnValue(RT_ERROR_DRV_ERR));
+    Stream *savedOnlineStream = model->context_->onlineStream_;
+    model->context_->onlineStream_ = nullptr;
+    error = model->ExecuteSync();
+    EXPECT_EQ(error, RT_ERROR_DRV_ERR);
+
+    model->context_->onlineStream_ = savedOnlineStream;
+    error = rtModelDestroy(rtModel);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    ((Runtime *)Runtime::Instance())->DeviceRelease(device);
+}
+
 TEST_F(ModelTest, TestMallocExecuteTask)
 {
     rtError_t error;
