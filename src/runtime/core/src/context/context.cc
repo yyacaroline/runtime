@@ -2157,7 +2157,9 @@ rtError_t Context::StreamAbort(Stream * const stm)
     const bool isSupported = IsStreamAbortSupported();
     COND_RETURN_WARN((isSupported == false), RT_ERROR_FEATURE_NOT_SUPPORT, "stream abort is not supported");
 
-    if (device_->GetDeviceStatus() == RT_ERROR_DEVICE_TASK_ABORT) {
+    // 在device abort不处理mc2流，此处不能跳过mc2流
+    if ((device_->GetDeviceStatus() == RT_ERROR_DEVICE_TASK_ABORT) &&
+        ((stm->Flags() & RT_STREAM_CP_PROCESS_USE) == 0U)) {
         RT_LOG(RT_LOG_INFO, "device is in device abort status, stream_id=%d, sq_id=%u, cq_id=%u",
             stm->Id_(), stm->GetSqId(), stm->GetCqId());
         return RT_ERROR_NONE;

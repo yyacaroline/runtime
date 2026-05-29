@@ -433,7 +433,8 @@ public:
     rtError_t SetSqTail(const uint32_t deviceId, const uint32_t tsId,
                         const uint32_t sqId, const uint32_t tail) override;
 
-    rtError_t CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId) override;
+    rtError_t CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId,
+        const uint32_t streamFlag) override;
 
     rtError_t TaskKill(const uint32_t deviceId, const uint32_t tsId,
 		       const uint32_t sqId, const uint32_t operationType) override;

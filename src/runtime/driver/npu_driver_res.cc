@@ -793,13 +793,16 @@ rtError_t NpuDriver::SetSqHead(const uint32_t deviceId, const uint32_t tsId,
     return RT_ERROR_NONE;
 }
 
-rtError_t NpuDriver::CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId)
+rtError_t NpuDriver::CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId,
+    const uint32_t streamFlag)
 {
-    struct halSqCqConfigInfo configInfo;
+    struct halSqCqConfigInfo configInfo = {};
     configInfo.type = DRV_NORMAL_TYPE;
     configInfo.tsId = tsId;
     configInfo.sqId = sqId;
     configInfo.prop = DRV_SQCQ_PROP_SQ_PAUSE;
+    configInfo.value[SQCQ_CONFIG_INFO_FLAG] =
+        ((streamFlag & RT_STREAM_CP_PROCESS_USE) != 0U) ? static_cast<uint32_t>(TSDRV_FLAG_REMOTE_ID) : 0U;
 
     COND_RETURN_WARN(&halSqCqConfig == nullptr, RT_ERROR_DRV_NOT_SUPPORT,
         "[drv api] halSqCqConfig does not exist.");

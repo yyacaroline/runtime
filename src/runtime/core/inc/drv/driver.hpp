@@ -570,7 +570,7 @@ public:
                                 const uint32_t sqId, uint16_t &head, bool needLog = true) = 0;
 
     virtual rtError_t CleanSq(const uint32_t deviceId, const uint32_t tsId,
-                              const uint32_t sqId) = 0;
+                              const uint32_t sqId, const uint32_t streamFlag) = 0;
 
     virtual rtError_t TaskKill(const uint32_t deviceId, const uint32_t tsId,
                                const uint32_t sqId, const uint32_t operationType) = 0;

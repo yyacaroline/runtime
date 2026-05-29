@@ -1408,11 +1408,13 @@ rtError_t NpuDriver::SetSqHead(const uint32_t deviceId, const uint32_t tsId,
     return RT_ERROR_NONE;
 }
 
-rtError_t NpuDriver::CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId)
+rtError_t NpuDriver::CleanSq(const uint32_t deviceId, const uint32_t tsId, const uint32_t sqId,
+    const uint32_t streamFlag)
 {
     UNUSED(deviceId);
     UNUSED(tsId);
     UNUSED(sqId);
+    UNUSED(streamFlag);
     return RT_ERROR_NONE;
 }
 

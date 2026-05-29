@@ -1202,7 +1202,7 @@ rtError_t Stream::StreamAbort()
 
 rtError_t Stream::CleanSq()
 {
-    const rtError_t error = device_->Driver_()->CleanSq(device_->Id_(), device_->DevGetTsId(), sqId_);
+    const rtError_t error = device_->Driver_()->CleanSq(device_->Id_(), device_->DevGetTsId(), sqId_, flags_);
     return error;
 }
 
@@ -1254,14 +1254,16 @@ rtError_t Stream::SqCqUpdate()
     rtError_t error = stmSqCqManage->UpdateStreamSqCq(this);
     ERROR_RETURN_MSG_INNER(error, "Failed to update sq/cq, deviceId=%u, streamId=%d, sqId=%u.", device_->Id_(), streamId_, sqId_);
 
-    uint32_t addrLen = 0U;
-    error = device_->Driver_()->GetSqRegVirtualAddrBySqid(static_cast<int32_t>(device_->Id_()),
-        device_->DevGetTsId(), sqId_, &sqRegVirtualAddr_, &addrLen);
-    ERROR_RETURN_MSG_INNER(error, "Failed to get sq reg virtual addr, deviceId=%u, sqId=%u.", device_->Id_(), sqId_);
+    if ((flags_ & RT_STREAM_CP_PROCESS_USE) == 0U) {
+        uint32_t addrLen = 0U;
+        error = device_->Driver_()->GetSqRegVirtualAddrBySqid(static_cast<int32_t>(device_->Id_()),
+            device_->DevGetTsId(), sqId_, &sqRegVirtualAddr_, &addrLen);
+        ERROR_RETURN_MSG_INNER(error, "Failed to get sq reg virtual addr, deviceId=%u, sqId=%u.", device_->Id_(), sqId_);
 
-    error = SetSqRegVirtualAddrToDevice(sqRegVirtualAddr_);
-    ERROR_RETURN_MSG_INNER(error, "Failed to copy virtual addr to device, sqid=%u, error=%#x.", sqId_,
-        static_cast<uint32_t>(error));
+        error = SetSqRegVirtualAddrToDevice(sqRegVirtualAddr_);
+        ERROR_RETURN_MSG_INNER(error, "Failed to copy virtual addr to device, sqId=%u, error=%#x.", sqId_,
+            static_cast<uint32_t>(error));
+    }
     return error;
 }
 
@@ -4427,18 +4429,15 @@ void Stream::ResetHostResourceForPersistentStream()
 rtError_t Stream::ResClear(uint64_t timeout)
 {
     // old sq stop and head == tail
-    Device *const dev = device_;
     RT_LOG(
         RT_LOG_INFO, "stream_id=%d, pendingNum=%u, force recycle, recycle task begin.", streamId_, pendingNum_.Value());
     uint64_t tryCount = 0;
     constexpr uint64_t perDetectTimes = 1000U;
-    mmTimespec startCnt = {};
     mmTimespec endCnt = {};
-    uint64_t startTime;
     uint64_t endTime; 
-    startCnt = mmGetTickCount();
-    startTime= static_cast<uint64_t>(startCnt.tv_sec) * RT_MS_PER_S +
-               static_cast<uint64_t>(startCnt.tv_nsec) / RT_MS_TO_NS;
+    const mmTimespec startCnt = mmGetTickCount();
+    const uint64_t startTime = static_cast<uint64_t>(startCnt.tv_sec) * RT_MS_PER_S +
+        static_cast<uint64_t>(startCnt.tv_nsec) / RT_MS_TO_NS;
     while (pendingNum_.Value() > 0U) {
         COND_RETURN_ERROR_MSG_INNER((device_->GetDevRunningState() == static_cast<uint32_t>(DEV_RUNNING_DOWN)), RT_ERROR_DRV_ERR,
             "Device %u is unavailable, clear stream_id=%u.", device_->Id_(), streamId_);
@@ -4446,14 +4445,14 @@ rtError_t Stream::ResClear(uint64_t timeout)
             isForceRecycle_ = true;
             SetNeedRecvCqeFlag(false);
             StreamRecycleLock();
-            (void)dev->RecycleSeparatedStmByFinishedId(this, static_cast<uint16_t>(lastTaskId_));
+            (void)device_->RecycleSeparatedStmByFinishedId(this, static_cast<uint16_t>(lastTaskId_));
             StreamRecycleUnlock();
         } else {
             StreamSyncLock();
             isForceRecycle_ = true;
             SetNeedRecvCqeFlag(false);
             uint32_t reclaimTaskId = UINT32_MAX;
-            (void)dev->TaskReclaim(static_cast<uint32_t>(streamId_), false, reclaimTaskId);
+            (void)device_->TaskReclaim(static_cast<uint32_t>(streamId_), false, reclaimTaskId);
             StreamSyncUnLock();
         }
         tryCount++;
@@ -4465,14 +4464,17 @@ rtError_t Stream::ResClear(uint64_t timeout)
                 "stream_id=%d, sq_id=%u, cq_id=%u, pendingNum=%u.", streamId_, sqId_, cqId_, pendingNum_.Value());
         }
     }
-    const rtError_t error = device_->Driver_()->MemSetSync(executedTimesSvm_, sizeof(uint16_t), 0xFFU, sizeof(uint16_t));
+    rtError_t error = RT_ERROR_NONE;
+    if (executedTimesSvm_ != nullptr) {
+        error = device_->Driver_()->MemSetSync(executedTimesSvm_, sizeof(uint16_t), 0xFFU, sizeof(uint16_t));
+    }
     // reconstruct will modify resHead and resTail, lock by recycleMutex_.
     StreamRecycleLock();
     ResetStreamConstruct();
     StreamRecycleUnlock();
-    dev->GetTaskFactory()->ClearSerialVecId(this);
+    device_->GetTaskFactory()->ClearSerialVecId(this);
     if (isSupportASyncRecycle_) {
-        dev->DelStreamFromMessageQueue(this);
+        device_->DelStreamFromMessageQueue(this);
     }
     RT_LOG(RT_LOG_INFO, "stream_id=%d, pendingNum=%u, recycle task end.", streamId_, pendingNum_.Value());
     return error;

@@ -7351,8 +7351,6 @@ rtError_t ApiImpl::StreamAbort(Stream * const stm)
     CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
     COND_RETURN_AND_MSG_INVALID_CONTEXT(stm->Context_() != curCtx, RT_ERROR_STREAM_CONTEXT, 
         "stream " + std::to_string(stm->Id_()));
-    COND_RETURN_AND_MSG_OUTER((stm->Flags() & RT_STREAM_CP_PROCESS_USE) != 0U, RT_ERROR_STREAM_INVALID, ErrorCode::EE1011, 
-        __func__, "ACL_STREAM_DEVICE_USE_ONLY", "stream flag", "Stream " + std::to_string(stm->Id_()) + " with the flag ACL_STREAM_DEVICE_USE_ONLY cannot be bound to a model");
 
     return curCtx->StreamAbort(stm);
 }

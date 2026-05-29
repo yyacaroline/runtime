@@ -9789,16 +9789,46 @@ TEST_F(ApiDavidTest, rtStreamAbort_02) {
     device_->SetDeviceStatus(RT_ERROR_NONE);
 }
 
-// mc2 streams abort is not supported
 TEST_F(ApiDavidTest, rtStreamAbort_03) {
     rtError_t error = RT_ERROR_NONE;
     uint32_t oldFlags = stream_->Flags();
     stream_->flags_ = oldFlags | RT_STREAM_CP_PROCESS_USE;
 
+    gabort_times = 0U;
+    gquery_times = 0U;
+
+    MOCKER(halSqCqConfig)
+    .stubs()
+    .will(returnValue(DRV_ERROR_NONE));
+
+    // mock task abort and query abort status
+    NpuDriver drv;
+    MOCKER_CPP_VIRTUAL(drv, &NpuDriver::TaskAbortByType)
+        .stubs()
+        .will(invoke(TaskAbortByTypeByTimes));
+
+    MOCKER_CPP_VIRTUAL(drv, &NpuDriver::QueryAbortStatusByType)
+        .stubs()
+        .will(invoke(QueryAbortStatusByTypeByTimes));
+
+    MOCKER(halSqCqFree)
+        .stubs()
+        .will(returnValue(DRV_ERROR_NONE));
+    MOCKER(halSqCqAllocate)
+        .stubs()
+        .will(returnValue(DRV_ERROR_NONE));
+
+    MOCKER_CPP(&StreamSqCqManage::UpdateStreamSqCq)
+        .stubs()
+        .will(returnValue(RT_ERROR_NONE));
+
     error = rtStreamAbort(streamHandle_);
     stream_->flags_ = oldFlags;
-    EXPECT_EQ(error, ACL_ERROR_RT_INTERNAL_ERROR);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    gabort_times = 0U;
+    gquery_times = 0U;
 }
+
 TEST_F(ApiDavidTest, GROUP_INFO)
 {
     rtError_t error;

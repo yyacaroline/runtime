@@ -1767,8 +1767,6 @@ rtError_t ApiImplDavid::StreamAbort(Stream * const stm)
         ErrorCode::EE1010, __func__, "stream");
     COND_RETURN_ERROR_MSG_INNER(curStm->GetBindFlag(), RT_ERROR_STREAM_INVALID,
         "StreamAbort not support model stream, stream_id=%d.", curStm->Id_());
-    COND_RETURN_ERROR_MSG_INNER((curStm->Flags() & RT_STREAM_CP_PROCESS_USE) != 0U, RT_ERROR_STREAM_INVALID,
-        "StreamAbort not support mc2 stream, stream flag=%u.", curStm->Flags());
     return curStm->StreamAbort();
 }
 
