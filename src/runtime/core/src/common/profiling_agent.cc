@@ -309,7 +309,9 @@ rtError_t ProfilingAgent::RegisterProfTypeInfo() const
     for (uint32_t i = 0U; i< sizeof(registerInfo) / sizeof(ProfTypeRegisterInfo); i++) {
         const int32_t ret = MsprofRegTypeInfo(MSPROF_REPORT_RUNTIME_LEVEL, registerInfo[i].type, registerInfo[i].name);
         if (ret != MSPROF_ERROR_NONE) {
-            RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Profiling register runtime task track failed, ret=%d.", ret);
+            RT_LOG_CALL_MSG(ERR_MODULE_PROFILE,
+                "Failed to register profiling runtime task type, type=%u, name=%s, ret=%d.",
+                registerInfo[i].type, registerInfo[i].name, ret);
             return RT_ERROR_PROF_OPER;
         }
     }
@@ -321,13 +323,13 @@ rtError_t ProfilingAgent::Init() const
 {
     int32_t initRet = MsprofReportData(MSPROF_MODULE_RUNTIME, MSPROF_REPORTER_INIT, nullptr, 0U);
     if (initRet != MSPROF_ERROR_NONE) {
-        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Profiling reporter init failed, ret=%d.", initRet);
+        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Failed to initialize profiling reporter, ret=%d.", initRet);
         return RT_ERROR_PROF_OPER;
     }
 
     initRet = RegisterProfTypeInfo();
     if (initRet != RT_ERROR_NONE) {
-        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Register profiling type info failed, ret=%d.", initRet);
+        RT_LOG(RT_LOG_ERROR, "Register profiling type info failed, ret=%d.", initRet);
         return RT_ERROR_PROF_OPER;
     }
     RT_LOG(RT_LOG_INFO, "Profiling reporter init success.");
@@ -338,7 +340,7 @@ rtError_t ProfilingAgent::UnInit() const
 {
     const int32_t initRet = MsprofReportData(MSPROF_MODULE_RUNTIME, MSPROF_REPORTER_UNINIT, nullptr, 0U);
     if (initRet != MSPROF_ERROR_NONE) {
-        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Profiling reporter uninit failed, ret=%d.", initRet);
+        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Failed to uninitialize profiling reporter, ret=%d.", initRet);
         return RT_ERROR_PROF_OPER;
     }
     RT_LOG(RT_LOG_INFO, "Profiling reporter uninit success.");
@@ -356,7 +358,7 @@ void ProfilingAgent::ReportProfApi(const uint32_t devId, RuntimeProfApiData &pro
     apiInfo.threadId = profApiData.threadId;
     const int32_t ret = MsprofReportApi(true, &apiInfo);
     if (ret != MSPROF_ERROR_NONE) {
-        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Profiling reporter report api failed, devId=%u,ret=%d.", devId, ret);
+        RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Failed to report profiling API data, devId=%u, ret=%d.", devId, ret);
         return;
     }
 
@@ -375,7 +377,7 @@ void ProfilingAgent::ReportProfApi(const uint32_t devId, RuntimeProfApiData &pro
         const int32_t res =
             MsprofReportCompactInfo(true, &compactInfo, static_cast<uint32_t>(sizeof(MsprofCompactInfo)));
         if (res != MSPROF_ERROR_NONE) {
-            RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Profiling reporter report memcpy info failed, ret=%d.", ret);
+            RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Failed to report profiling memcpy info, ret=%d.", res);
             return;
         }
     }

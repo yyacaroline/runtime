@@ -28,7 +28,7 @@ static std::map<uint16_t, const char_t *> g_taskType2String = {
     {TS_TASK_TYPE_REMOTE_EVENT_WAIT, "remote event wait"},
     {TS_TASK_TYPE_PCTRACE_ENABLE, "pctrace enable"},
     {TS_TASK_TYPE_CREATE_L2_ADDR, "create l2 address"},
-    {TS_TASK_TYPE_MODEL_MAINTAINCE, "model maintaince"},
+    {TS_TASK_TYPE_MODEL_MAINTAINCE, "model maintenance"},
     {TS_TASK_TYPE_MODEL_EXECUTE, "model execute"},
     {TS_TASK_TYPE_NOTIFY_WAIT, "notify wait"},
     {TS_TASK_TYPE_NOTIFY_RECORD, "notify record"},
@@ -100,13 +100,13 @@ rtError_t TTLVDecoderUtils::DefaultPhaseValue(const uint16_t msgLen, const void 
     if (msgLen == 0U) {
         return RT_ERROR_NONE;
     }
-    if (msgLen > sizeof(uint64_t)) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Can not parse this message, msgLen=%hu", msgLen);
-        return RT_ERROR_INVALID_VALUE;
-    }
+    COND_RETURN_AND_MSG_INNER(msgLen > sizeof(uint64_t), RT_ERROR_INVALID_VALUE,
+        "Failed to parse TTLV value because msgLen=%hu exceeds max %zu.", msgLen, sizeof(uint64_t));
     const auto err = memcpy_s(static_cast<void *>(&outData), sizeof(uint64_t), buffer,
         static_cast<std::size_t>(msgLen));
-    COND_RETURN_ERROR_MSG_INNER(err != 0, RT_ERROR_SEC_HANDLE, "memcpy_s failed, copy size=%hu", msgLen);
+    COND_RETURN_AND_MSG_INNER(err != 0, RT_ERROR_SEC_HANDLE,
+        "Failed to copy TTLV value because memcpy_s failed. ret=%d, copySize=%hu, destMax=%zu.",
+        err, msgLen, sizeof(uint64_t));
     return RT_ERROR_NONE;
 }
 

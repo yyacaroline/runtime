@@ -77,7 +77,7 @@ TEST_F(TTLVTest, unknown_type)
     EXPECT_NE(ttlvData.GetDecodeStr().find("task id=128"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("task type=model execute"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("recently received task id=0"), ttlvData.GetDecodeStr().npos);
-    EXPECT_NE(ttlvData.GetDecodeStr().find("recently send task id=0"), ttlvData.GetDecodeStr().npos);
+    EXPECT_NE(ttlvData.GetDecodeStr().find("recently sent task id=0"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("task phase=INIT"), ttlvData.GetDecodeStr().npos);
 
     EXPECT_NE(ttlvData.GetDecodeStr().find("is invalid"), ttlvData.GetDecodeStr().npos);
@@ -132,7 +132,7 @@ TEST_F(TTLVTest, task_error)
     EXPECT_NE(ttlvData.GetDecodeStr().find("task id=128"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("task type=model execute"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("recently received task id=0"), ttlvData.GetDecodeStr().npos);
-    EXPECT_NE(ttlvData.GetDecodeStr().find("recently send task id=0"), ttlvData.GetDecodeStr().npos);
+    EXPECT_NE(ttlvData.GetDecodeStr().find("recently sent task id=0"), ttlvData.GetDecodeStr().npos);
     EXPECT_NE(ttlvData.GetDecodeStr().find("task phase=INIT"), ttlvData.GetDecodeStr().npos);
 
     EXPECT_NE(ttlvData.GetDecodeStr().find("is invalid"), ttlvData.GetDecodeStr().npos);
@@ -202,6 +202,26 @@ TEST_F(TTLVTest, TTLVWordDecoder_DecodeUnknownData)
     word.msgLen_ = msgLen;
     err = word.DecodeUnknownData();
     EXPECT_EQ(err, RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(TTLVTest, Decode_CheckValidFailed)
+{
+    TTLV ttlvData(nullptr, 0U);
+    const rtError_t error = ttlvData.Decode();
+
+    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
+    EXPECT_FALSE(ttlvData.DecodeMsgFlag());
+}
+
+TEST_F(TTLVTest, Decode_GetTTLVFailed)
+{
+    uint16_t buffer[] = {0U, static_cast<uint16_t>(TS_ERR_MSG_STRUCT), 1U};
+
+    TTLV ttlvData(buffer, sizeof(buffer));
+    const rtError_t error = ttlvData.Decode();
+
+    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
+    EXPECT_FALSE(ttlvData.DecodeMsgFlag());
 }
 
 TEST_F(TTLVTest, pid_error)

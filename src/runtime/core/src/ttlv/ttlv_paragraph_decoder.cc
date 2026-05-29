@@ -51,11 +51,7 @@ void TTLVParagraphDecoder::PrintOut(std::string &outStr)
     std::sort(userInputErrMsg.begin(), userInputErrMsg.end(), compFunc);
     // record input error message
     for (auto &msg : userInputErrMsg) {
-        if (msg.GetErrCode() != RT_INNER_ERROR) {
-            RT_LOG_INNER_DETAIL_MSG(msg.GetErrCode(), {"extend_info"}, {msg.GetErrMsgSting()});
-            continue;
-        }
-        RT_LOG_CALL_MSG(GetTsErrModuleType(msg.GetRetErrCode()), "extend_info: %s", msg.GetErrMsgSting().c_str());
+        RT_LOG_INNER_DETAIL_MSG(msg.GetErrCode(), {"extend_info"}, {msg.GetErrMsgSting()});
     }
     // print error message string
     for (auto &sen : decoderSentence_) {

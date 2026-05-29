@@ -9,15 +9,13 @@
  */
 #include "runtime_keeper.h"
 #include "stream_mem_pool.hpp"
+#include "error_message_manage.hpp"
 
 extern "C" {
 VISIBILITY_DEFAULT cce::runtime::Runtime* ConstructRuntimeImpl()
 {
     cce::runtime::Runtime* rt = new (std::nothrow) cce::runtime::Runtime();
-    if (rt == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new RuntimeImpl failed");
-        return nullptr;
-    }
+    COND_RETURN_AND_MSG_OUTER(rt == nullptr, nullptr, ErrorCode::EE1013, sizeof(cce::runtime::Runtime));
     RT_LOG(RT_LOG_INFO, "RuntimeImpl construct success, rt = %p", rt);
     cce::runtime::Runtime::runtime_ = rt;
     return rt;

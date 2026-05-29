@@ -7,6 +7,8 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <new>
+
 #include "gtest/gtest.h"
 #include "mockcpp/mockcpp.hpp"
 #define private public
@@ -115,6 +117,14 @@ TEST_F(RuntimeTest, binanry_reg_cube_null_data)
 
 using ConstructFunc = Runtime *(*)();
 using DesConstructFunc = void (*)(Runtime *);
+using NothrowNewFunc = void *(*)(size_t, const std::nothrow_t &);
+
+static void *NothrowNewFailStub(size_t size, const std::nothrow_t &tag)
+{
+    UNUSED(size);
+    UNUSED(tag);
+    return nullptr;
+}
 
 TEST_F(RuntimeTest, BOOT_RUNTIME_TEST_ConstructRuntime)
 {
@@ -132,6 +142,36 @@ TEST_F(RuntimeTest, BOOT_RUNTIME_TEST_ConstructRuntime)
     destruct(rt);
 
     dlclose(handlePtr);
+}
+
+TEST_F(RuntimeTest, BootRuntime_CreateRuntimeFailed)
+{
+    static RuntimeKeeper keeper;
+    MOCKER(static_cast<NothrowNewFunc>(&operator new)).expects(once()).will(invoke(NothrowNewFailStub));
+
+    Runtime * const rt = keeper.BootRuntime();
+    Runtime * const keeperRuntime = keeper.runtime_;
+    const uint32_t bootStage = keeper.bootStage_.Value();
+    GlobalMockObject::verify();
+
+    EXPECT_EQ(rt, nullptr);
+    EXPECT_EQ(keeperRuntime, nullptr);
+    EXPECT_EQ(bootStage, RuntimeKeeper::BOOT_INIT);
+}
+
+TEST_F(RuntimeTest, BootRuntime_MsprofRegisterCallbackFailed)
+{
+    static RuntimeKeeper keeper;
+    MOCKER(MsprofRegisterCallback).expects(once()).will(returnValue(RT_ERROR_INVALID_VALUE));
+
+    Runtime * const rt = keeper.BootRuntime();
+    Runtime * const keeperRuntime = keeper.runtime_;
+    const uint32_t bootStage = keeper.bootStage_.Value();
+    GlobalMockObject::verify();
+
+    EXPECT_EQ(rt, nullptr);
+    EXPECT_EQ(keeperRuntime, nullptr);
+    EXPECT_EQ(bootStage, RuntimeKeeper::BOOT_INIT);
 }
 
 TEST_F(RuntimeTest, AicpuCntInitTest)

@@ -104,6 +104,9 @@ static Runtime *CreateRuntimeImpl(void **soHandle)
 {
     UNUSED(soHandle);
     cce::runtime::Runtime* rt = new (std::nothrow) cce::runtime::Runtime();
+    if (rt == nullptr) {
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(cce::runtime::Runtime));
+    }
 #ifdef XPU_UT
     cce::tprt::TprtManage::tprt_ = new (std::nothrow) cce::tprt::TprtManage();
 #endif
@@ -187,12 +190,14 @@ static Runtime *CreateRuntimeImpl(void **soHandle)
     void *const handlePtr = mmDlopen(libSoName.c_str(), flags);
     if (handlePtr == nullptr) {
         const char_t *const dlRet = mmDlerror();
-        RT_LOG(RT_LOG_ERROR, "Open %s failed, dlerror() = %s", libSoName.c_str(), dlRet);
+        const char_t *const dlError = (dlRet == nullptr) ? "unknown" : dlRet;
+        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "Failed to open library %s, dlerror=%s.",
+            libSoName.c_str(), dlError);
         return nullptr;
     }
     ConstructFunc const func = RtPtrToPtr<ConstructFunc>(mmDlsym(handlePtr, "ConstructRuntimeImpl"));
     if (func == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "No symbol found in %s.", libSoName.c_str());
+        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "Failed to find symbol in %s.", libSoName.c_str());
         (void)mmDlclose(handlePtr);
         return nullptr;
     }
@@ -317,11 +322,11 @@ Runtime *RuntimeKeeper::BootRuntime()
         // get chip type and dlopen different so
         void *handle = nullptr;
         runtime_ = CreateRuntimeImpl(&handle);
-        COND_PROC_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM,
-            runtime_ == nullptr,
-            nullptr,
-            bootStage_.Set(BOOT_INIT),
-            "Runtime boot failed, new Runtime failed.");
+        if (runtime_ == nullptr) {
+            bootStage_.Set(BOOT_INIT);
+            RT_LOG(RT_LOG_ERROR, "Runtime boot failed.");
+            return nullptr;
+        }
 
         RT_LOG(RT_LOG_INFO, "new Runtime ok, Runtime_alloc_size %zu.", sizeof(Runtime));
 
@@ -334,6 +339,7 @@ Runtime *RuntimeKeeper::BootRuntime()
         }
         const rtError_t error = MsprofRegisterCallback(RUNTIME, &rtProfilingCommandHandle);
         if (error != RT_ERROR_NONE) {
+            RT_LOG_CALL_MSG(ERR_MODULE_PROFILE, "Failed to register runtime profiling callback, ret=%d.", error);
             DELETE_O(runtime_);
             bootStage_.Set(BOOT_INIT);
             return nullptr;

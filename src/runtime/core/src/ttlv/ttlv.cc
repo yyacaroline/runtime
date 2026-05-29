@@ -92,26 +92,25 @@ rtError_t TTLV::GetTTLV(TTLVWordDecoder &ttlvTag)
     const void *tlvValue = nullptr;
     const void * const readBuffer = static_cast<const char_t *>(buffer_) + offset_;
     // read min size is ttv head
-    if ((offset_ + sizeof(ts_ttv_msg_t)) > length_) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "length is not enough. offset=%u, length=%u, need %zu.",
-            offset_, length_, sizeof(ts_ttv_msg_t));
-        return RT_ERROR_INVALID_VALUE;
-    }
+    COND_RETURN_AND_MSG_INNER((offset_ + sizeof(ts_ttv_msg_t)) > length_, RT_ERROR_INVALID_VALUE,
+        "Failed to decode TTLV because the remaining buffer length is insufficient. "
+        "offset=%u, length=%u, expected=%zu.",
+        offset_, length_, sizeof(ts_ttv_msg_t));
 
     const uint16_t tag = *(static_cast<const uint16_t *>(readBuffer));
     const uint16_t type = *(static_cast<const uint16_t *>(readBuffer) + 1);
     // get msg length, value
-    COND_RETURN_ERROR_MSG_INNER(static_cast<uint32_t>(type) >= TS_ERR_MSG_DATA_TYPE_RESERVED,
+    COND_RETURN_AND_MSG_INNER(static_cast<uint32_t>(type) >= TS_ERR_MSG_DATA_TYPE_RESERVED,
         RT_ERROR_INVALID_VALUE,
-        "TTLV decode failed, invalid type=%hu can not greater than %u,offset=%u.",
+        "Failed to decode TTLV because type=%hu is invalid. Expected type < %u, offset=%u.",
         type, static_cast<uint32_t>(TS_ERR_MSG_DATA_TYPE_RESERVED), offset_);
     // only struct and array using TTLV
     if (static_cast<uint32_t>(type) < TS_ERR_MSG_BASIC_TYPE_MAX_ID) {
         const auto ttv = reinterpret_cast<const ts_ttv_msg_t *>(readBuffer);
         const auto dataTypeIter = g_tsDataTypeToSize.find(static_cast<uint8_t>(ttv->type));
-        COND_RETURN_ERROR_MSG_INNER(dataTypeIter == g_tsDataTypeToSize.end(),
+        COND_RETURN_AND_MSG_INNER(dataTypeIter == g_tsDataTypeToSize.end(),
             RT_ERROR_INVALID_VALUE,
-            "TTLV decode failed, can not find size of type=%hu, offset=%u.", ttv->type, offset_);
+            "Failed to decode TTLV because the size of type=%hu was not found. offset=%u.", ttv->type, offset_);
         msgLen = dataTypeIter->second;
         // get msg head addr
         tlvValue = reinterpret_cast<const void *>(ttv->value);
@@ -119,12 +118,10 @@ rtError_t TTLV::GetTTLV(TTLVWordDecoder &ttlvTag)
         offset_ += TTV_HEAD_SIZE;
     } else { // use TTLV, sentence, error message, array or other struct
         // TTLV read min size is ttlv head
-        if ((offset_ + sizeof(ts_ttlv_msg_t)) > length_) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR,
-                "length is not enough for ttlv. offset=%u, length=%u, need %zu, tag=%hu, type=%hu.",
-                offset_, length_, sizeof(ts_ttlv_msg_t), tag, type);
-            return RT_ERROR_INVALID_VALUE;
-        }
+        COND_RETURN_AND_MSG_INNER((offset_ + sizeof(ts_ttlv_msg_t)) > length_, RT_ERROR_INVALID_VALUE,
+            "Failed to decode TTLV because the remaining buffer length is insufficient for the TTLV header. "
+            "offset=%u, length=%u, expected=%zu, tag=%hu, type=%hu.",
+            offset_, length_, sizeof(ts_ttlv_msg_t), tag, type);
         const auto ttlvMsg = reinterpret_cast<const ts_ttlv_msg_t *>(readBuffer);
         // msg head addr
         tlvValue = reinterpret_cast<const void *>(ttlvMsg->value);
@@ -133,12 +130,10 @@ rtError_t TTLV::GetTTLV(TTLVWordDecoder &ttlvTag)
         // message length should add in parse
         msgLen = ttlvMsg->length;
     }
-    if ((offset_ + msgLen) > length_) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR,
-            "length is not enough for msg len. offset=%u, length=%u, need %zu, tag=%hu, type=%hu, msgLen=%hu.",
-            offset_, length_, sizeof(ts_ttlv_msg_t), tag, type, msgLen);
-        return RT_ERROR_INVALID_VALUE;
-    }
+    COND_RETURN_AND_MSG_INNER((offset_ + msgLen) > length_, RT_ERROR_INVALID_VALUE,
+        "Failed to decode TTLV because msgLen exceeds the remaining buffer length. "
+        "offset=%u, length=%u, tag=%hu, type=%hu, msgLen=%hu.",
+        offset_, length_, tag, type, msgLen);
     ttlvTag.SetTag(tag);
     ttlvTag.SetType(type);
     ttlvTag.SetMsgLen(msgLen);
@@ -148,22 +143,31 @@ rtError_t TTLV::GetTTLV(TTLVWordDecoder &ttlvTag)
 
 rtError_t TTLV::CheckValid() const
 {
-    COND_RETURN_ERROR_MSG_INNER(buffer_ == nullptr,
-                                RT_ERROR_INVALID_VALUE,
-                                "buffer is NULL, decode failed.");
+    COND_RETURN_AND_MSG_INNER(buffer_ == nullptr,
+                              RT_ERROR_INVALID_VALUE,
+                              "Failed to decode TTLV because buffer is null.");
     // can not parse msg
-    COND_RETURN_ERROR_MSG_INNER((length_ < TTLV_HEAD_SIZE) && (length_ != 0U),
-        RT_ERROR_INVALID_VALUE, "length=%u, can not need parse message.", length_);
+    COND_RETURN_AND_MSG_INNER((length_ < TTLV_HEAD_SIZE) && (length_ != 0U),
+        RT_ERROR_INVALID_VALUE,
+        "Failed to decode TTLV because length=%u is invalid. Expected length is 0 or at least %zu.",
+        length_, static_cast<size_t>(TTLV_HEAD_SIZE));
     return RT_ERROR_NONE;
 }
 
 rtError_t TTLV::Decode()
 {
-    ERROR_RETURN_MSG_INNER(CheckValid(), "CheckValid failed.");
+    const rtError_t checkRet = CheckValid();
+    if (checkRet != RT_ERROR_NONE) {
+        RT_LOG(RT_LOG_ERROR, "CheckValid failed, ret=%#x.", checkRet);
+        return checkRet;
+    }
     while (offset_ < length_) {
         TTLVWordDecoder ttlvTag;
         auto err = GetTTLV(ttlvTag);
-        ERROR_RETURN_MSG_INNER(err, "Get ttlv failed, offset=%u.", offset_);
+        if (err != RT_ERROR_NONE) {
+            RT_LOG(RT_LOG_ERROR, "Get ttlv failed, offset=%u, ret=%#x.", offset_, err);
+            return err;
+        }
         ParseTTLV(ttlvTag);
     }
     paragraph_.PrintOut(outStr_);

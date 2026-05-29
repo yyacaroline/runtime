@@ -25,7 +25,7 @@
     /* EE1001 - Invalid_Argument */                                           \
     X(EE1001, "EE1001",                                                       \
       ("extend_info"),                                                        \
-      "The argument is invalid.Reason: %s. ErrorCode=EE1001.\n",              \
+      "The argument is invalid. Reason: %s. ErrorCode=EE1001.\n",              \
       DLOG_ERROR)                                                             \
     /* EE1002 - Execution_Error_Stream_Synchronize_Timeout */                 \
     X(EE1002, "EE1002",                                                       \

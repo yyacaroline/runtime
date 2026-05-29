@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "args_buffer_guard.hpp"
+#include "error_message_manage.hpp"
 
 namespace cce {
 namespace runtime {
@@ -36,10 +37,7 @@ void* ArgsBufferGuard::EnsureCapacity(uint64_t requiredSize)
 
     uint64_t allocSize = (requiredSize > ARGS_BUFFER_DEFAULT_SIZE) ? requiredSize : ARGS_BUFFER_DEFAULT_SIZE;
     buffer_ = malloc(allocSize);
-    if (buffer_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "malloc args buffer failed, size=%llu.", allocSize);
-        return nullptr;
-    }
+    COND_RETURN_AND_MSG_OUTER(buffer_ == nullptr, nullptr, ErrorCode::EE1013, allocSize);
 
     size_ = allocSize;
     RT_LOG(RT_LOG_DEBUG, "alloc args buffer success, size=%llu.", allocSize);

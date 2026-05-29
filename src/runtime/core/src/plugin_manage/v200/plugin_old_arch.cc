@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "runtime_keeper.h"
+#include "error_message_manage.hpp"
 #ifndef CFG_DEV_PLATFORM_PC
 #include "tprt.hpp"
 #endif
@@ -16,20 +17,13 @@ extern "C" {
 VISIBILITY_DEFAULT cce::runtime::Runtime* ConstructRuntimeImpl()
 {
     cce::runtime::Runtime* rt = new (std::nothrow) cce::runtime::Runtime();
-    if (rt == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new RuntimeImpl failed");
-        return nullptr;
-    }
+    COND_RETURN_AND_MSG_OUTER(rt == nullptr, nullptr, ErrorCode::EE1013, sizeof(cce::runtime::Runtime));
     RT_LOG(RT_LOG_INFO, "RuntimeImpl construct success, runtime = %p", rt);
     cce::runtime::Runtime::runtime_ = rt;
 #ifndef CFG_DEV_PLATFORM_PC
     cce::tprt::TprtManage::tprt_ = new (std::nothrow) cce::tprt::TprtManage();
-    if (cce::tprt::TprtManage::tprt_ == nullptr) {
-        delete rt;
-        cce::runtime::Runtime::runtime_ = nullptr;
-        RT_LOG(RT_LOG_ERROR, "new TprtManage failed");
-        return nullptr;
-    }
+    COND_PROC_RETURN_AND_MSG_ALLOC_FAILED(cce::tprt::TprtManage::tprt_ == nullptr, nullptr,
+        delete rt; cce::runtime::Runtime::runtime_ = nullptr, sizeof(cce::tprt::TprtManage));
 #endif
     return rt;
 }

@@ -20,7 +20,7 @@ const std::map<const uint16_t, std::pair<const std::string, PhaseValueToStr>> TT
     {TAG_TS_ERR_MSG_TASK_TYPE, {"task type", &TTLVDecoderUtils::PhaseTaskType}},
     {TAG_TS_ERR_MSG_TASK_PHASE, {"task phase", &TTLVDecoderUtils::PhaseTaskPhase}},
     {TAG_TS_ERR_MSG_LAST_RECEIVE_TASK_ID, {"recently received task id", &TTLVDecoderUtils::PhaseValueDecimal}},
-    {TAG_TS_ERR_MSG_LAST_SEND_TASK_ID, {"recently send task id", &TTLVDecoderUtils::PhaseValueDecimal}},
+    {TAG_TS_ERR_MSG_LAST_SEND_TASK_ID, {"recently sent task id", &TTLVDecoderUtils::PhaseValueDecimal}},
     {TAG_TS_ERR_MSG_STREAM_ID, {"stream id", &TTLVDecoderUtils::PhaseValueDecimal}},
     {TAG_TS_ERR_MSG_STREAM_PHASE, {"stream phase", &TTLVDecoderUtils::PhaseStreamPhase}},
     {TAG_TS_ERR_MSG_MODEL_ID, {"model id", &TTLVDecoderUtils::PhaseValueDecimal}},
