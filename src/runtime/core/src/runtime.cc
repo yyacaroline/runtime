@@ -3122,6 +3122,20 @@ rtError_t Runtime::RuntimeApiProfilerStart(const uint64_t profConfig, int32_t nu
     return RT_ERROR_NONE;
 }
 
+void Runtime::ReportAllStreamSqInfo(const Device *const dev) const
+{
+    std::vector<uint32_t> streamIds;
+    dev->GetStreamSqCqManage()->GetAllStreamId(streamIds);
+    RT_LOG(RT_LOG_INFO, "Report all stream sq info, deviceId=%u, stream count=%zu", 
+        dev->Id_(), streamIds.size());
+    for (uint32_t streamId : streamIds) {
+        Stream *stm = nullptr;
+        if ((dev->GetStreamSqCqManage()->GetStreamById(streamId, &stm) == RT_ERROR_NONE) && (stm != nullptr)) {
+            ReportStreamSqInfoForProfiling(stm, STREAM_STATUS_CREATE);
+        }
+    }
+}
+
 rtError_t Runtime::RuntimeTrackProfilerStart(const uint64_t profConfig, int32_t numsDev,
     const uint32_t * const deviceList, const uint32_t cacheFlag)
 {
@@ -3158,6 +3172,7 @@ rtError_t Runtime::RuntimeTrackProfilerStart(const uint64_t profConfig, int32_t 
                     RefObject<Device *> &refObj = devices_[devId][j];
                     Device * const dev = refObj.GetVal();
                     if (dev != nullptr) {
+                        ReportAllStreamSqInfo(dev);
                         dev->SetDevProfStatus(static_cast<uint64_t>(PROF_RUNTIME_API_MASK), true);
                     }
                 }

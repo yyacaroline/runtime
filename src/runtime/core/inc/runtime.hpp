@@ -876,6 +876,7 @@ private:
     Device *DeviceAddObserver(Device *dev);
     rtError_t RuntimeTrackProfilerStart(const uint64_t profConfig, int32_t numsDev,
         const uint32_t * const deviceList, const uint32_t cacheFlag);
+    void ReportAllStreamSqInfo(const Device *const dev) const;
     rtError_t RuntimeApiProfilerStart(const uint64_t profConfig, int32_t numsDev, const uint32_t * const deviceList);
     rtError_t RuntimeTrackProfilerStop(const uint64_t profConfig, int32_t numsDev, const uint32_t * const deviceList);
     rtError_t RuntimeApiProfilerStop(const uint64_t profConfig, int32_t numsDev, const uint32_t * const deviceList);

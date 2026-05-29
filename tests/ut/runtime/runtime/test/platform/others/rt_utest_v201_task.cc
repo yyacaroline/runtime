@@ -66,6 +66,7 @@
 #include "notify_task.h"
 #include "davinci_kernel_task.h"
 #include "rt_unwrap.h"
+#include "profiler.hpp"
 
 using namespace testing;
 using namespace cce::runtime;
@@ -1656,3 +1657,62 @@ TEST_F(TaskTestV201, RT_SetOpExecuteWithMs)
     EXPECT_EQ(kernelCredit, 1);
 }
 
+TEST_F(TaskTestV201, ReportStreamSqInfoForProfiling_Success_Create)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Profiler *profiler = new Profiler(nullptr);
+    rtInstance->profiler_ = profiler;
+    profiler->SetTrackProfEnable(true);
+
+    MOCKER(MsprofReportCompactInfo).stubs().will(returnValue(0));
+
+    ReportStreamSqInfoForProfiling(stream_, STREAM_STATUS_CREATE);
+
+    delete rtInstance->profiler_;
+    rtInstance->profiler_ = nullptr;
+}
+
+TEST_F(TaskTestV201, ReportStreamSqInfoForProfiling_Success_Destroy)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Profiler *profiler = new Profiler(nullptr);
+    rtInstance->profiler_ = profiler;
+    profiler->SetTrackProfEnable(true);
+
+    MOCKER(MsprofReportCompactInfo).stubs().will(returnValue(0));
+
+    ReportStreamSqInfoForProfiling(stream_, STREAM_STATUS_DESTROY);
+
+    delete rtInstance->profiler_;
+    rtInstance->profiler_ = nullptr;
+}
+
+TEST_F(TaskTestV201, ReportStreamSqInfoForProfiling_ReportFailed)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Profiler *profiler = new Profiler(nullptr);
+    rtInstance->profiler_ = profiler;
+    profiler->SetTrackProfEnable(true);
+
+    MOCKER(MsprofReportCompactInfo).stubs().will(returnValue(1));
+
+    ReportStreamSqInfoForProfiling(stream_, STREAM_STATUS_CREATE);
+
+    delete rtInstance->profiler_;
+    rtInstance->profiler_ = nullptr;
+}
+
+TEST_F(TaskTestV201, ReportStreamSqInfoForProfiling_Disable)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Profiler *profiler = new Profiler(nullptr);
+    rtInstance->profiler_ = profiler;
+    profiler->SetTrackProfEnable(false);
+
+    MOCKER(MsprofReportCompactInfo).stubs().will(returnValue(0));
+
+    ReportStreamSqInfoForProfiling(stream_, STREAM_STATUS_CREATE);
+
+    delete rtInstance->profiler_;
+    rtInstance->profiler_ = nullptr;
+}

@@ -784,6 +784,7 @@ rtError_t Stream::Setup()
            streamId_, static_cast<int32_t>(IsTaskSink()), sqId_, cqId_, device_->Id_(), streamResId);
     InitEmbeddedInnerHandle<Stream>(this);
     StreamStateCallbackManager::Instance().Notify(this, true);
+
     return RT_ERROR_NONE;
 }
 
@@ -5275,6 +5276,5 @@ rtError_t Stream::RestoreForSoftwareSq()
 
     return RT_ERROR_NONE;
 }
- 	 
 }  // namespace runtime
 }  // namespace cce

@@ -362,6 +362,14 @@ struct MsprofCaptureStreamInfo {  // for MsprofReportCompactInfo buffer data
     uint16_t deviceId;
 };
 
+struct MsprofStreamSqInfo {     // for MsprofReportCompactInfo buffer data
+    uint16_t streamStatus;      // 0 indicates create, 1 indicates destroy
+    uint32_t streamId;          // stream id
+    uint16_t rtsqId;            // rtsq id
+    uint16_t deviceId;          // device id
+    uint16_t tsId;              // ts id
+};
+
 struct MsprofDpuTrack {  // for MsprofReportCompactInfo buffer data
     uint16_t deviceId;   // high 4 bits, devType: dpu: 1, low 12 bits device id
     uint16_t streamId;
@@ -488,6 +496,7 @@ struct MsprofCompactInfo {  // for MsprofReportCompactInfo buffer data
         uint8_t info[MSPROF_COMPACT_INFO_DATA_LENGTH];
         struct MsprofRuntimeTrack runtimeTrack;
         struct MsprofCaptureStreamInfo captureStreamInfo;
+        struct MsprofStreamSqInfo streamSqInfo;
         struct MsprofNodeBasicInfo nodeBasicInfo;
         struct MsprofHCCLOPInfo hcclopInfo;
         struct MsprofDpuTrack dpuTack;

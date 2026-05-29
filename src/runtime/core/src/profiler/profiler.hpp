@@ -157,6 +157,7 @@ private:
     std::mutex streamSetMutex_;
     std::unordered_set<Stream *> streamSet_;
 };
+void ReportStreamSqInfoForProfiling(const Stream *stream, uint16_t streamStatus);
 }  // namespace runtime
 }  // namespace cce
 

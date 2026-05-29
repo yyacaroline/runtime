@@ -625,5 +625,39 @@ void Profiler::TsProfilerStop(
     return;
 }
 
+void ReportStreamSqInfoForProfiling(const Stream *stream, uint16_t streamStatus)
+{
+    Profiler * const profilerPtr = Runtime::Instance()->Profiler_();
+    if ((profilerPtr == nullptr) || (!profilerPtr->GetTrackProfEnable()) || (stream == nullptr)) {
+        return;
+    }
+
+    MsprofCompactInfo compactInfo;
+    compactInfo.level = MSPROF_REPORT_RUNTIME_LEVEL;
+    compactInfo.type = RT_PROFILE_TYPE_STREAM_SQ_INFO;
+    compactInfo.timeStamp = MsprofSysCycleTime();
+    compactInfo.threadId = GetCurrentTid();
+    compactInfo.dataLen = static_cast<uint32_t>(sizeof(MsprofStreamSqInfo));
+    compactInfo.data.streamSqInfo.streamStatus = streamStatus;
+    compactInfo.data.streamSqInfo.streamId = static_cast<uint16_t>(stream->Id_());
+    compactInfo.data.streamSqInfo.rtsqId = static_cast<uint16_t>(stream->GetSqId());
+    compactInfo.data.streamSqInfo.deviceId = static_cast<uint16_t>(stream->Device_()->Id_());
+    compactInfo.data.streamSqInfo.tsId = static_cast<uint16_t>(stream->Device_()->DevGetTsId());
+
+    const auto error = MsprofReportCompactInfo(0, &compactInfo, static_cast<uint32_t>(sizeof(MsprofCompactInfo)));
+    if (error != MSPROF_ERROR_NONE) {
+        RT_LOG(RT_LOG_ERROR, "Report stream sq info for profiling failed, ret=%d.", error);
+        return;
+    }
+
+    RT_LOG(RT_LOG_DEBUG,
+        "Report stream sq info for profiling successfully, streamStatus=%hu, streamId=%hu, "
+        "rtsqId=%hu, deviceId=%hu, tsId=%hu.",
+        compactInfo.data.streamSqInfo.streamStatus,
+        compactInfo.data.streamSqInfo.streamId,
+        compactInfo.data.streamSqInfo.rtsqId,
+        compactInfo.data.streamSqInfo.deviceId,
+        compactInfo.data.streamSqInfo.tsId);
+}
 }  // namespace runtime
 }  // namespace cce

@@ -10,6 +10,7 @@
 
 #include "stream_with_dqs.hpp"
 #include "ioctl_utils.hpp"
+#include "profiler.hpp"
 
 namespace cce {
 namespace runtime {
@@ -44,7 +45,6 @@ rtError_t StreamWithDqs::SetupByFlagAndCheck(void)
     return RT_ERROR_NONE;
 }
 
-
 rtError_t StreamWithDqs::Setup()
 {
     rtError_t error = SetupByFlagAndCheck();
@@ -61,11 +61,17 @@ rtError_t StreamWithDqs::Setup()
     RT_LOG(RT_LOG_INFO, "stream setup end, stream_id=%d, sq_id=%u, cq_id=%u, device_id=%u, isHasArgPool_=%d.",
            streamId_, sqId_, cqId_, device_->Id_(), isHasArgPool_);
 
+    // report create streamId_/sqId_
+    ReportStreamSqInfoForProfiling(this, STREAM_STATUS_CREATE);
+
     return RT_ERROR_NONE;
 }
 
 rtError_t StreamWithDqs::TearDown(const bool terminal, bool flag)
 {
+    // report destroy streamId_/sqId_
+    ReportStreamSqInfoForProfiling(this, STREAM_STATUS_DESTROY);
+
     /* dqs ctrl stream and dqs inter chip stream are special. cannot be destroyed in normal way. */
     if (((flags_ & RT_STREAM_DQS_CTRL) != 0U) || ((flags_ & RT_STREAM_DQS_INTER_CHIP) != 0U)) {
         flag = true; /* force destroy */

@@ -272,9 +272,15 @@ enum rtProfileDataType_t : uint32_t {
     RT_PROFILE_TYPE_SOFTWARE_SQ_ENABLE = 804,
     RT_PROFILE_TYPE_SHAPE_INFO = 805,       /* aclgraph cache & report shape info */
     RT_PROFILE_TYPE_DPU_INFO = 806,       /* dpu task track*/
+    RT_PROFILE_TYPE_STREAM_SQ_INFO = 807,  /* stream sq info */
     RT_PROFILE_TYPE_API_BEGIN = 1000,       /* regist task type and task name for Parsing task info*/
     RT_PROFILE_TYPE_API_END = 2000,
     RT_PROFILE_TYPE_MAX = 2001
+};
+
+enum StreamReportStatus : uint16_t {
+    STREAM_STATUS_CREATE = 0U,
+    STREAM_STATUS_DESTROY = 1U
 };
 
 struct RuntimeMemcpyInfo {  // for memcpy info
