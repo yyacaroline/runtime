@@ -480,6 +480,7 @@ set(runtimeut_src_list
     ${TOP_DIR}/src/runtime/core/src/dfx/fast_recover.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/device_snapshot.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_process_helper.cc
+    ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_callback_manager.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/v100/device_snapshot_adapter.cc
     ${TOP_DIR}/src/runtime/core/src/device/device_sq_cq_pool.cc
     ${TOP_DIR}/src/runtime/core/src/device/sq_addr_memory_pool.cc
@@ -645,6 +646,7 @@ set(runtimeut_david_src_list
     ${TOP_DIR}/src/runtime/core/src/device/raw_device_res.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/device_snapshot.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_process_helper.cc
+    ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_callback_manager.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/v200_base/device_snapshot_adapter.cc
     ${TOP_DIR}/src/runtime/core/src/device/device_sq_cq_pool.cc
     ${TOP_DIR}/src/runtime/core/src/device/sq_addr_memory_pool.cc
@@ -1477,6 +1479,7 @@ set(runtimeut_v201_src_list
     ${TOP_DIR}/src/runtime/core/src/device/raw_device_res.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/device_snapshot.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_process_helper.cc
+    ${TOP_DIR}/src/runtime/feature/snapshot/snapshot_callback_manager.cc
     ${TOP_DIR}/src/runtime/feature/snapshot/v100/device_snapshot_adapter.cc
     ${TOP_DIR}/src/runtime/core/src/device/device_sq_cq_pool.cc
     ${TOP_DIR}/src/runtime/core/src/device/sq_addr_memory_pool.cc

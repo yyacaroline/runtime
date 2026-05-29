@@ -24,7 +24,7 @@
 namespace cce {
 namespace runtime {
 
-class DeviceSnapshot;
+class IDeviceSnapshotOps;
 class RawDevice : public GroupDevice {
 public:
     explicit RawDevice(const uint32_t devId);
@@ -783,7 +783,7 @@ public:
 
     rtError_t EnableP2PWithOtherDevice(const uint32_t peerPhyDeviceId) override;
     bool IsSupportFeature(RtOptionalFeatureType f) const override;
-    DeviceSnapshot *GetDeviceSnapShot(void) override
+    IDeviceSnapshotOps *GetDeviceSnapShot(void) override
     {
         return deviceSnapshot_;
     }
@@ -1041,7 +1041,7 @@ private:
     std::mutex notifyLock_;
     std::unordered_set<CountNotify *> cntNotifies_;
     std::mutex cntNotifyLock_;
-    DeviceSnapshot *deviceSnapshot_{nullptr};
+    IDeviceSnapshotOps *deviceSnapshot_{nullptr};
     EventExpandingPool *eventExpandingPool_;
     /* 
      * 支持的场景：exeStream多次执行相同的captureModel，exeStream执行多个不同的captureModel

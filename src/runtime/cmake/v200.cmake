@@ -272,6 +272,7 @@ set(libruntime_v200_v201_common_src_files
     ${RUNTIME_CORE_DIR}/src/device/raw_device_res.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/device_snapshot.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/snapshot_process_helper.cc
+    ${RUNTIME_FEATURE_DIR}/snapshot/snapshot_callback_manager.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/v200_base/device_snapshot_adapter.cc
     ${RUNTIME_CORE_DIR}/src/device/raw_device_adpt_david.cc
     ${RUNTIME_CORE_DIR}/src/device/ctrl_msg.cc
@@ -411,6 +412,7 @@ set(libruntime_v201_src_files
     ${RUNTIME_CORE_DIR}/src/kernel/v100/program_plat.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/device_snapshot.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/snapshot_process_helper.cc
+    ${RUNTIME_FEATURE_DIR}/snapshot/snapshot_callback_manager.cc
     ${RUNTIME_FEATURE_DIR}/snapshot/v200_base/device_snapshot_adapter.cc
     ${libruntime_v201_task_src_files}
     ${libruntime_v200_context_src_files}
