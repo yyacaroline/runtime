@@ -42,9 +42,12 @@ rtError_t CbSubscribe::AssignGroupId(const uint64_t threadId, const Stream * con
     while (true) {
         groupId = grpIdBitmap_.AllocId();
         if (groupId < 0) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR,
-                "thread out of range %d. groupId is full, out of %u, [threadId_key(%" PRIu64 ") - devId(%u)|tsId(%u)], streamId(%d)",
-                maxGroupNum_, maxGroupNum_, threadId, stm->Device_()->Id_(), stm->Device_()->DevGetTsId(), stm->Id_());
+            RT_LOG_INNER_MSG(
+                RT_LOG_ERROR,
+                "Failed to assign callback subscription group id because group id is full, max_group_num=%u, "
+                "thread_id=%" PRIu64 ", device_id=%u, ts_id=%u, stream_id=%d, retCode=%#x.",
+                maxGroupNum_, threadId, stm->Device_()->Id_(), stm->Device_()->DevGetTsId(), stm->Id_(),
+                static_cast<uint32_t>(RT_ERROR_SUBSCRIBE_GROUP));
             return RT_ERROR_SUBSCRIBE_GROUP;
         }
         if (grpIdWaitBitmap_.IsIdOccupied(groupId)) {
@@ -73,8 +76,10 @@ rtError_t CbSubscribe::CheckForInsert(const uint64_t threadId, Stream * const st
         return RT_ERROR_SUBSCRIBE_THREAD;
     }
     if ((threadIdIter != subscribeMapByThreadId_.end()) && (devIdTsIdIter == threadIdIter->second.end())) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR,
-            "Can not find subscribeMap by threadId_key(%" PRIu64 "), streamId=%d, devId=%u, tsId=%u",
+        RT_LOG_INNER_MSG(
+            RT_LOG_ERROR,
+            "Cannot find callback subscription by thread key, thread_id=%" PRIu64 ", stream_id=%d, "
+            "device_id=%u, ts_id=%u.",
             threadId, stm->Id_(), stm->Device_()->Id_(), stm->Device_()->DevGetTsId());
         return RT_ERROR_SUBSCRIBE_THREAD;
     }
@@ -130,8 +135,11 @@ rtError_t CbSubscribe::Insert(const uint64_t threadId, Stream * const stm, void 
     if (!isReuseCqSq) {
         ret = devDrv->SqCqAllocate(devId, tsId, static_cast<uint32_t>(groupId), &sqId, &cqId);
         if (ret != RT_ERROR_NONE) {
-            RT_LOG(RT_LOG_ERROR, "SqCqAllocate failed, retCode=%#x, threadId=%" PRIu64 ", devId=%u, tsId=%u", ret,
-            threadId, devId, tsId);
+            RT_LOG(
+                RT_LOG_ERROR,
+                "Failed to allocate SQ/CQ for callback subscription, thread_id=%" PRIu64 ", "
+                "device_id=%u, ts_id=%u, retCode=%#x.",
+                threadId, devId, tsId, static_cast<uint32_t>(ret));
             return ret;
         }
     }
@@ -219,9 +227,11 @@ rtError_t CbSubscribe::Delete(const uint64_t threadId, Stream * const stm)
     const auto devDrv = stm->Device_()->Driver_();
     if (needsFreeSqCq) {
         ret = devDrv->SqCqFree(sqId, cqId, devId, tsId);
-        ERROR_RETURN_MSG_INNER(ret, "Free sqcq failed, retCode=%#x, threadId=%" PRIu64 ", "
-                                    "streamId=%d, devId=%u, tsId=%u, sqId=%u, cqId=%u",
-                                    static_cast<uint32_t>(ret), threadId, stm->Id_(), devId, tsId, sqId, cqId);
+        ERROR_RETURN(
+            ret,
+            "Failed to free SQ/CQ, thread_id=%" PRIu64 ", "
+            "stream_id=%d, device_id=%u, ts_id=%u, sq_id=%u, cq_id=%u, retCode=%#x.",
+            threadId, stm->Id_(), devId, tsId, sqId, cqId, static_cast<uint32_t>(ret));
     }
     RT_LOG(RT_LOG_INFO, "delete callback subscribe: groupId=%u, threadId=%" PRIu64 ", devId=%u, tsId=%u, "
         "streamId=%d, sqId=%u, cqId=%u, needsFreeSqCq=%d", groupId, threadId, devId, tsId, stm->Id_(),
@@ -287,9 +297,11 @@ rtError_t CbSubscribe::Delete(Stream * const stm)
     Driver * const devDrv = stm->Device_()->Driver_();
     if (needsFreeSqCq) {
         ret = devDrv->SqCqFree(sqId, cqId, devId, tsId);
-        ERROR_RETURN_MSG_INNER(ret, "Free sqcq failed, retCode=%#x, threadId=%" PRIu64 ", "
-                                    "streamId=%d, devId=%u, tsId=%u, sqId=%u, cqId=%u",
-                                    static_cast<uint32_t>(ret), threadId, stm->Id_(), devId, tsId, sqId, cqId);
+        ERROR_RETURN(
+            ret,
+            "Failed to free SQ/CQ, thread_id=%" PRIu64 ", "
+            "stream_id=%d, device_id=%u, ts_id=%u, sq_id=%u, cq_id=%u, retCode=%#x.",
+            threadId, stm->Id_(), devId, tsId, sqId, cqId, static_cast<uint32_t>(ret));
     }
     RT_LOG(RT_LOG_INFO, "delete callback subscribe: groupId=%u, threadId=%" PRIu64 ", devId=%u, tsId=%u, "
         "streamId=%d, sqId=%u, cqId=%u, needsFreeSqCq=%d", groupId, threadId, devId, tsId, stm->Id_(),
@@ -358,7 +370,7 @@ rtError_t CbSubscribe::GetGroupIdByThreadId(const uint64_t threadId, uint32_t * 
     if (it == subscribeMapByThreadId_.end()) {
         subscribeLock_.unlock();
         if (!noLog) {
-            RT_LOG(RT_LOG_WARNING, "can not find subscribe info, threadId=%" PRIu64, threadId);
+            RT_LOG(RT_LOG_WARNING, "Cannot find subscribe info, threadId=%" PRIu64, threadId);
         }
         return RT_ERROR_SUBSCRIBE_THREAD;
     }
@@ -377,7 +389,7 @@ rtError_t CbSubscribe::GetGroupIdByStreamId(const uint32_t devId, const int32_t 
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *groupId = static_cast<uint32_t>(it->second.groupId);
@@ -392,7 +404,7 @@ rtError_t CbSubscribe::GetEventByStreamId(const uint32_t devId, const int32_t st
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *evt = it->second.u.event;
@@ -407,7 +419,7 @@ rtError_t CbSubscribe::GetNotifyByStreamId(const uint32_t devId, const int32_t s
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *notify = it->second.u.notify;
@@ -422,7 +434,7 @@ rtError_t CbSubscribe::GetCqIdByStreamId(const uint32_t devId, const int32_t str
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *cqId = it->second.cqId;
@@ -437,7 +449,7 @@ rtError_t CbSubscribe::GetSqIdByStreamId(const uint32_t devId, const int32_t str
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *sqId = it->second.sqId;
@@ -452,7 +464,7 @@ rtError_t CbSubscribe::GetThreadIdByStreamId(const uint32_t devId, const int32_t
     const auto it = subscribeMapByStreamId_.find(key);
     if (it == subscribeMapByStreamId_.end()) {
         subscribeLock_.unlock();
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "can not find subscribe info, streamId=%d, devId=%u", streamId, devId);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Cannot find subscribe info, streamId=%d, devId=%u", streamId, devId);
         return RT_ERROR_SUBSCRIBE_STREAM;
     }
     *threadId = it->second.threadId;
@@ -488,10 +500,11 @@ void CbSubscribe::DeleteAll()
             it.second.cqId, it.second.stream->Device_()->Id_(),
             it.second.stream->Device_()->DevGetTsId());
         if (ret != RT_ERROR_NONE) {
-            RT_LOG(RT_LOG_ERROR, "SqCqFree failed, threadId=%" PRIu64
-                ", devId=%u, tsId=%u, sqId=%u, cqId=%u, retCode=%#x",
-                it.second.threadId, it.second.stream->Device_()->Id_(),
-                it.second.stream->Device_()->DevGetTsId(), it.second.sqId, it.second.cqId, ret);
+            RT_LOG(
+                RT_LOG_ERROR,
+                "Failed to free SQ/CQ, thread_id=%" PRIu64 ", device_id=%u, ts_id=%u, sq_id=%u, cq_id=%u, retCode=%#x.",
+                it.second.threadId, it.second.stream->Device_()->Id_(), it.second.stream->Device_()->DevGetTsId(),
+                it.second.sqId, it.second.cqId, static_cast<uint32_t>(ret));
         }
     }
 
@@ -530,8 +543,9 @@ bool CbSubscribe::JudgeNeedSubscribe(const uint64_t threadId, Stream * const stm
 rtError_t CbSubscribe::SubscribeCallback(const uint64_t threadId, Stream * const stm, void *evtNotify)
 {
     const rtError_t error = Insert(threadId, stm, evtNotify);
-    ERROR_RETURN_MSG_INNER(error, "subscribe fail, streamId=%d, threadId=%" PRIu64 ", retCode=%#x",
-        stm->Id_(), threadId, static_cast<uint32_t>(error));
+    ERROR_RETURN(
+        error, "Failed to subscribe callback, stream_id=%d, thread_id=%" PRIu64 ", retCode=%#x.", stm->Id_(), threadId,
+        static_cast<uint32_t>(error));
     return error;
 }
 

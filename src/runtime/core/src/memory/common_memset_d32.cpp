@@ -37,8 +37,9 @@ static rtError_t MemsetD32OnDeviceSingleBlock(void* curDst, uint64_t remainingMa
     rtError_t allocError = device->Driver_()->HostMemAlloc(
         &tempHostBuf, curBytes, device->Id_(), 0, 0);
     if (allocError != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "Failed to allocate temp host memory for block, size=%" PRIu64 ", error=%#x",
-               curBytes, allocError);
+        RT_LOG(
+            RT_LOG_ERROR, "Failed to allocate temp host memory for block, size=%" PRIu64 ", retCode=%#x.", curBytes,
+            static_cast<uint32_t>(allocError));
         return allocError;
     }
 
@@ -60,7 +61,7 @@ static rtError_t MemsetD32OnDeviceSingleBlock(void* curDst, uint64_t remainingMa
     }
     
     if (copyError != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "Memory copy failed for block, error=%#x", copyError);
+        RT_LOG(RT_LOG_ERROR, "Failed to copy memory for block, retCode=%#x.", static_cast<uint32_t>(copyError));
         return copyError;
     }
     return RT_ERROR_NONE;
@@ -85,8 +86,9 @@ rtError_t MemsetD32OnDevice(void* dst, uint64_t destMax, uint32_t value,
     
     // Check if total size exceeds destMax
     if (totalBytes > destMax) {
-        RT_LOG(RT_LOG_ERROR, "Total size exceeds destMax: totalBytes=%" PRIu64 ", destMax=%" PRIu64,
-               totalBytes, destMax);
+        RT_LOG(
+            RT_LOG_ERROR, "Total size exceeds destMax, totalBytes=%" PRIu64 ", destMax=%" PRIu64 ".", totalBytes,
+            destMax);
         return RT_ERROR_INVALID_VALUE;
     }
 

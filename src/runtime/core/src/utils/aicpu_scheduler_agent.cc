@@ -29,14 +29,15 @@ rtError_t AicpuSchedulerAgent::Init()
     libName += LIBRARY_NAME;
     aicpuSchedulerHandle_ = mmDlopen(libName.c_str(), MMPA_RTLD_NOW);
     if (aicpuSchedulerHandle_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "open %s library failed, errno=%d.", libName.c_str(), errno);
+        RT_LOG_CALL_MSG(
+            ERR_MODULE_AICPU, "Failed to open AI CPU scheduler library, library=%s, errno=%d.", libName.c_str(), errno);
         return RT_ERROR_DRV_OPEN_AICPU;
     }
 
     constexpr const char_t *modelLoadFuncName = "AICPUModelLoad";
     loadModelFunc_ = RtPtrToPtr<FUNC_AICPU_MODEL_LOAD>(mmDlsym(aicpuSchedulerHandle_, modelLoadFuncName));
     if (loadModelFunc_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "find %s func failed.", modelLoadFuncName);
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "Failed to find AI CPU scheduler function, function=%s.", modelLoadFuncName);
         return RT_ERROR_DRV_SYM_AICPU;
     }
 
@@ -44,7 +45,8 @@ rtError_t AicpuSchedulerAgent::Init()
     modelExecuteFunc_ = RtPtrToPtr<FUNC_AICPU_MODEL_OPERATE>(mmDlsym(aicpuSchedulerHandle_,
         modelExecuteFuncName));
     if (modelExecuteFunc_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "find %s func failed.", modelExecuteFuncName);
+        RT_LOG_CALL_MSG(
+            ERR_MODULE_AICPU, "Failed to find AI CPU scheduler function, function=%s.", modelExecuteFuncName);
         return RT_ERROR_DRV_SYM_AICPU;
     }
 
@@ -52,7 +54,8 @@ rtError_t AicpuSchedulerAgent::Init()
     modelDestroyFunc_ = RtPtrToPtr<FUNC_AICPU_MODEL_OPERATE>(mmDlsym(aicpuSchedulerHandle_,
         modelDestroyFuncName));
     if (modelDestroyFunc_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "find %s func failed.", modelDestroyFuncName);
+        RT_LOG_CALL_MSG(
+            ERR_MODULE_AICPU, "Failed to find AI CPU scheduler function, function=%s.", modelDestroyFuncName);
         return RT_ERROR_DRV_SYM_AICPU;
     }
 
@@ -60,7 +63,8 @@ rtError_t AicpuSchedulerAgent::Init()
     loadOpMappingInfoFunc_ = RtPtrToPtr<FUNC_AICPU_LOAD_OP_MAPPING_INFO>(mmDlsym(aicpuSchedulerHandle_,
         loadOpMappingInfoFuncName));
     if (loadOpMappingInfoFunc_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "find %s func failed.", modelDestroyFuncName);
+        RT_LOG_CALL_MSG(
+            ERR_MODULE_AICPU, "Failed to find AI CPU scheduler function, function=%s.", loadOpMappingInfoFuncName);
         return RT_ERROR_DRV_SYM_AICPU;
     }
 
@@ -88,7 +92,7 @@ rtError_t AicpuSchedulerAgent::AicpuModelLoad(void * const funcArg) const
 
     const int32_t ret = loadModelFunc_(funcArg);
     if (ret != AICPU_SCHEDULE_RET_SUCCESS) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "call load aicpu model func failed,aicpu retCode=%d.", ret);
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "Failed to call AICPUModelLoad, retCode=%d.", ret);
         return RT_ERROR_AICPU_INTERNAL_ERROR;
     }
     return RT_ERROR_NONE;
@@ -103,7 +107,7 @@ rtError_t AicpuSchedulerAgent::AicpuModelDestroy(const uint32_t modelId) const
 
     const int32_t ret = modelDestroyFunc_(modelId);
     if (ret != AICPU_SCHEDULE_RET_SUCCESS) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "call aicpu model destroy func failed, aicpu retCode=%d.", ret);
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "Failed to call AICPUModelDestroy, retCode=%d.", ret);
         return RT_ERROR_AICPU_INTERNAL_ERROR;
     }
     return RT_ERROR_NONE;
@@ -112,13 +116,13 @@ rtError_t AicpuSchedulerAgent::AicpuModelDestroy(const uint32_t modelId) const
 rtError_t AicpuSchedulerAgent::AicpuModelExecute(const uint32_t modelId) const
 {
     if (modelExecuteFunc_ == nullptr) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "LoadOpMappingInfo is null.");
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "AICPUModelExecute func is null.");
         return RT_ERROR_DRV_SYM_AICPU;
     }
 
     const int32_t ret = modelExecuteFunc_(modelId);
     if (ret != AICPU_SCHEDULE_RET_SUCCESS) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "call aicpu model execute func failed, aicpu retCode=%d.", ret);
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "Failed to call AICPUModelExecute, retCode=%d.", ret);
         return RT_ERROR_AICPU_INTERNAL_ERROR;
     }
     return RT_ERROR_NONE;
@@ -133,7 +137,7 @@ rtError_t AicpuSchedulerAgent::DatadumpInfoLoad(const void * const dumpInfo, con
 
     const int32_t ret = loadOpMappingInfoFunc_(dumpInfo, length);
     if (ret != AICPU_SCHEDULE_RET_SUCCESS) {
-        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "call aicpu load op mapping info func failed, aicpu retCode=%d.", ret);
+        RT_LOG_CALL_MSG(ERR_MODULE_AICPU, "Failed to call LoadOpMappingInfo, retCode=%d.", ret);
         return RT_ERROR_AICPU_INTERNAL_ERROR;
     }
     return RT_ERROR_NONE;

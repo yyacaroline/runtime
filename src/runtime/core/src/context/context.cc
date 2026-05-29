@@ -91,12 +91,20 @@ rtError_t CheckMemoryParam(const rtDebugMemoryParam_t *const param)
     const auto &iter = BUFFER_SIZE.find(param->debugMemType);
     if (iter != BUFFER_SIZE.end()) {
         const bool isValid = ((param->srcAddr + param->memLen) <= iter->second);
-        COND_RETURN_ERROR((!isValid), RT_ERROR_INVALID_VALUE, "CheckMemoryParam fail, debugMemType=%d, srcAddr=0x%llx, "
-                          "memLen=%llu.", param->debugMemType, param->srcAddr, param->memLen);
+        COND_RETURN_ERROR(
+            (!isValid), RT_ERROR_INVALID_VALUE,
+            "The read memory boundary exceeds the hardware memory boundary of the specified memory type,"
+            " debugMemType=%d, srcAddr=0x%llx, memLen=%llu.",
+            param->debugMemType, param->srcAddr, param->memLen);
     }
     if (param->debugMemType == RT_MEM_TYPE_REGISTER) {
-        COND_RETURN_ERROR((param->memLen % param->elementSize != 0), RT_ERROR_INVALID_VALUE,
-            "CheckMemoryParam register fail, memLen=%llu, elementSize=%u.", param->memLen, param->elementSize);
+        COND_RETURN_ERROR((param->elementSize == 0U), RT_ERROR_INVALID_VALUE,
+            "CheckMemoryParam failed, elementSize cannot be 0, debugMemType=%d, srcAddr=0x%llx, memLen=%llu.",
+            param->debugMemType, param->srcAddr, param->memLen);
+        COND_RETURN_ERROR(
+            (param->memLen % param->elementSize != 0), RT_ERROR_INVALID_VALUE,
+            "The read memory length %llu is not aligned with the register bit width %u.", param->memLen,
+            param->elementSize);
     }
     return RT_ERROR_NONE;
 }
@@ -161,8 +169,9 @@ static rtError_t LaunchAicpuKernelForCpuSoImpl(const rtKernelLaunchNames_t * con
     aicpuTaskInfo->timeout = timeout;
 
     error = stm->Device_()->SubmitTask(tsk);
-    COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, device->GetTaskFactory()->Recycle(tsk),
-        "Failed to submit aicpu task, retCode=%#x.", error);
+    COND_PROC_RETURN_ERROR(
+        error != RT_ERROR_NONE, error, device->GetTaskFactory()->Recycle(tsk),
+        "Failed to submit AI CPU task, retCode=%#x.", error);
     return error;
 }
 
@@ -389,11 +398,11 @@ rtError_t Context::Init()
     moduleAllocator_ = new (std::nothrow) ObjAllocator<Module *>(DEFAULT_PROGRAM_NUMBER,
                                                                  Runtime::maxProgramNum_,
                                                                  true);
-    COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, moduleAllocator_ == nullptr, RT_ERROR_MODULE_NEW,
-        "Context init failed, moduleAllocator_ can not be null.");
+    COND_RETURN_AND_MSG_OUTER(
+        moduleAllocator_ == nullptr, RT_ERROR_MODULE_NEW, ErrorCode::EE1013, sizeof(ObjAllocator<Module*>));
 
     const rtError_t error = moduleAllocator_->Init();
-    ERROR_RETURN_MSG_INNER(error, "Context init failed, init moduleAllocator_ failed, retCode=%#x.", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to init moduleAllocator_, retCode=%#x.", error);
 
     RT_LOG(RT_LOG_INFO, "Runtime_alloc_size is %zu.", sizeof(Module *) * DEFAULT_PROGRAM_NUMBER);
 
@@ -410,7 +419,7 @@ void Context::TryAllocFastCq()
     }
     onlineStream_ = StreamFactory::CreateStream(device_, 0U);
     if (onlineStream_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new online stream failed");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(Stream));
         return;
     }
     RT_LOG(RT_LOG_INFO, "New onlineStream_ ok, Runtime_alloc_size %zu, stream_id=%d.",
@@ -451,17 +460,19 @@ rtError_t Context::SetOverflowAddr()
                 RT_MEMORY_DEFAULT;
         error = device_->Driver_()->DevMemAlloc(&overflowAddr_, OVERFLOW_ADDR_MAX_SIZE, memType, device_->Id_());
         if (unlikely(error == RT_ERROR_DRV_OUT_MEMORY)) {
-            RT_LOG(RT_LOG_ERROR, "overflowAddr DevMemAlloc failed, retCode=%#x.", error);
+            RT_LOG(RT_LOG_ERROR, "Failed to allocate overflow address device memory, retCode=%#x.", error);
         } else {
-            ERROR_RETURN(error, "overflowAddr DevMemAlloc failed, retCode=%#x.", error);
+            ERROR_RETURN(error, "Failed to allocate overflow address device memory, retCode=%#x.", error);
             if (device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_TS_MEM_4G_SPACE_FOR_OVERFLOW)) {
                 error = device_->Driver_()->MemSetSync(overflowAddr_, OVERFLOW_ADDR_MAX_SIZE, 0U, OVERFLOW_ADDR_MAX_SIZE);
-                ERROR_RETURN_MSG_INNER(
-                    error, "Memset value failed, size=%#" PRIx64 "(bytes), retCode=%#x!",
+                COND_RETURN_ERROR(
+                    error != RT_ERROR_NONE, error,
+                    "Failed to set overflow address. Reason: MemSetSync failed, size=%#" PRIx64 "(bytes), "
+                    "retCode=%#x.",
                     static_cast<uint64_t>(OVERFLOW_ADDR_MAX_SIZE), static_cast<uint32_t>(error));
                 error = device_->Driver_()->MemAddressTranslate(
                     static_cast<int32_t>(device_->Id_()), RtPtrToValue<void*>(overflowAddr_), &overflowAddrOffset_);
-                ERROR_RETURN_MSG_INNER(error, "Trans overflowAddr failed retCode=%#x!", static_cast<uint32_t>(error));
+                ERROR_RETURN(error, "Failed to translate overflow address, retCode=%#x.", static_cast<uint32_t>(error));
             }
         }
     }
@@ -474,14 +485,16 @@ rtError_t Context::Setup()
     const rtChipType_t chipType = device_->GetChipType();
 
     error = Init();
-    ERROR_RETURN_MSG_INNER(error, "Init context failed, retCode=%#x", error);
+    ERROR_RETURN(error, "Failed to init context, retCode=%#x.", error);
 
     error = SetOverflowAddr();
-    ERROR_RETURN(error, "set overflowAddr failed, retCode=%#x.", error);
+    ERROR_RETURN(error, "Failed to set overflow address, retCode=%#x.", error);
 
     if (isPrimary_) {
         defaultStream_ = device_->PrimaryStream_();
-        COND_RETURN_ERROR_MSG_INNER(defaultStream_ == nullptr, RT_ERROR_CONTEXT_DEFAULT_STREAM_NULL, "Set up failed, default stream is null.");
+        COND_RETURN_ERROR_MSG_INNER(
+            defaultStream_ == nullptr, RT_ERROR_CONTEXT_DEFAULT_STREAM_NULL,
+            "Failed to set up context because default stream is null.");
         Stream * ctrlSQStream = device_->GetCtrlSQStream(nullptr);
         if (ctrlSQStream != nullptr) {
             ctrlSQStream->SetContext(this);
@@ -492,12 +505,12 @@ rtError_t Context::Setup()
             stmFlag = RT_STREAM_PRIMARY_DEFAULT | RT_STREAM_FAST_LAUNCH | RT_STREAM_FAST_SYNC;
         }
         defaultStream_ = StreamFactory::CreateStream(device_, 0U, stmFlag);
-        COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, defaultStream_ == nullptr, RT_ERROR_STREAM_NEW, "Setup context failed, new Stream failed.");
+        COND_RETURN_AND_MSG_OUTER(defaultStream_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
         RT_LOG(RT_LOG_INFO, "New defaultStream_ ok, Runtime_alloc_size %zu, stream_id=%d.", sizeof(Stream), defaultStream_->Id_());
 
         error = defaultStream_->Setup();
-        ERROR_PROC_RETURN_MSG_INNER(error, DeleteStream(defaultStream_);,
-            "Set up failed, default stream setup failed, retCode=%#x.", error);
+        ERROR_PROC_RETURN_MSG_INNER(
+            error, DeleteStream(defaultStream_);, "Failed to set up default stream, retCode=%#x.", error);
     }
 
     defaultStream_->SetContext(this);
@@ -506,7 +519,8 @@ rtError_t Context::Setup()
     const bool syncFlag = ((defaultStream_->Flags() & RT_STREAM_PRIMARY_FIRST_DEFAULT) != 0U) && (!(device_->IsStarsPlatform()));
     if (syncFlag) {
         error = defaultStream_->Synchronize(true);
-        COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Set up failed, failed to synchronize primaryStream.");
+        COND_RETURN_ERROR_MSG_INNER(
+            error != RT_ERROR_NONE, error, "Failed to synchronize default stream, retCode=%#x.", error);
     }
 
     return OnlineStreamInit(chipType);
@@ -531,7 +545,7 @@ rtError_t Context::TearDown()
     rtError_t error = RT_ERROR_NONE;
     if (onlineStream_ != nullptr) {
         error = TearDownStream(onlineStream_);
-        COND_LOG_ERROR(error != RT_ERROR_NONE, "Tear down online stream failed, retCode=%#x.", error);
+        COND_LOG_ERROR(error != RT_ERROR_NONE, "Failed to tear down online stream, retCode=%#x.", error);
         onlineStream_ = nullptr;
     } else {
         // no operation
@@ -554,9 +568,10 @@ rtError_t Context::TearDownStream(Stream *stm, bool flag) const
     NULL_PTR_RETURN_MSG(stm, RT_ERROR_STREAM_NULL);
     bool isDelSelfStream = false;
 
-    COND_RETURN_ERROR_MSG_INNER(stm->Model_() != nullptr, RT_ERROR_STREAM_MODEL,
-        "Tear down stream failed, stream is bound, stream_id=%d, model_id=%u, retCode=%#x.",
-        stm->Id_(), stm->Model_()->Id_(), RT_ERROR_STREAM_INVALID);
+    COND_RETURN_ERROR_MSG_INNER(
+        stm->Model_() != nullptr, RT_ERROR_STREAM_MODEL,
+        "Failed to tear down stream because stream is bound, stream_id=%d, model_id=%u, retCode=%#x.", stm->Id_(),
+        stm->Model_()->Id_(), RT_ERROR_STREAM_INVALID);
     for (uint32_t type = 0U; type < RT_HOST_TASK_TYPE_MAX; type++) {
         if (!(stm->IsPendingListEmpty(type))) {
             (void)stm->ExecPendingList(type);
@@ -570,8 +585,9 @@ rtError_t Context::TearDownStream(Stream *stm, bool flag) const
     if (!Runtime::Instance()->IsExiting()) {
         StreamStateCallbackManager::Instance().Notify(stm, false);
     }
-    const rtError_t error = stm->TearDown(false, flag);
-    ERROR_GOTO_MSG_INNER(error, ERROR_FREE_STREAM, "Stream teardown failed, retCode=%#x.", error);
+    rtError_t error = stm->TearDown(false, flag);
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_FREE_STREAM, "Failed to tear down stream, retCode=%#x.", static_cast<uint32_t>(error));
 
 ERROR_FREE_STREAM:
     const Runtime * const rtInstance = Runtime::Instance();
@@ -593,7 +609,7 @@ rtError_t Context::SyncStreamsWithTimeout(const std::list<Stream *> &streams, in
             "Sync stream timeout, stream_id=%d.", syncStream->Id_());
 
         if (unlikely(error != RT_ERROR_NONE)) {
-            RT_LOG(RT_LOG_ERROR, "Synchronize stream fail, stream_id=%d, errorCode=%#x.", syncStream->Id_(), error);
+            RT_LOG(RT_LOG_ERROR, "Failed to synchronize stream, stream_id=%d, retCode=%#x.", syncStream->Id_(), error);
             if (GetCtxMode() != CONTINUE_ON_FAILURE) {
                 return error;
             } else if (firstError == RT_ERROR_NONE) {
@@ -605,7 +621,7 @@ rtError_t Context::SyncStreamsWithTimeout(const std::list<Stream *> &streams, in
         error = defaultStream_->Synchronize(false, remainTime);
         if (unlikely((error != RT_ERROR_NONE) && (firstError == RT_ERROR_NONE))) {
             firstError = error;
-            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Synchronize defaultStream fail, retCode=%#x.", error);
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to synchronize default stream, retCode=%#x.", error);
         }
     }
     return firstError;
@@ -652,11 +668,16 @@ rtError_t Context::TaskReclaimforSyncDevice(const mmTimespec startTime, int32_t 
                 "Sync stream timeout=%dms, stream_id=%d.", timeout, syncStream->Id_());
 
             if (error == RT_ERROR_STREAM_SYNC_TIMEOUT) {
-                RT_LOG(RT_LOG_ERROR, "sync stream timeout=%dms, stream_id=%d, retCode=%#x.", timeout, syncStream->Id_(), error);
+                RT_LOG(
+                    RT_LOG_ERROR,
+                    "Failed to synchronize stream because timeout, timeout=%dms, stream_id=%d, "
+                    "retCode=%#x.",
+                    timeout, syncStream->Id_(), error);
                 return RT_ERROR_STREAM_SYNC_TIMEOUT;
             } else if ((error != RT_ERROR_NONE) && (firstError == RT_ERROR_NONE)) {
                 firstError = error;
-                RT_LOG(RT_LOG_ERROR, "sync stream fail, stream_id=%d, retCode=%#x.", syncStream->Id_(), error);
+                RT_LOG(
+                    RT_LOG_ERROR, "Failed to synchronize stream, stream_id=%d, retCode=%#x.", syncStream->Id_(), error);
             } else {
                 // do nothing
             }
@@ -755,15 +776,16 @@ rtError_t Context::DatadumpInfoLoad(const void * const dumpInfo, const uint32_t 
     NULL_PTR_RETURN_MSG(rtDumpLoadInfoTask, errorReason);
 
     error = DataDumpLoadInfoTaskInit(rtDumpLoadInfoTask, dumpInfo, length, static_cast<uint16_t>(kernelType));
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "Failed to init DataDumpLoadInfoTask, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.",
-        streamId, rtDumpLoadInfoTask->id, error);
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE,
+        "Failed to init data dump info load task, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.", streamId,
+        rtDumpLoadInfoTask->id, error);
 
     error = device_->SubmitTask(rtDumpLoadInfoTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit DataDumpLoadInfoTask, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit data dump info load task, retCode=%#x.", error);
 
     error = dftStm->Synchronize();
-    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize DataDumpLoadInfoTask, retCode=%#x", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize data dump info load task, retCode=%#x.", error);
 
     return error;
 
@@ -789,15 +811,15 @@ rtError_t Context::AicpuInfoLoad(const void * const aicpuInfo, const uint32_t le
 
     const int32_t streamId = dftStm->Id_();
     rtError_t error = AicpuInfoLoadTaskInit(rtAicpuLoadInfoTask, aicpuInfo, length);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "Failed to init AicpuInfoLoadTask, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.",
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to init AI CPU info load task, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.",
         streamId, rtAicpuLoadInfoTask->id, error);
 
     error = device_->SubmitTask(rtAicpuLoadInfoTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit aicpu load info task, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit AI CPU info load task, retCode=%#x.", error);
 
     error = dftStm->Synchronize();
-    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize AicpuInfoLoadTask, retCode=%#x", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize AI CPU info load task, retCode=%#x.", error);
 
     return error;
 
@@ -824,7 +846,7 @@ rtError_t Context::DebugRegister(Model * const mdl, const uint32_t flag, const v
         error = device_->GetCtrlSQ().SendDebugRegisterMsg(RtCtrlMsgType::RT_CTRL_MSG_DEBUG_REGISTER, param, taskGenCallback_, &flipTaskId);
         *taskId = flipTaskId;
         *streamId = device_->GetCtrlSQ().GetStream()->Id_();
-        ERROR_RETURN_MSG_INNER(error, "Failed to SendDebugRegisterMsg, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to send debug register message, retCode=%#x.", error);
     } else {
         TaskInfo submitTask = {};
         rtError_t errorReason;
@@ -832,16 +854,16 @@ rtError_t Context::DebugRegister(Model * const mdl, const uint32_t flag, const v
         NULL_PTR_RETURN_MSG(rtDbgRegTask, errorReason);
 
         error = DebugRegisterTaskInit(rtDbgRegTask, mdl->Id_(), addr, flag);
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-            "Failed to init DebugRegisterTask, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.",
+        ERROR_GOTO_MSG_INNER(
+            error, ERROR_RECYCLE, "Failed to init debug register task, stream_id=%d, task_id=%" PRIu16 ", retCode=%#x.",
             *streamId, rtDbgRegTask->id, error);
 
         error = device_->SubmitTask(rtDbgRegTask, taskGenCallback_, &flipTaskId);
         *taskId = flipTaskId;
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit DebugRegisterTask, retCode=%#x", error);
+        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit debug register task, retCode=%#x.", error);
 
         error = dftStm->Synchronize();
-        ERROR_RETURN_MSG_INNER(error, "Failed to synchronize DebugRegisterTask, retCode=%#x.", error);
+        ERROR_RETURN_MSG_INNER(error, "Failed to synchronize debug register task, retCode=%#x.", error);
     }
     mdl->SetDebugRegister(true);
     return error;
@@ -865,7 +887,7 @@ rtError_t Context::DebugUnRegister(Model * const mdl)
     if (device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_CTRL_SQ)) {
         RtDebugUnRegisterParam param = {mdl->Id_()};
         error = device_->GetCtrlSQ().SendDebugUnRegisterMsg(RtCtrlMsgType::RT_CTRL_MSG_DEBUG_UNREGISTER, param, taskGenCallback_);
-        ERROR_RETURN_MSG_INNER(error, "Failed to SendDebugUnRegisterMsg, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to send debug unregister message, retCode=%#x.", error);
     } else {
         TaskInfo submitTask = {};
         rtError_t errorReason;
@@ -919,18 +941,20 @@ rtError_t Context::DebugRegisterForStream(Stream * const debugStream, const uint
     *taskId = static_cast<uint32_t>(rtDbgRegStreamTask->id);
     err = DebugRegisterForStreamTaskInit(rtDbgRegStreamTask,
         static_cast<uint32_t>(debugStream->Id_()), addr, flag);
-    ERROR_GOTO_MSG_INNER(err, ERROR_RECYCLE,
-        "Failed to init DebugRegisterForStreamTask, stream_id=%d, debug_stream_id=%d, task_id=%" PRIu16 ",retCode=%#x.",
+    ERROR_GOTO_MSG_INNER(
+        err, ERROR_RECYCLE,
+        "Failed to init debug register for stream task, stream_id=%d, debug_stream_id=%d, task_id=%" PRIu16
+        ", retCode=%#x.",
         *streamId, debugStream->Id_(), rtDbgRegStreamTask->id, err);
 
     err = device_->SubmitTask(rtDbgRegStreamTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(err, ERROR_RECYCLE, "Failed to submit DebugRegisterForStreamTask, retCode=%#x", err);
+    ERROR_GOTO_MSG_INNER(err, ERROR_RECYCLE, "Failed to submit debug register for stream task, retCode=%#x.", err);
 
     *taskId = GetFlipTaskId(rtDbgRegStreamTask->id, rtDbgRegStreamTask->flipNum);
 
     if (device_->IsStarsPlatform() != true) {
         err = setStm->Synchronize();
-        ERROR_RETURN_MSG_INNER(err, "Failed to synchronize DebugRegisterForStreamTask, retCode=%#x", err);
+        ERROR_RETURN_MSG_INNER(err, "Failed to synchronize debug register for stream task, retCode=%#x.", err);
     }
     debugStream->SetDebugRegister(true);
     return err;
@@ -963,11 +987,11 @@ rtError_t Context::DebugUnRegisterForStream(Stream * const debugStream)
     (void)DebugUnRegisterForStreamTaskInit(rtDbgUnregStreamTask, debugStream->Id_());
 
     err = device_->SubmitTask(rtDbgUnregStreamTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(err, ERROR_RECYCLE, "Failed to submit DebugUnRegisterForStreamTask, retCode=%#x", err);
+    ERROR_GOTO_MSG_INNER(err, ERROR_RECYCLE, "Failed to submit debug unregister for stream task, retCode=%#x.", err);
 
     if (device_->IsStarsPlatform() != true) {
         err = setStm->Synchronize();
-        ERROR_RETURN_MSG_INNER(err, "Failed to synchronize DebugUnRegisterForStreamTask, retCode=%#x.", err);
+        ERROR_RETURN_MSG_INNER(err, "Failed to synchronize debug unregister for stream task, retCode=%#x.", err);
     }
     debugStream->SetDebugRegister(false);
 
@@ -1066,9 +1090,8 @@ rtError_t Context::StreamCreate(const uint32_t prio, const uint32_t flag, Stream
     }
 
     Stream *newStream = StreamFactory::CreateStream(device_, prio, flag, grp);
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_CALL(ERR_MODULE_SYSTEM, newStream == nullptr, ERROR_RETURN,
-        error, RT_ERROR_STREAM_NEW,
-        "Stream create failed, stream is null, failed to alloc newStream, retCode=%#x.", error);
+    COND_GOTO_MSG_OUTER(
+        newStream == nullptr, ERROR_RETURN, error, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
 
     if ((flag & RT_STREAM_FAST_SYNC) != 0U) {
         newStream->SetStreamFastSync(true);
@@ -1126,7 +1149,7 @@ rtError_t Context::CreateAutoSplitSlaveStream(Stream * const masterStm, Stream *
 
     Stream *slaveStream = nullptr;
     rtError_t error = StreamCreate(masterStm->Priority(), masterStm->Flags(), &slaveStream, nullptr, false, true);
-    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Create slave stream failed, retCode=%#x.", error);
+    COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Failed to create slave stream, retCode=%#x.", error);
 
     // 设置 slave stream 的 AutoSplitCtx 关联信息
     AutoSplitSqContext *slaveCtx = slaveStream->GetAutoSplitCtx();
@@ -1145,7 +1168,8 @@ rtError_t Context::CreateAutoSplitSlaveStream(Stream * const masterStm, Stream *
     
     error = ModelAddStream(model, slaveStream, RT_INVALID_FLAG);
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "Add stream to model failed, master_stream_id=%d, slave_stream_id=%d, retCode=%#x.",
+        RT_LOG(
+            RT_LOG_ERROR, "Failed to add stream to model, master_stream_id=%d, slave_stream_id=%d, retCode=%#x.",
             masterStm->GetExposedStreamId(), slaveStream->Id_(), error);
         (void)StreamDestroy(slaveStream, true);
         return error;
@@ -1260,10 +1284,10 @@ rtError_t Context::StreamsRestore(void)
     rtError_t error = RT_ERROR_NONE;
     std::unique_lock<std::mutex> taskLock(streamLock_);
     error = defaultStream_->Restore();
-    ERROR_RETURN(error, "Restore stream id %d failed, retCode=%#x.", defaultStream_->Id_(), error);
+    ERROR_RETURN(error, "Failed to restore stream id %d, retCode=%#x.", defaultStream_->Id_(), error);
     for (Stream *s : streams_) {
         error = s->Restore();
-        ERROR_RETURN(error, "Restore stream id %d failed, retCode=%#x.", s->Id_(), error);
+        ERROR_RETURN(error, "Failed to restore stream id %d, retCode=%#x.", s->Id_(), error);
     }
     if (isPrimary_ && device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_CTRL_SQ)) {
         error = GetCtrlSQStream()->Restore();
@@ -1346,8 +1370,9 @@ rtError_t Context::ModelCreate(Model ** const result, ModelType type)
     Model *newModel = (type == RT_MODEL_CAPTURE_MODEL) ?
         new (std::nothrow) CaptureModel() :
         new (std::nothrow) Model();
-    COND_GOTO_ERROR_MSG_AND_ASSIGN_INNER(newModel == nullptr, ERROR_RETURN, error, RT_ERROR_MODEL_NEW,
-        "Model create failed, failed to alloc model.");
+    COND_GOTO_MSG_OUTER(
+        newModel == nullptr, ERROR_RETURN, error, RT_ERROR_MODEL_NEW, ErrorCode::EE1013,
+        (type == RT_MODEL_CAPTURE_MODEL) ? sizeof(CaptureModel) : sizeof(Model));
 
     error = newModel->Setup(this);
     ERROR_GOTO(error, ERROR_RECYCLE, "Setup model failed, retCode=%#x.", error);
@@ -1410,8 +1435,9 @@ rtError_t Context::ModelUnbindStream(Model * const mdl, Stream * const stm)
     const uint32_t modelId = mdl->Id_();
 
     const rtError_t error = mdl->UnbindStream(stm);
-    ERROR_GOTO_MSG_INNER(error, COMPLETE, "Unbind stream failed, model_id=%u, stream_id=%d, retCode=%#x.",
-        modelId, streamId, error);
+    ERROR_GOTO_MSG_INNER(
+        error, COMPLETE, "Failed to unbind the stream from the model, model_id=%u, stream_id=%d, retCode=%#x.", modelId,
+        streamId, error);
 
     if (stm->GetModelNum() == 0 && !(stm->IsAutoSplitSq() && stm->IsSlaveStream())) {
         streams_.push_back(stm);
@@ -1429,8 +1455,9 @@ rtError_t Context::ModelBindStream(Model * const mdl, Stream * const stm, const 
     const uint32_t modelId = mdl->Id_();
 
     error = mdl->BindStream(stm, flag);
-    ERROR_GOTO_MSG_INNER(error, COMPLETE, "Bind stream failed, model_id=%u, stream_id=%d, retCode=%#x.",
-        modelId, streamId, error);
+    ERROR_GOTO_MSG_INNER(
+        error, COMPLETE, "Failed to bind the stream to the model, model_id=%u, stream_id=%d, retCode=%#x.", modelId,
+        streamId, error);
 
     stm->SetIsSupportASyncRecycle(false);
     streams_.remove(stm);
@@ -1447,8 +1474,9 @@ rtError_t Context::ModelAddStream(Model * const mdl, Stream * const stm, const u
     const uint32_t modelId = mdl->Id_();
 
     error = mdl->AddStream(stm, flag);
-    ERROR_RETURN_MSG_INNER(error, "Add stream failed, model_id=%u, stream_id=%d, retCode=%#x.",
-        modelId, streamId, error);
+    ERROR_RETURN_MSG_INNER(
+        error, "Failed to add the stream to the model, model_id=%u, stream_id=%d, retCode=%#x.", modelId, streamId,
+        error);
 
     stm->SetIsSupportASyncRecycle(false);
     streams_.remove(stm);
@@ -1463,8 +1491,9 @@ rtError_t Context::ModelDelStream(Model * const mdl, Stream * const stm)
     const uint32_t modelId = mdl->Id_();
 
     const rtError_t error = mdl->DelStream(stm);
-    ERROR_RETURN_MSG_INNER(error, "Del stream failed, model_id=%u, stream_id=%d, retCode=%#x.",
-        modelId, streamId, error);
+    ERROR_RETURN_MSG_INNER(
+        error, "Failed to delete the stream from the model, model_id=%u, stream_id=%d, retCode=%#x.", modelId, streamId,
+        error);
 
     if (stm->GetModelNum() == 0) {
         streams_.push_back(stm);
@@ -1478,8 +1507,7 @@ rtError_t Context::ModelLoadComplete(Model * const mdl) const
     const uint32_t modelId = mdl->Id_();
 
     const rtError_t error = mdl->LoadComplete();
-    ERROR_RETURN_MSG_INNER(error, "Model load complete process failed, model_id=%u, retCode=%#x.",
-        modelId, error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to complete model load, model_id=%u, retCode=%#x.", modelId, error);
 
     return error;
 }
@@ -1487,7 +1515,7 @@ rtError_t Context::ModelLoadComplete(Model * const mdl) const
 rtError_t Context::GetNotifyAddress(Notify * const notify, uint64_t &addr, Stream * const stm)
 {
     const rtError_t error = notify->GetNotifyAddress(stm, addr);
-    ERROR_RETURN_MSG_INNER(error, "GetNotifyAddress failed, retCode=%#x.", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to get notify address, retCode=%#x.", error);
     return error;
 }
 
@@ -1509,21 +1537,22 @@ rtError_t Context::ModelAddEndGraph(Model * const mdl, Stream * const stm, const
         }
     }
     const uint32_t endGraphNum = mdl->EndGraphNum_();
-    COND_RETURN_OUT_ERROR_MSG_CALL(endGraphNum >= 1U, RT_ERROR_MODEL_ENDGRAPH,
-        "Model add end graph failed, current endGraphNum(%u), model must have only one endgraph.", endGraphNum);
+    COND_RETURN_AND_MSG_OUTER(
+        endGraphNum >= 1U, RT_ERROR_MODEL_ENDGRAPH, ErrorCode::EE1011, __func__, endGraphNum, "endGraphNum",
+        "The model must have only one end graph");
 
     if (device_->IsStarsPlatform() && (modelExecuteType != EXECUTOR_AICPU)) {
         const bool isBindThisModel = ((stm->Model_() != nullptr) && (stm->Model_()->Id_() == mdl->Id_()));
-        COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM,
-            (stm->GetModelNum() == 0) || (!isBindThisModel), RT_ERROR_STREAM_INVALID,
-            "stream %d has not been add to model %u", stm->Id_(), mdl->Id_());
+        COND_RETURN_AND_MSG_OUTER(
+            (stm->GetModelNum() == 0) || (!isBindThisModel), RT_ERROR_STREAM_INVALID, ErrorCode::EE1017, __func__,
+            "stream",
+            "Stream " + std::to_string(stm->Id_()) + " must be bound to the model " + std::to_string(mdl->Id_()));
 
         Notify *notify = const_cast<Notify *>(mdl->GetEndGraphNotify());
         if (notify == nullptr) {
             RT_LOG(RT_LOG_INFO, "create notify, stream_id=%d", stm->Id_());
             notify = new (std::nothrow) Notify(device_->Id_(), device_->DevGetTsId());
-            COND_RETURN_ERROR_MSG_CALL(ERR_MODULE_SYSTEM, notify == nullptr, RT_ERROR_NOTIFY_NEW,
-                "Add end graph of model failed, new notify failed.");
+            COND_RETURN_AND_MSG_OUTER(notify == nullptr, RT_ERROR_NOTIFY_NEW, ErrorCode::EE1013, sizeof(Notify));
             error = notify->Setup();
             COND_PROC_RETURN_WARN(error != RT_ERROR_NONE, error, DELETE_O(notify), "Notify setup, retCode=%#x", error);
         }
@@ -1553,7 +1582,7 @@ rtError_t Context::ModelAddEndGraph(Model * const mdl, Stream * const stm, const
         static_cast<uint8_t>(flags));
 
     error = device_->SubmitTask(rtAddEndGraphTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit AddEndGraphTask, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit AddEndGraphTask, retCode=%#x.", error);
 
     mdl->IncEndGraphNum();
     GET_THREAD_TASKID_AND_STREAMID(rtAddEndGraphTask, stm->Id_());
@@ -1575,7 +1604,7 @@ rtError_t Context::ModelAbort(Model * const mdl) const
     const uint32_t modelId = mdl->Id_();
 
     error = mdl->ModelAbort();
-    ERROR_RETURN_MSG_INNER(error, "Model abort failed, model_id=%u, retCode=%#x.", modelId, error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to abort model, model_id=%u, retCode=%#x.", modelId, error);
 
     return error;
 }
@@ -1634,13 +1663,16 @@ rtError_t Context::ModelExit(Model * const mdl, Stream * const stm)
 {
     rtError_t error;
     const uint32_t modelExitNum = mdl->ModelExitNum_();
-    COND_RETURN_OUT_ERROR_MSG_CALL(modelExitNum >= 1U, RT_ERROR_MODEL_EXIT,
-        "Model exit failed, current modelExitNum=%u, model must only exit one time.", modelExitNum);
+    COND_RETURN_AND_MSG_OUTER(
+        modelExitNum >= 1U, RT_ERROR_MODEL_EXIT, ErrorCode::EE1011, __func__, modelExitNum, "modelExitNum",
+        "The model must exit only once");
     stm->SetLatestModlId(static_cast<int32_t>(mdl->Id_()));
-    COND_RETURN_OUT_ERROR_MSG_CALL(stm->Model_() == nullptr, RT_ERROR_MODEL_EXIT_STREAM_UNBIND,
-        "Model exit failed, stream not bind, modelExitNum=%u!", modelExitNum);
-    COND_RETURN_OUT_ERROR_MSG_CALL(stm->Model_()->Id_() != mdl->Id_(), RT_ERROR_MODEL_EXIT_ID,
-        "Model exit failed, stream is not belong the model, modelExitNum=%u!", modelExitNum);
+    COND_RETURN_AND_MSG_OUTER(
+        stm->Model_() == nullptr, RT_ERROR_MODEL_EXIT_STREAM_UNBIND, ErrorCode::EE1017, __func__, "stream",
+        "Stream " + std::to_string(stm->Id_()) + " must be bound to a model");
+    COND_RETURN_AND_MSG_OUTER(
+        stm->Model_()->Id_() != mdl->Id_(), RT_ERROR_MODEL_EXIT_ID, ErrorCode::EE1017, __func__, "stream",
+        "Stream " + std::to_string(stm->Id_()) + " must be bound to the model " + std::to_string(mdl->Id_()));
 
     TaskInfo submitTask = {};
     rtError_t errorReason;
@@ -1650,7 +1682,7 @@ rtError_t Context::ModelExit(Model * const mdl, Stream * const stm)
     (void)AddModelExitTaskInit(rtAddModelExitTask, mdl->Id_());
 
     error = device_->SubmitTask(rtAddModelExitTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit AddModelExitTask, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit AddModelExitTask, retCode=%#x.", error);
 
     mdl->IncModelExitNum();
     return RT_ERROR_NONE;
@@ -1665,7 +1697,7 @@ rtError_t Context::ModelBindQueue(Model * const mdl, const uint32_t queueId, con
     rtError_t error;
 
     error = mdl->BindQueue(queueId, flag);
-    ERROR_RETURN_MSG_INNER(error, "Model bind queue failed, retCode=%#x", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to bind queue to model, retCode=%#x.", error);
 
     return error;
 }
@@ -1679,12 +1711,13 @@ rtError_t Context::ProfilerTrace(const uint64_t id, const bool notifyFlag, const
     NULL_PTR_RETURN_MSG(rtProfTraceTask, errorReason);
 
     error = ProfilerTraceTaskInit(rtProfTraceTask, id, notifyFlag, flags);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "task init failed, id=%" PRIu64 ", notifyFlag=%d, flags=%u, retCode=%#x.",
-        id, static_cast<int32_t>(notifyFlag), flags, error);
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE,
+        "Failed to init profiler trace task, id=%" PRIu64 ", notifyFlag=%d, flags=%u, retCode=%#x.", id,
+        static_cast<int32_t>(notifyFlag), flags, error);
 
     error = device_->SubmitTask(rtProfTraceTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "task submit failed, retCode=%#x.", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit profiler trace task, retCode=%#x.", error);
 
     return error;
 
@@ -1717,12 +1750,13 @@ rtError_t Context::ProfilerTraceEx(const uint64_t id, const uint64_t modelId, co
     NULL_PTR_RETURN_MSG(rtProfTraceExTask, errorReason);
 
     error = ProfilerTraceExTaskInit(rtProfTraceExTask, id, modelId, tagId);
-    ERROR_GOTO(error, ERROR_RECYCLE,
-        "task init failed, id=%" PRIu64 ", modelId=%" PRIu64 ", tagId=%hu, retCode=%#x.",
-        id, modelId, tagId, error);
+    ERROR_GOTO(
+        error, ERROR_RECYCLE,
+        "Failed to init ProfilerTraceExTask, id=%" PRIu64 ", model_id=%" PRIu64 ", tag_id=%hu, retCode=%#x.", id,
+        modelId, tagId, error);
 
     error = device_->SubmitTask(rtProfTraceExTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "task submit failed, retCode=%#x.", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit ProfilerTraceExTask, retCode=%#x.", error);
     GET_THREAD_TASKID_AND_STREAMID(rtProfTraceExTask, stm->Id_());
     return error;
 
@@ -1744,7 +1778,7 @@ rtError_t Context::CallbackLaunch(const rtCallback_t callBackFunc, void * const 
     (void)CallbackLaunchTaskInit(rtCbLaunchTask, callBackFunc, fnData, isBlock, evtId);
 
     error = device_->SubmitTask(rtCbLaunchTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Callback launch task submit failed, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit host func callback task, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtCbLaunchTask, streamId);
 
@@ -1762,18 +1796,20 @@ rtError_t Context::StartOnlineProf(Stream * const stm, const uint32_t sampleNum)
     const void *deviceMem = nullptr;
     const int32_t streamId = stm->Id_();
 
-    COND_RETURN_AND_MSG_OUTER_WITH_PARAM((sampleNum == 0U) || (sampleNum > MAX_ONLINEPROF_NUM), RT_ERROR_INVALID_VALUE, 
-        sampleNum, "(0, " + std::to_string(MAX_ONLINEPROF_NUM) + "]");
+    COND_RETURN_AND_MSG_OUTER_WITH_PARAM(
+        (sampleNum == 0U) || (sampleNum > MAX_ONLINEPROF_NUM), RT_ERROR_INVALID_VALUE, sampleNum,
+        "(0, " + std::to_string(MAX_ONLINEPROF_NUM) + "]");
     if ((stm->Device_())->DevGetOnlineProfStart()) {
-        RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, "StreamId=%d online profiling has already been set on the device.",
-            streamId);
+        RT_LOG_OUTER_MSG_WITH_FUNC(
+            ErrorCode::EE1017, "stream",
+            "Stream " + std::to_string(streamId) + " online profiling has already been started on the device");
         return RT_ERROR_PROF_START;
     }
 
     (void)(stm->Device_())->DevSetOnlineProfStart(true);
 
     error = OnlineProf::OnlineProfMalloc(stm);
-    ERROR_RETURN_MSG_INNER(error, "Malloc online profile memory failed, retCode=%#x.", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to allocate online profiling memory, retCode=%#x.", error);
 
     TaskInfo submitTask = {};
     rtError_t errorReason;
@@ -1798,7 +1834,7 @@ ERROR_RECYCLE:
     (void)device_->GetTaskFactory()->Recycle(rtOlProfEnableTask);
 ERROR_FREE:
     freeErr = OnlineProf::OnlineProfFree(stm);
-    ERROR_RETURN_MSG_INNER(freeErr, "Free online profile memory failed, retCode=%#x", freeErr);
+    ERROR_RETURN_MSG_INNER(freeErr, "Failed to free online profiling memory, retCode=%#x.", freeErr);
     return error;
 }
 
@@ -1818,10 +1854,10 @@ rtError_t Context::StopOnlineProf(Stream * const stm)
         streamId, rtOlProfDisableTask->id, error);
 
     error = device_->SubmitTask(rtOlProfDisableTask);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit OnlineProfDisableTask, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit OnlineProfDisableTask, retCode=%#x.", error);
 
     error = stm->Synchronize();
-    ERROR_GOTO_MSG_INNER(error, FREE_MEM, "Failed to synchronize OnlineProfDisableTask, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, FREE_MEM, "Failed to synchronize OnlineProfDisableTask, retCode=%#x.", error);
 
     goto FREE_MEM;
 
@@ -1833,7 +1869,7 @@ FREE_MEM:
 
     /* free memory */
     const rtError_t errorFree = OnlineProf::OnlineProfFree(stm);
-    ERROR_RETURN_MSG_INNER(errorFree, "Free online profile memory failed, retCode=%#x.", errorFree);
+    ERROR_RETURN_MSG_INNER(errorFree, "Failed to free online profiling memory, retCode=%#x.", errorFree);
 
     return error;
 }
@@ -1844,7 +1880,7 @@ rtError_t Context::GetOnlineProfData(const Stream * const stm, rtProfDataInfo_t 
     COND_RETURN_AND_MSG_OUTER_WITH_PARAM((profDataNum == 0U) || (profDataNum > MAX_ONLINEPROF_NUM), 
         RT_ERROR_INVALID_VALUE, profDataNum, "(0, " + std::to_string(MAX_ONLINEPROF_NUM) + "]");
     const rtError_t error = OnlineProf::GetOnlineProfilingData(stm, pProfData, profDataNum);
-    ERROR_RETURN_MSG_INNER(error, "Get online profiling data failed, retCode=%#x.", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to get online profiling data, retCode=%#x.", error);
 
     return error;
 }
@@ -1863,7 +1899,7 @@ rtError_t Context::AdcProfiler(Stream * const stm, const uint64_t addr, const ui
 
     error = device_->SubmitTask(rtMdcProfTask);
     if (error != RT_ERROR_NONE) {
-        RT_LOG_INNER_MSG(RT_LOG_ERROR, "AdcProfiler failed, submit task failed, errCode=%#x.", error);
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to submit mdc profiling task, retCode=%#x.", error);
         goto ERROR_RECYCLE;
     }
 
@@ -1882,12 +1918,20 @@ rtError_t Context::LabelSwitchListCreate(Label ** const labels, const size_t num
     void *devMem = nullptr;
     rtError_t error = device_->Driver_()->DevMemAlloc(&devMem, labelSize,
             memType, device_->Id_());
-    ERROR_RETURN(error, "Failed to alloc device memory for label list, size=%" PRIu64
-        " (bytes), memType=%u, deviceId=%u.",
-        labelSize, memType, device_->Id_());
+    ERROR_RETURN(
+        error,
+        "Failed to allocate device memory for label list, size=%" PRIu64
+        " (bytes), memType=%u, deviceId=%u, retCode=%#x.",
+        labelSize, memType, device_->Id_(), error);
     error = device_->Driver_()->MemSetSync(devMem, labelSize, 0xFFU, labelSize); // Initialize to an invalid value
-    ERROR_PROC_RETURN_MSG_INNER(error, (void)device_->Driver_()->DevMemFree(devMem, device_->Id_());,
-        "set label dev addr failed, retCode=%#x, labels num=%zu, labelSize=%" PRIu64, error, num, labelSize);
+    if (error != RT_ERROR_NONE) {
+        (void)device_->Driver_()->DevMemFree(devMem, device_->Id_());
+        RT_LOG(
+            RT_LOG_ERROR,
+            "Failed to set label device address memory, retCode=%#x, labels num=%zu, labelSize=%" PRIu64 ".", error,
+            num, labelSize);
+        return error;
+    }
 
     uint32_t labelStep;
     if (device_->IsStarsPlatform()) {
@@ -1899,9 +1943,13 @@ rtError_t Context::LabelSwitchListCreate(Label ** const labels, const size_t num
     void *devAddr = devMem;
     for (size_t idx = 0U; idx < num; idx++) {
         error = labels[idx]->SetLabelDevAddr(devAddr);
-        ERROR_PROC_RETURN_MSG_INNER(error,
-            (void)device_->Driver_()->DevMemFree(devMem, device_->Id_());,
-            "set label dev addr failed, retCode=%#x, labels num=%zu, index=%zu", error, num, idx);
+        if (error != RT_ERROR_NONE) {
+            (void)device_->Driver_()->DevMemFree(devMem, device_->Id_());
+            RT_LOG(
+                RT_LOG_ERROR, "Failed to set label device address, retCode=%#x, labels num=%zu, index=%zu.",
+                static_cast<uint32_t>(error), num, idx);
+            return error;
+        }
         devAddr = RtPtrToPtr<void *, uintptr_t>(RtPtrToPtr<uintptr_t, void *>(devAddr) + labelStep);
     }
 
@@ -1914,7 +1962,7 @@ rtError_t Context::LaunchRandomNumTask(const rtRandomNumTaskInfo_t *taskInfo, St
 {
     UNUSED(reserve);
     rtError_t error = CheckRandomNumTaskInfo(taskInfo);
-    ERROR_RETURN_MSG_INNER(error, "get dsa sqe by task info, retCode=%#x", error);
+    ERROR_RETURN(error, "Failed to check random number task info, retCode=%#x.", static_cast<uint32_t>(error));
 
     const int32_t streamId = stm->Id_();
     uint32_t taskId;
@@ -1925,17 +1973,17 @@ rtError_t Context::LaunchRandomNumTask(const rtRandomNumTaskInfo_t *taskInfo, St
 
     rtStarsDsaSqe_t sqe = {};
     error = GetDsaSqeByRandomNumTask(taskInfo, rtStarsCommonTask, sqe);
-    ERROR_RETURN_MSG_INNER(error, "get dsa sqe by task info, retCode=%#x", error);
+    ERROR_RETURN_MSG_INNER(error, "Failed to get DSA SQE by random number task info, retCode=%#x.", error);
 
     error = StarsCommonTaskInit(rtStarsCommonTask, sqe, RT_KERNEL_DEFAULT);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "dsa task init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
-        streamId, rtStarsCommonTask->id, error);
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to init stars common task, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtStarsCommonTask->id, error);
 
     error = device_->SubmitTask(rtStarsCommonTask, taskGenCallback_, &taskId);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "dsa task submit failed, streamId=%d, taskId=%hu, retCode=%#x",
-        streamId, rtStarsCommonTask->id, error);
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to submit stars common task, streamId=%d, taskId=%hu, retCode=%#x.", streamId,
+        rtStarsCommonTask->id, error);
 
     if (rtStarsCommonTask->stream != nullptr) {
         SET_THREAD_TASKID_AND_STREAMID(rtStarsCommonTask->stream->Id_(), taskId);
@@ -1957,11 +2005,12 @@ rtError_t Context::SetStreamSqLockUnlock(Stream * const stm, const bool isLock)
 
     rtError_t error = SqLockUnlockTaskInit(rtSetSqLockUnlockTask, isLock);
     const int32_t streamId = stm->Id_();
-    ERROR_GOTO(error, ERROR_RECYCLE, "sq lock unlock failed,stream_id=%d,task_id=%hu,retCode=%#x.",
-               streamId, rtSetSqLockUnlockTask->id, error);
+    ERROR_GOTO(
+        error, ERROR_RECYCLE, "Failed to init SQ lock/unlock task, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtSetSqLockUnlockTask->id, error);
 
     error = device_->SubmitTask(rtSetSqLockUnlockTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "sq lock/unlock task submit failed,retCode=%#x", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit SQ lock/unlock task, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtSetSqLockUnlockTask, streamId);
 
@@ -1980,11 +2029,12 @@ rtError_t Context::NopTask(Stream * const stm) const
 
     rtError_t error = NopTaskInit(rtNopTask);
     const int32_t streamId = stm->Id_();
-    ERROR_GOTO(error, ERROR_RECYCLE, "nop task init failed,stream_id=%d,task_id=%hu,retCode=%#x.",
-               streamId, rtNopTask->id, error);
+    ERROR_GOTO(
+        error, ERROR_RECYCLE, "Failed to init NopTask, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtNopTask->id, error);
 
     error = device_->SubmitTask(rtNopTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "nop task submit failed,retCode=%#x", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit NopTask, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtNopTask, stm->AllocTaskStreamId());
 
@@ -2108,10 +2158,11 @@ rtError_t Context::StreamClear(const Stream * const stm, rtClearStep_t step) con
     /* check target stream */
     const int32_t streamId = stm->Id_();
 
-    COND_RETURN_ERROR_MSG_INNER((stm->GetBindFlag()), RT_ERROR_STREAM_INVALID,
-        "Not support clear model stream");
-    COND_RETURN_ERROR_MSG_INNER(((stm->Flags() & RT_STREAM_CP_PROCESS_USE) == 0U), RT_ERROR_STREAM_INVALID,
-        "Not support clear non-mc2 stream");
+    COND_RETURN_AND_MSG_OUTER(
+        stm->GetBindFlag(), RT_ERROR_STREAM_INVALID, ErrorCode::EE1006, __func__, "clear model stream");
+    COND_RETURN_AND_MSG_OUTER(
+        ((stm->Flags() & RT_STREAM_CP_PROCESS_USE) == 0U), RT_ERROR_STREAM_INVALID, ErrorCode::EE1006, __func__,
+        "clear non-MC2 stream");
     if (device_->IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_CTRL_SQ)) {
         return device_->GetCtrlSQ().SendStreamClearMsg(stm, step, taskGenCallback_);
     }
@@ -2129,10 +2180,11 @@ rtError_t Context::StreamClear(const Stream * const stm, rtClearStep_t step) con
     CommonCmdTaskInit(rtCommonCmdTask, CMD_STREAM_CLEAR, &cmdInfo);
 
     rtError_t error = device_->SubmitTask(rtCommonCmdTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit StreamClear, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to submit stream clear task, retCode=%#x.", error);
 
     error = dftStm->Synchronize();
-    ERROR_RETURN_MSG_INNER(error, "Failed to synchronize StreamClear, streamId=%u, retCode=%#x", streamId, error);
+    ERROR_RETURN_MSG_INNER(
+        error, "Failed to synchronize stream clear task, stream_id=%d, retCode=%#x.", streamId, error);
 
     return RT_ERROR_NONE;
 
@@ -2151,8 +2203,8 @@ rtError_t Context::StreamAbort(Stream * const stm)
     RT_LOG(RT_LOG_INFO, "Enter StreamAbort, stream_id=%d, sq_id=%u, cq_id=%u",
         stm->Id_(), stm->GetSqId(), stm->GetCqId());
     rtError_t ret = RT_ERROR_NONE;
-    COND_RETURN_ERROR_MSG_INNER((stm->GetBindFlag()), RT_ERROR_STREAM_INVALID,
-        "model stream abort is not supported");
+    COND_RETURN_AND_MSG_OUTER(
+        stm->GetBindFlag(), RT_ERROR_STREAM_INVALID, ErrorCode::EE1006, __func__, "abort model stream");
     //runtime-ts compatibility check;
     const bool isSupported = IsStreamAbortSupported();
     COND_RETURN_WARN((isSupported == false), RT_ERROR_FEATURE_NOT_SUPPORT, "stream abort is not supported");
@@ -2263,9 +2315,10 @@ rtError_t Context::CheckStatus(const Stream * const stm, const bool isBlockDefau
     (void)device_->GetDevRunningState();
     rtError_t status = RT_ERROR_NONE;
     status = device_->GetDevStatus();
-    COND_PROC_RETURN_ERROR_MSG_CALL(ERR_MODULE_DRV, status != RT_ERROR_NONE, status,
-                                    RT_LOG_INNER_DETAIL_MSG(RT_DRV_INNER_ERROR, {"device_id"}, {std::to_string(device_->Id_())});,
-                                    "Device[%u] fault, ret=%#x.", device_->Id_(), status);
+    COND_PROC_RETURN_ERROR_MSG_CALL(
+        ERR_MODULE_DRV, status != RT_ERROR_NONE, status,
+        RT_LOG_INNER_DETAIL_MSG(RT_DRV_INNER_ERROR, {"device_id"}, {std::to_string(device_->Id_())});
+        , "Failed to check device status, device_id=%u, retCode=%#x.", device_->Id_(), status);
     status = device_->GetDeviceStatus();
     COND_RETURN_ERROR(status != RT_ERROR_NONE, status, "device_id=%d status=%d is abnormal.",
                       device_->Id_(), status);
@@ -2293,9 +2346,10 @@ rtError_t Context::CheckTaskSend(const TaskInfo * const workTask)
     (void)device_->GetDevRunningState();
     rtError_t status = RT_ERROR_NONE;
     status = device_->GetDevStatus();
-    COND_PROC_RETURN_ERROR_MSG_CALL(ERR_MODULE_DRV, status != RT_ERROR_NONE, status,
-                                    RT_LOG_INNER_DETAIL_MSG(RT_DRV_INNER_ERROR, {"device_id"}, {std::to_string(device_->Id_())});,
-                                    "Device[%u] fault, ret=%#x.", device_->Id_(), status);
+    COND_PROC_RETURN_ERROR_MSG_CALL(
+        ERR_MODULE_DRV, status != RT_ERROR_NONE, status,
+        RT_LOG_INNER_DETAIL_MSG(RT_DRV_INNER_ERROR, {"device_id"}, {std::to_string(device_->Id_())});
+        , "Failed to check device status, device_id=%u, retCode=%#x.", device_->Id_(), status);
     status = device_->GetDeviceStatus();
     ERROR_RETURN(status, "device_id=%d status=%#x is abnormal, stream_id=%d", device_->Id_(), status, stm->Id_());
     // 任务下发场景
@@ -2412,7 +2466,7 @@ rtError_t Context::DebugSetDumpMode(const uint64_t mode)
 
 rtError_t Context::DebugGetStalledCore(rtDbgCoreInfo_t *const coreInfo)
 {
-    NULL_PTR_RETURN_MSG(coreInfo, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN_MSG_OUTER(coreInfo, RT_ERROR_INVALID_VALUE);
     COND_RETURN_ERROR((!device_->IsCoredumpEnable()), RT_ERROR_INVALID_VALUE, "Coredump mode is disable!");
     RT_LOG(RT_LOG_INFO, "Start to get core info.");
     RtDebugSendInfo sendInfo = {};
@@ -2445,10 +2499,10 @@ rtError_t Context::DebugReadAICore(rtDebugMemoryParam_t *const param)
     void *devMem = nullptr;
     uint64_t physicPtr = 0U;
     ret = devDrv->DevMemAlloc(&devMem, DEBUG_DEVMEM_LEN, RT_MEMORY_HBM, deviceId);
-    ERROR_RETURN(ret, "malloc mem fail, ret=%u", ret);
+    ERROR_RETURN(ret, "Failed to allocate device memory, retCode=%#x.", ret);
     ScopeGuard guard([&devMem, &devDrv, &deviceId]() { (void)devDrv->DevMemFree(devMem, deviceId); });
     ret = devDrv->MemAddressTranslate(static_cast<int32_t>(deviceId), PtrToValue(devMem), &physicPtr);
-    ERROR_RETURN(ret, "MemAddress translate failed, ret=%u, ptr=%p", ret, devMem);
+    ERROR_RETURN(ret, "Failed to translate device memory address, ptr=%p, retCode=%#x.", devMem, ret);
     RT_LOG(RT_LOG_INFO, "Malloc tmp buffer, vptr=%p, pptr=0x%llx.", devMem, physicPtr);
 
     uint64_t remainSize = param->memLen;
@@ -2475,7 +2529,7 @@ rtError_t Context::DebugReadAICore(rtDebugMemoryParam_t *const param)
         }
 
         ret = devDrv->MemSetSync(devMem, DEBUG_DEVMEM_LEN, 0U, DEBUG_DEVMEM_LEN);
-        ERROR_RETURN(ret, "memset fail, ret=%u, addr=%p", ret, devMem);
+        ERROR_RETURN(ret, "Failed to set device memory, addr=%p, retCode=%#x.", devMem, ret);
         rtDebugReportInfo_t reportInfo = {};
         ret = SendAndRecvDebugTask(&sendInfo, &reportInfo);
         COND_RETURN_ERROR(((ret != RT_ERROR_NONE) || (reportInfo.returnVal != 0U)), RT_ERROR_INVALID_VALUE,
@@ -2486,8 +2540,9 @@ rtError_t Context::DebugReadAICore(rtDebugMemoryParam_t *const param)
 
         ret = devDrv->MemCopySync(ValueToPtr(param->dstAddr + offset), memoryParam->memLen, devMem,
                                   memoryParam->memLen, RT_MEMCPY_DEVICE_TO_HOST);
-        ERROR_RETURN(ret, "mem copy failed, retCode=%#x, dstAddr=0x%llx, srcAddr=%p, memLen=%llu.",
-            ret, param->dstAddr + offset, devMem, memoryParam->memLen);
+        ERROR_RETURN(
+            ret, "Failed to copy memory, retCode=%#x, dstAddr=0x%llx, srcAddr=%p, memLen=%llu.", ret,
+            param->dstAddr + offset, devMem, memoryParam->memLen);
 
         offset += memoryParam->memLen;
     }
@@ -2566,13 +2621,15 @@ rtError_t Context::CmoAddrTaskLaunch(rtCmoAddrInfo * const cmoAddrInfo, const ui
         // only copy head args 8 Bytes for rtCmoAddrInfo resv0 & resv1
         constexpr uint64_t dstMax = 8ULL;
         error = devDrv->MemCopySync(cmoAddrInfo, dstMax, &sdmaCmoSqe, dstMax, RT_MEMCPY_HOST_TO_DEVICE);
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to memory copy stream info, device_id=%u, size=%" PRIu64
-            "(bytes),retCode=%#x.", device_->Id_(), dstMax, error);
+        ERROR_GOTO(
+            error, ERROR_RECYCLE,
+            "Failed to memcpy from host to dev, device_id=%u, size=%" PRIu64 "(bytes), retCode=%#x.", device_->Id_(),
+            dstMax, error);
 
         if (devDrv->GetRunMode() == RT_RUN_MODE_ONLINE) {
             error = device_->Driver_()->DevMemFlushCache(RtPtrToValue<rtCmoAddrInfo *>(cmoAddrInfo), dstMax);
-            ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Failed to flush stream info, device_id=%u, "
-                "retCode=%#x", device_->Id_(), error);
+            ERROR_GOTO(
+                error, ERROR_RECYCLE, "Failed to flush stream info, device_id=%u, retCode=%#x.", device_->Id_(), error);
         }
     }
 
@@ -2580,7 +2637,7 @@ rtError_t Context::CmoAddrTaskLaunch(rtCmoAddrInfo * const cmoAddrInfo, const ui
     (void)CmoAddrTaskInit(cmoAddrTask, cmoAddrInfo, cmoOpCode);
 
     error = device_->SubmitTask(cmoAddrTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "CMO task submit failed, retCode=%#x", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit CMO task, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(cmoAddrTask, streamId);
     return error;
@@ -2606,7 +2663,7 @@ rtError_t Context::NpuGetFloatStatus(void * const outputAddrPtr, const uint64_t 
     (void)NpuGetFloatStaTaskInit(rtNpuGetFloatStatusTask, outputAddrPtr, outputSize, checkMode, isDebug);
 
     error = device_->SubmitTask(rtNpuGetFloatStatusTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "NpuGetFloatStatus task submit failed, retCode=%#x", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit NPUGetFloatStatus task, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtNpuGetFloatStatusTask, streamId);
     return error;
@@ -2632,7 +2689,7 @@ rtError_t Context::NpuClearFloatStatus(const uint32_t checkMode, Stream * const 
 
     RT_LOG(RT_LOG_INFO, "Begin to submit NpuClearFloatStatus task.");
     error = device_->SubmitTask(rtNpuClearFloatStatusTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "NpuClearFloatStatus task submit failed, retCode=%#x", error);
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit NPUClearFloatStatus task, retCode=%#x.", error);
 
     RT_LOG(RT_LOG_INFO, "success to submit NpuClearFloatStatus task.");
 
@@ -2651,7 +2708,7 @@ rtError_t Context::SetStreamOverflowSwitch(Stream * const stm, const uint32_t fl
         uint32_t flipTaskId = 0;
         RtOverflowSwitchSetParam param = {stm, flags};
         error = device_->GetCtrlSQ().SendOverflowSwitchSetMsg(RtCtrlMsgType::RT_CTRL_MSG_SET_OVERFLOW_SWITCH, param, taskGenCallback_, &flipTaskId);
-        ERROR_RETURN_MSG_INNER(error, "Failed to SendOverflowSwitchSetMsg, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to send overflow switch set message, retCode=%#x.", error);
         SET_THREAD_TASKID_AND_STREAMID(GetCtrlSQStream()->Id_(), flipTaskId);
     } else {
         NULL_PTR_RETURN_MSG(DefaultStream_(), RT_ERROR_STREAM_NULL);
@@ -2662,7 +2719,7 @@ rtError_t Context::SetStreamOverflowSwitch(Stream * const stm, const uint32_t fl
 
         (void)OverflowSwitchSetTaskInit(tsk, stm, flags);
         error = device_->SubmitTask(tsk, taskGenCallback_);
-        ERROR_GOTO(error, ERROR_RECYCLE, "OverflowSwitchSetTask task submit failed, retCode=%#x", error);
+        ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit OverflowSwitchSetTask, retCode=%#x.", error);
         GET_THREAD_TASKID_AND_STREAMID(tsk, DefaultStream_()->Id_());
     }
 
@@ -2682,7 +2739,7 @@ rtError_t Context::SetStreamTag(Stream * const stm, const uint32_t geOpTag) cons
         uint32_t flipTaskId = 0;
         RtSetStreamTagParam param = {stm, geOpTag};
         error = device_->GetCtrlSQ().SendSetStreamTagMsg(RtCtrlMsgType::RT_CTRL_MSG_SET_STREAM_TAG, param, taskGenCallback_, &flipTaskId);
-        ERROR_RETURN_MSG_INNER(error, "Failed to SendSetStreamTagMsg, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to send stream tag set message, retCode=%#x.", error);
         stm->SetStreamTag(geOpTag);
         SET_THREAD_TASKID_AND_STREAMID(GetCtrlSQStream()->Id_(), flipTaskId);
     } else {
@@ -2695,8 +2752,8 @@ rtError_t Context::SetStreamTag(Stream * const stm, const uint32_t geOpTag) cons
 
         (void)StreamTagSetTaskInit(tsk, stm, geOpTag);
         error = device_->SubmitTask(tsk, taskGenCallback_);
-        ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "StreamTagSetTask task submit failed, retCode=%#x",
-                            static_cast<uint32_t>(error));
+        ERROR_GOTO_MSG_INNER(
+            error, ERROR_RECYCLE, "Failed to submit StreamTagSetTask, retCode=%#x.", static_cast<uint32_t>(error));
         stm->SetStreamTag(geOpTag);
         GET_THREAD_TASKID_AND_STREAMID(tsk, DefaultStream_()->Id_());
     }
@@ -2709,15 +2766,12 @@ ERROR_RECYCLE:
 rtError_t Context::DvppGroupCreate(DvppGrp **grp, const uint32_t flags)
 {
     DvppGrp *newGrp = new (std::nothrow) DvppGrp(device_, flags);
-    if (newGrp == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "failed to alloc DvppGrp");
-        return RT_ERROR_DVPP_GRP_NEW;
-    }
+    COND_RETURN_AND_MSG_OUTER(newGrp == nullptr, RT_ERROR_DVPP_GRP_NEW, ErrorCode::EE1013, sizeof(DvppGrp));
 
     newGrp->SetContext(this);
     rtError_t error = newGrp->Setup();
     if (error != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "failed to setup DvppGrp, retCode=%#x", error);
+        RT_LOG(RT_LOG_ERROR, "Failed to set up DvppGrp, retCode=%#x.", error);
         DELETE_O(newGrp);
         return error;
     }
@@ -2764,11 +2818,13 @@ rtError_t Context::GetSatStatusForStars(const uint64_t outputSize, Stream * cons
     std::shared_ptr<void> hostPtrGuard;
     // H2D copy
     hostPtr = AlignedMalloc(Context::MEM_ALIGN_SIZE, sizeof(uint64_t));
-    NULL_PTR_RETURN_MSG(hostPtr, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hostPtr == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, sizeof(uint64_t));
     hostPtrGuard.reset(hostPtr, &AlignedFree);
     const errno_t ret = memset_s(hostPtr, sizeof(uint64_t), 0, sizeof(uint64_t));
-    COND_PROC_RETURN_ERROR(ret != EOK, RT_ERROR_SEC_HANDLE, hostPtr = nullptr;,
-        "memset_s failed, retCode=%d", ret);
+    COND_PROC_RETURN_ERROR_MSG_INNER(
+        ret != EOK, RT_ERROR_SEC_HANDLE, hostPtr = nullptr;
+        , "Failed to call memset_s to set hostPtr, dest=%p, dest_max=%zu, c=0, count=%zu, retCode=%d.", hostPtr,
+        sizeof(uint64_t), sizeof(uint64_t), ret);
     *(RtPtrToPtr<uint64_t *, void *>(hostPtr)) = RtPtrToValue(CtxGetOverflowAddr());
     if (curStm->GetMemContainOverflowAddr() == nullptr) {
         void *memAddr = nullptr;
@@ -2799,11 +2855,12 @@ rtError_t Context::SetUpdateAddrTask(uint64_t devAddr, uint64_t len, Stream *stm
 
     rtError_t error = UpdateAddressTaskInit(rtUpdateAddressTask, devAddr, len);
     const int32_t streamId = stm->Id_();
-    ERROR_GOTO(error, ERROR_RECYCLE, "update addr task failed,stream_id=%d,task_id=%hu,retCode=%#x.",
-               streamId, rtUpdateAddressTask->id, static_cast<uint32_t>(error));
+    ERROR_GOTO(
+        error, ERROR_RECYCLE, "Failed to init UpdateAddressTask, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtUpdateAddressTask->id, static_cast<uint32_t>(error));
 
     error = device_->SubmitTask(rtUpdateAddressTask, taskGenCallback_);
-    ERROR_GOTO(error, ERROR_RECYCLE, "update addr task submit failed,retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO(error, ERROR_RECYCLE, "Failed to submit UpdateAddressTask, retCode=%#x.", static_cast<uint32_t>(error));
 
     GET_THREAD_TASKID_AND_STREAMID(rtUpdateAddressTask, streamId);
 
@@ -2855,7 +2912,9 @@ rtError_t Context::CreateContextCallBackThread()
     void * const callback = ValueToPtr(THREAD_CALLBACK);
     constexpr const char_t* threadName = "THREAD_CALLBACK";
     hostFuncCallBackThread_.reset(OsalFactory::CreateThread(threadName, &threadCallBack_, callback));
-    NULL_PTR_RETURN(hostFuncCallBackThread_, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(
+        hostFuncCallBackThread_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        OsalFactory::GetThreadObjectSize());
     threadCallBack_.callBackThreadRunFlag_ = true;
     const int32_t error = hostFuncCallBackThread_ ->Start();
     if (error != EN_OK) {

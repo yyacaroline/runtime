@@ -54,12 +54,13 @@ rtError_t Context::RDMASend(const uint32_t sqIndex, const uint32_t wqeIndex, Str
     NULL_PTR_RETURN_MSG(rtRdmaSendTask, errorReason);
 
     error = RdmaSendTaskInit(rtRdmaSendTask, sqIndex, wqeIndex);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "Rdma send task init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
-        streamId, rtRdmaSendTask->id, static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to init RDMA send task, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtRdmaSendTask->id, static_cast<uint32_t>(error));
 
     error = device_->SubmitTask(rtRdmaSendTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Rdma send task submit failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to submit RDMA send task, retCode=%#x.", static_cast<uint32_t>(error));
 
     GET_THREAD_TASKID_AND_STREAMID(rtRdmaSendTask, stm->AllocTaskStreamId());
 
@@ -81,12 +82,13 @@ rtError_t Context::RdmaDbSendToDev(const uint32_t dbIndex, const uint64_t dbInfo
     NULL_PTR_RETURN_MSG(rtRdmaDbSendTask, errorReason);
 
     error = RdmaDbSendTaskInit(rtRdmaDbSendTask, dbIndex, dbInfo, taskSqe);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "Rdma db send task init failed, stream_id=%d, task_id=%hu, retCode=%#x.",
-        streamId, rtRdmaDbSendTask->id, static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to init RDMA DB send task, stream_id=%d, task_id=%hu, retCode=%#x.", streamId,
+        rtRdmaDbSendTask->id, static_cast<uint32_t>(error));
 
     error = device_->SubmitTask(rtRdmaDbSendTask, taskGenCallback_);
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Rdma db send task submit failed, retCode=%#x.", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, ERROR_RECYCLE, "Failed to submit RDMA DB send task, retCode=%#x.", static_cast<uint32_t>(error));
 
     GET_THREAD_TASKID_AND_STREAMID(rtRdmaDbSendTask, streamId);
 
@@ -106,8 +108,9 @@ rtError_t Context::RdmaDbSend(const uint32_t dbIndex, const uint64_t dbInfo, Str
         if (stm->IsCapturing()) {
             for (uint32_t taskSeq = 0U; taskSeq < RT_STARS_MODEL_RDMADB_TASK_NUM; taskSeq++) {
                 error = RdmaDbSendToDev(dbIndex, dbInfo, stm, (taskSeq + 1U));
-                ERROR_RETURN_MSG_INNER(error, "send seq=%u rdmadb capture model task failed, retCode=%#x",
-                    taskSeq, static_cast<uint32_t>(error));
+                ERROR_RETURN(
+                    error, "Failed to send RDMA DB capture model task, seq=%u, retCode=%#x.", taskSeq,
+                    static_cast<uint32_t>(error));
             }
             return RT_ERROR_NONE;
         }
@@ -115,12 +118,13 @@ rtError_t Context::RdmaDbSend(const uint32_t dbIndex, const uint64_t dbInfo, Str
     if ((Runtime::Instance()->ChipIsHaveStars()) && (stm->GetBindFlag())) {
         for (uint32_t taskSeq = 0U; taskSeq < RT_STARS_MODEL_RDMADB_TASK_NUM; taskSeq++) {
             error = RdmaDbSendToDev(dbIndex, dbInfo, stm, (taskSeq + 1U));
-            ERROR_RETURN_MSG_INNER(error, "send seq=%u rdmadb model task failed, retCode=%#x", taskSeq,
-            static_cast<uint32_t>(error));
+            ERROR_RETURN(
+                error, "Failed to send RDMA DB model task, seq=%u, retCode=%#x.", taskSeq,
+                static_cast<uint32_t>(error));
         }
     } else {
         error = RdmaDbSendToDev(dbIndex, dbInfo, stm);
-        ERROR_RETURN_MSG_INNER(error, "send db send task failed, retCode=%#x", static_cast<uint32_t>(error));
+        ERROR_RETURN(error, "Failed to send RDMA DB task, retCode=%#x.", static_cast<uint32_t>(error));
     }
 
     return error;

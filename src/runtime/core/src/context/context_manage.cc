@@ -73,7 +73,7 @@ rtError_t ContextManage::DeviceAbort(const int32_t devId)
         ctx->SetFailureError(RT_ERROR_DEVICE_TASK_ABORT);
         ctx->SetStreamsStatus(RT_ERROR_DEVICE_TASK_ABORT);
         error = ctx->StreamsCleanSq();
-        ERROR_RETURN(error, "ctx clean fail, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to clean context SQ, retCode=%#x.", error);
     }
     RT_LOG(RT_LOG_INFO, "DeviceAbort[%d] end", devId);
     return error;
@@ -87,7 +87,7 @@ rtError_t ContextManage::Devicekill(const int32_t devId)
     for (Context *const ctx : g_ctxMan.GetSetObj()) {
         COND_PROC((ctx->Device_()->Id_() != static_cast<uint32_t>(devId)), continue);
         error = ctx->StreamsKill();
-        ERROR_RETURN(error, "ctx kill fail, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to kill streams, retCode=%#x.", error);
         RT_LOG(RT_LOG_INFO, "Devicekill end");
         return error;
     }
@@ -112,7 +112,7 @@ rtError_t ContextManage::DeviceQuery(const int32_t devId, const uint32_t step, c
         for (Context *const ctx : g_ctxMan.GetSetObj()) {
             COND_PROC((ctx->Device_()->Id_() != static_cast<uint32_t>(devId)), continue);
             error = ctx->StreamsQuery(status);
-            ERROR_RETURN(error, "ctx query fail, retCode=%#x.", error);
+            ERROR_RETURN(error, "Failed to query streams, retCode=%#x.", error);
             if (status >= step) {
                 flag = false;
                 break;
@@ -154,14 +154,14 @@ rtError_t ContextManage::DeviceClean(const int32_t devId)
         COND_PROC((ctx->Device_()->Id_() != static_cast<uint32_t>(devId)), continue);
         dev = ctx->Device_();
         error = ctx->StreamsTaskClean();
-        ERROR_RETURN(error, "ctx task clean fail, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to clean tasks, retCode=%#x.", error);
         error = ctx->StreamsUpdate();
-        ERROR_RETURN(error, "ctx update fail, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to update streams, retCode=%#x.", error);
     }
 
     if (dev != nullptr) {
         error = dev->ProcCleanRingbuffer();
-        ERROR_RETURN(error, "device clean ring buffer fail, retCode=%#x.", error);
+        ERROR_RETURN(error, "Failed to clean device ring buffer, retCode=%#x.", error);
         dev->ProcClearFastRingBuffer();
         dev->SetDeviceStatus(RT_ERROR_NONE);
         dev->SetHasTaskError(false);
@@ -200,40 +200,42 @@ rtError_t ContextManage::DeviceTaskAbort(const int32_t devId, const uint32_t tim
 
     rtError_t error = DeviceAbort(devId);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "DeviceAbort, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "Failed to abort device, retCode=%#x.", static_cast<uint32_t>(error));
 
     timeCost = ((tv[index].tv_sec * RT_MS_PER_S) + (tv[index].tv_usec / RT_US_TO_MS) - startTime);
     COND_GOTO_ERROR(((timeout != 0U) && (timeCost > timeout)), TIMEINFO, error, RT_ERROR_WAIT_TIMEOUT, "timeout.");
     error = rtInstance->TaskAbortCallBack(devId, RT_DEVICE_ABORT_PRE, (timeout != 0U) ? (timeout - timeCost) : timeout);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "abort pre, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "Failed to abort pre callback, retCode=%#x.", static_cast<uint32_t>(error));
 
     error = Devicekill(devId);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "DeviceQuery, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "Failed to kill device, retCode=%#x.", static_cast<uint32_t>(error));
 
     timeCost = ((tv[index].tv_sec * RT_MS_PER_S) + (tv[index].tv_usec / RT_US_TO_MS) - startTime);
     COND_GOTO_ERROR(((timeout != 0U) && (timeCost > timeout)), TIMEINFO, error, RT_ERROR_WAIT_TIMEOUT, "timeout.");
     error = DeviceQuery(devId, APP_ABORT_KILL_FINISH, (timeout != 0U) ? (timeout - timeCost) : timeout);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "DeviceQuery, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "Failed to query device status, retCode=%#x.", static_cast<uint32_t>(error));
 
     timeCost = ((tv[index].tv_sec * RT_MS_PER_S) + (tv[index].tv_usec / RT_US_TO_MS) - startTime);
     COND_GOTO_ERROR(((timeout != 0U) && (timeCost > timeout)), TIMEINFO, error, RT_ERROR_WAIT_TIMEOUT, "timeout.");
     error = rtInstance->TaskAbortCallBack(devId, RT_DEVICE_ABORT_POST, (timeout != 0U) ? (timeout - timeCost) : timeout);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "abort post, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "Failed to abort post callback, retCode=%#x.", static_cast<uint32_t>(error));
 
     timeCost = ((tv[index].tv_sec * RT_MS_PER_S) + (tv[index].tv_usec / RT_US_TO_MS) - startTime);
     COND_GOTO_ERROR(((timeout != 0U) && (timeCost > timeout)), TIMEINFO, error, RT_ERROR_WAIT_TIMEOUT, "timeout.");
 
     error = DeviceQuery(devId, APP_ABORT_TERMINATE_FINISH, (timeout != 0U) ? (timeout - timeCost) : timeout);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "DeviceQuery, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, TIMEINFO, "Failed to query device terminate status, retCode=%#x.", static_cast<uint32_t>(error));
     mmGetTimeOfDay(&tv[++index], nullptr);
 
     error = DeviceClean(devId);
     mmGetTimeOfDay(&tv[++index], nullptr);
-    ERROR_GOTO_MSG_INNER(error, TIMEINFO, "DeviceClean, retCode=%#x", static_cast<uint32_t>(error));
+    ERROR_GOTO_MSG_INNER(
+        error, TIMEINFO, "Failed to clean device after abort, retCode=%#x.", static_cast<uint32_t>(error));
 
     currentTime = (tv[index].tv_sec * RT_MS_PER_S) + (tv[index].tv_usec / RT_US_TO_MS);
     if (dev != nullptr) {

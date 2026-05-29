@@ -153,8 +153,9 @@ void *LocalThread::ThreadProc(void * const parameter)
 #else
         threadHandle = mmGetTid();
 #endif
-        if (mmSetThreadName(RtPtrToPtr<mmThread *>(&threadHandle), self->name_) != EN_OK) {
-            RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "mmSetThreadName failed, setname=%s!", self->name_);
+        const int32_t ret = mmSetThreadName(RtPtrToPtr<mmThread*>(&threadHandle), self->name_);
+        if (ret != EN_OK) {
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "thread", "pthread_setname_np");
         }
     }
 
@@ -222,8 +223,7 @@ int32_t LocalThread::Start()
         threadAttr.stackSize += PTHREAD_STACK_SIZE;
     }
 
-    RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "mmCreateTaskWithThreadAttr failed, stackSize=%u, retCode=%d!",
-        threadAttr.stackSize, error);
+    RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "thread", "pthread_create");
     return error;
 }
 
@@ -256,7 +256,7 @@ void LocalThread::Join()
 
     const int32_t error = mmJoinTask(&interThread_);
     if (error != EN_OK) {
-        RT_LOG_CALL_MSG(ERR_MODULE_SYSTEM, "mmJoinTask failed, retCode=%d!", error);
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "thread", "pthread_join");
     }
 
     (void)runtime->GetThreadGuard()->DelThreadTid(interThread_);
@@ -366,7 +366,7 @@ void ThreadGuard::ThreadExit()
         if ((itr.second == "MONITOR_0") || (itr.second == "MONITOR_1") || (itr.second == "THREAD_CALLBACK")) {
             const int32_t error = mmJoinTask(&itr.first);
             if (error != EN_OK) {
-                RT_LOG(RT_LOG_WARNING, "Thread_tid=%lu mmJoinTask failed, retCode=%d!", itr.first, error);
+                RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1021, "thread", "pthread_join");
             }
             interRuntime->GetThreadGuard()->DelThreadTid(itr.first);
         }

@@ -34,6 +34,7 @@
 #include "arg_loader.hpp"
 #include "arg_loader_ub.hpp"
 #include "stream.hpp"
+#include "stream_factory.hpp"
 #include "stream_sqcq_manage.hpp"
 #include "npu_driver.hpp"
 #include "api.hpp"
@@ -61,6 +62,24 @@
 
 using namespace testing;
 using namespace cce::runtime;
+
+namespace {
+Context* GetPrimaryContext(int32_t& devId, RefObject<Context*>*& refObject)
+{
+    EXPECT_EQ(rtGetDevice(&devId), RT_ERROR_NONE);
+    refObject = static_cast<RefObject<Context*>*>(((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId));
+    EXPECT_NE(refObject, nullptr);
+    return (refObject == nullptr) ? nullptr : refObject->GetVal();
+}
+
+void ReleasePrimaryContext(const int32_t devId) { (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId); }
+
+class RestoreFailedStream : public Stream {
+public:
+    explicit RestoreFailedStream(Device* const dev) : Stream(dev, 0U) {}
+    rtError_t Restore() override { return RT_ERROR_INVALID_VALUE; }
+};
+} // namespace
 
 class CloudV2ContextTest : public testing::Test
 {
@@ -2524,6 +2543,42 @@ TEST_F(CloudV2ContextTest, ContextProtect_delete)
     delete ctxProtect;
 }
 
+TEST_F(CloudV2ContextTest, DebugReadAICore_invalid_param)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+    ctx->Device_()->SetCoredumpEnable();
+
+    EXPECT_EQ(ctx->DebugGetStalledCore(nullptr), RT_ERROR_INVALID_VALUE);
+    EXPECT_EQ(ctx->DebugReadAICore(nullptr), RT_ERROR_INVALID_VALUE);
+
+    rtDebugMemoryParam_t param = {};
+    param.debugMemType = RT_MEM_TYPE_L0A;
+    param.srcAddr = 65536U;
+    param.memLen = 1U;
+    EXPECT_EQ(ctx->DebugReadAICore(&param), RT_ERROR_INVALID_VALUE);
+
+    param = {};
+    param.debugMemType = RT_MEM_TYPE_REGISTER;
+    param.elementSize = 0U;
+    param.memLen = 4U;
+    EXPECT_EQ(ctx->DebugReadAICore(&param), RT_ERROR_INVALID_VALUE);
+
+    param.elementSize = 3U;
+    EXPECT_EQ(ctx->DebugReadAICore(&param), RT_ERROR_INVALID_VALUE);
+
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
+    GlobalMockObject::verify();
+}
+
 TEST_F(CloudV2ContextTest, GetSatStatusForStars_test)
 {
     GlobalMockObject::verify();
@@ -2547,6 +2602,49 @@ TEST_F(CloudV2ContextTest, GetSatStatusForStars_test)
     EXPECT_EQ(error, RT_ERROR_NONE);
 
     (void)((Runtime *)Runtime::Instance())->PrimaryContextRelease(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, GetSatStatusForStars_malloc_fail)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+
+    Stream* stream = new Stream(ctx->Device_(), 0);
+    EXPECT_NE(stream, nullptr);
+    MOCKER(AlignedMalloc).stubs().will(returnValue(static_cast<void*>(nullptr)));
+    EXPECT_EQ(ctx->GetSatStatusForStars(0U, stream), RT_ERROR_MEMORY_ALLOCATION);
+
+    delete stream;
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, CreateContextCallBackThread_create_thread_fail)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+
+    MOCKER(OsalFactory::CreateThread).stubs().will(returnValue(static_cast<Thread*>(nullptr)));
+    EXPECT_EQ(ctx->CreateContextCallBackThread(), RT_ERROR_MEMORY_ALLOCATION);
+
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
     GlobalMockObject::verify();
 }
 
@@ -2601,6 +2699,32 @@ TEST_F(CloudV2ContextTest, DvppGroupCreate_test)
     EXPECT_EQ(error, 1);
 
     (void)((Runtime *)Runtime::Instance())->PrimaryContextRelease(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, StartOnlineProf_invalid_param)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+
+    Stream* stream = new Stream(ctx->Device_(), 0);
+    EXPECT_NE(stream, nullptr);
+    EXPECT_EQ(ctx->StartOnlineProf(stream, 0U), RT_ERROR_INVALID_VALUE);
+
+    EXPECT_EQ(ctx->Device_()->DevSetOnlineProfStart(true), RT_ERROR_NONE);
+    EXPECT_EQ(ctx->StartOnlineProf(stream, 1U), RT_ERROR_PROF_START);
+    EXPECT_EQ(ctx->Device_()->DevSetOnlineProfStart(false), RT_ERROR_NONE);
+
+    delete stream;
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
     GlobalMockObject::verify();
 }
 
@@ -2921,6 +3045,67 @@ TEST_F(CloudV2ContextTest, NpuClearFloatStatus_test)
     stream->taskResMang_ = preVal;
     delete stream;
     delete device;
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, StreamClear_StreamAbort_invalid_stream)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+
+    Stream* stream = new Stream(ctx->Device_(), 0);
+    EXPECT_NE(stream, nullptr);
+    stream->bindFlag_.Set(true);
+    EXPECT_EQ(ctx->StreamClear(stream, RT_STREAM_STOP), RT_ERROR_STREAM_INVALID);
+    EXPECT_EQ(ctx->StreamAbort(stream), RT_ERROR_STREAM_INVALID);
+
+    stream->bindFlag_.Set(false);
+    stream->flags_ = 0U;
+    EXPECT_EQ(ctx->StreamClear(stream, RT_STREAM_STOP), RT_ERROR_STREAM_INVALID);
+
+    delete stream;
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, ModelAddEndGraph_unbound_stars_stream)
+{
+    GlobalMockObject::verify();
+    int32_t devId;
+    rtError_t error = rtGetDevice(&devId);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    RefObject<Context*>* refObject = NULL;
+    refObject = (RefObject<Context*>*)((Runtime*)Runtime::Instance())->PrimaryContextRetain(devId);
+    EXPECT_NE(refObject, nullptr);
+    Context* ctx = refObject->GetVal();
+    EXPECT_NE(ctx, nullptr);
+
+    RawDevice* device = static_cast<RawDevice*>(ctx->Device_());
+    const DevProperties oldProps = device->GetDevProperties();
+    DevProperties props = oldProps;
+    props.isStars = true;
+    device->RefreshDevProperties(props);
+
+    Model* model = new Model();
+    Stream* stream = new Stream(ctx->Device_(), 0);
+    EXPECT_NE(model, nullptr);
+    EXPECT_NE(stream, nullptr);
+    model->SetModelExecutorType(EXECUTOR_TS);
+    EXPECT_EQ(ctx->ModelAddEndGraph(model, stream, RT_KERNEL_DUMPFLAG), RT_ERROR_STREAM_INVALID);
+
+    delete stream;
+    delete model;
+    device->RefreshDevProperties(oldProps);
+    (void)((Runtime*)Runtime::Instance())->PrimaryContextRelease(devId);
     GlobalMockObject::verify();
 }
 
@@ -3540,5 +3725,216 @@ TEST_F(CloudV2ContextTest, UpdateTaskPrepare_test_1)
     delete updateStream;
     delete kernel;
     delete device;
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, SetOverflowAddrDevMemAllocFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+    void* oldOverflowAddr = ctx->overflowAddr_;
+    const uint64_t oldOverflowAddrOffset = ctx->overflowAddrOffset_;
+    ctx->overflowAddr_ = nullptr;
+    ctx->overflowAddrOffset_ = 0ULL;
+
+    MOCKER_CPP_VIRTUAL(ctx->device_->Driver_(), &Driver::DevMemAlloc)
+        .stubs()
+        .will(returnValue(RT_ERROR_DRV_OUT_MEMORY))
+        .then(returnValue(RT_ERROR_INVALID_VALUE));
+    EXPECT_EQ(ctx->SetOverflowAddr(), RT_ERROR_DRV_OUT_MEMORY);
+    EXPECT_EQ(ctx->SetOverflowAddr(), RT_ERROR_INVALID_VALUE);
+
+    ctx->overflowAddr_ = oldOverflowAddr;
+    ctx->overflowAddrOffset_ = oldOverflowAddrOffset;
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, SetupDefaultStreamSetupFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* curCtx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(curCtx, nullptr);
+
+    Device* device = ((Runtime*)Runtime::Instance())->DeviceRetain(devId, 0);
+    ASSERT_NE(device, nullptr);
+    Context ctx(device, false);
+    Stream stream(device, 0U);
+    MOCKER_CPP(&Context::Init).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP(&Context::SetOverflowAddr).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP((&StreamFactory::CreateStream)).stubs().will(returnValue(&stream));
+    MOCKER_CPP_VIRTUAL(&stream, &Stream::Setup).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP(&Stream::Destructor).stubs().will(ignoreReturnValue());
+
+    EXPECT_EQ(ctx.Setup(), RT_ERROR_INVALID_VALUE);
+    EXPECT_EQ(ctx.defaultStream_, nullptr);
+
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, AicpuInfoLoadSubmitAndSyncFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+
+    uint32_t aicpuInfo = 0U;
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(AicpuInfoLoadTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP(&TaskFactory::Recycle).stubs().will(returnValue(RT_ERROR_NONE));
+    EXPECT_EQ(ctx->AicpuInfoLoad(&aicpuInfo, sizeof(aicpuInfo)), RT_ERROR_INVALID_VALUE);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(AicpuInfoLoadTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->defaultStream_, &Stream::Synchronize).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    EXPECT_EQ(ctx->AicpuInfoLoad(&aicpuInfo, sizeof(aicpuInfo)), RT_ERROR_INVALID_VALUE);
+
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, DebugRegisterForStreamInitSubmitAndSyncFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+    RawDevice* rawDevice = static_cast<RawDevice*>(ctx->device_);
+    DevProperties oldProps = rawDevice->properties_;
+
+    rtStream_t streamHandle = nullptr;
+    ASSERT_EQ(rtStreamCreate(&streamHandle, 0), RT_ERROR_NONE);
+    Stream* debugStream = rt_ut::UnwrapOrNull<Stream>(streamHandle);
+    ASSERT_NE(debugStream, nullptr);
+    rawDevice->properties_.isStars = false;
+    uint32_t streamId = 0U;
+    uint32_t taskId = 0U;
+    uint32_t addr = 0U;
+
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(DebugRegisterForStreamTaskInit).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP(&TaskFactory::Recycle).stubs().will(returnValue(RT_ERROR_NONE));
+    EXPECT_EQ(ctx->DebugRegisterForStream(debugStream, 0U, &addr, &streamId, &taskId), RT_ERROR_DEBUG_REGISTER_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(DebugRegisterForStreamTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP(&TaskFactory::Recycle).stubs().will(returnValue(RT_ERROR_NONE));
+    EXPECT_EQ(ctx->DebugRegisterForStream(debugStream, 0U, &addr, &streamId, &taskId), RT_ERROR_DEBUG_REGISTER_FAILED);
+    GlobalMockObject::verify();
+
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(DebugRegisterForStreamTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->defaultStream_, &Stream::Synchronize).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    EXPECT_EQ(ctx->DebugRegisterForStream(debugStream, 0U, &addr, &streamId, &taskId), RT_ERROR_INVALID_VALUE);
+    EXPECT_FALSE(debugStream->IsDebugRegister());
+
+    rawDevice->properties_ = oldProps;
+    EXPECT_EQ(rtStreamDestroy(streamHandle), RT_ERROR_NONE);
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, DebugUnRegisterForStreamSubmitAndSyncFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+    RawDevice* rawDevice = static_cast<RawDevice*>(ctx->device_);
+    DevProperties oldProps = rawDevice->properties_;
+
+    rtStream_t streamHandle = nullptr;
+    ASSERT_EQ(rtStreamCreate(&streamHandle, 0), RT_ERROR_NONE);
+    Stream* debugStream = rt_ut::UnwrapOrNull<Stream>(streamHandle);
+    ASSERT_NE(debugStream, nullptr);
+    rawDevice->properties_.isStars = false;
+    debugStream->SetDebugRegister(true);
+
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(DebugUnRegisterForStreamTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP(&TaskFactory::Recycle).stubs().will(returnValue(RT_ERROR_NONE));
+    EXPECT_EQ(ctx->DebugUnRegisterForStream(debugStream), RT_ERROR_DEBUG_UNREGISTER_FAILED);
+    EXPECT_TRUE(debugStream->IsDebugRegister());
+    GlobalMockObject::verify();
+
+    debugStream->SetDebugRegister(true);
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    MOCKER(DebugUnRegisterForStreamTaskInit).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::SubmitTask).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->defaultStream_, &Stream::Synchronize).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    EXPECT_EQ(ctx->DebugUnRegisterForStream(debugStream), RT_ERROR_INVALID_VALUE);
+    EXPECT_TRUE(debugStream->IsDebugRegister());
+
+    debugStream->SetDebugRegister(false);
+    rawDevice->properties_ = oldProps;
+    EXPECT_EQ(rtStreamDestroy(streamHandle), RT_ERROR_NONE);
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, StreamsRestoreDefaultAndUserStreamFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+
+    MOCKER_CPP_VIRTUAL(ctx->defaultStream_, &Stream::Restore).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    EXPECT_EQ(ctx->StreamsRestore(), RT_ERROR_INVALID_VALUE);
+    GlobalMockObject::verify();
+
+    RestoreFailedStream stream(ctx->device_);
+    MOCKER_CPP_VIRTUAL(ctx->defaultStream_, &Stream::Restore).stubs().will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_, &Device::IsSupportFeature).stubs().will(returnValue(false));
+    ctx->streams_.push_back(&stream);
+    EXPECT_EQ(ctx->StreamsRestore(), RT_ERROR_INVALID_VALUE);
+    ctx->streams_.remove(&stream);
+
+    ReleasePrimaryContext(devId);
+    GlobalMockObject::verify();
+}
+
+TEST_F(CloudV2ContextTest, LabelSwitchListCreateMemSetFailed)
+{
+    GlobalMockObject::verify();
+    int32_t devId = 0;
+    RefObject<Context*>* refObject = nullptr;
+    Context* ctx = GetPrimaryContext(devId, refObject);
+    ASSERT_NE(ctx, nullptr);
+
+    Label label(nullptr);
+    Label* labels[] = {&label};
+    void* labelList = nullptr;
+    uint8_t devMem = 0U;
+    void* devMemPtr = &devMem;
+    MOCKER_CPP_VIRTUAL(ctx->device_->Driver_(), &Driver::DevMemAlloc)
+        .stubs()
+        .with(outBoundP(&devMemPtr, sizeof(devMemPtr)), mockcpp::any(), mockcpp::any(), mockcpp::any())
+        .will(returnValue(RT_ERROR_NONE));
+    MOCKER_CPP_VIRTUAL(ctx->device_->Driver_(), &Driver::MemSetSync).stubs().will(returnValue(RT_ERROR_INVALID_VALUE));
+    MOCKER_CPP_VIRTUAL(ctx->device_->Driver_(), &Driver::DevMemFree).stubs().will(returnValue(RT_ERROR_NONE));
+
+    EXPECT_EQ(ctx->LabelSwitchListCreate(labels, 1U, &labelList), RT_ERROR_INVALID_VALUE);
+    EXPECT_EQ(labelList, nullptr);
+
+    ReleasePrimaryContext(devId);
     GlobalMockObject::verify();
 }
