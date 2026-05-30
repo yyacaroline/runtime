@@ -20,9 +20,7 @@ EXTRACT_DIR=""
 RTS_LIB_ROOT=""
 
 cleanup() {
-  if [[ -n "${EXTRACT_DIR}" && -d "${EXTRACT_DIR}" ]]; then
-    rm -rf "${EXTRACT_DIR}"
-  fi
+  :
 }
 
 download_file() {
@@ -47,7 +45,7 @@ resolve_rts_bin() {
   local archive_path=""
   local rtstest_path=""
 
-  EXTRACT_DIR="$(mktemp -d)"
+  EXTRACT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
   RTS_LIB_ROOT="${EXTRACT_DIR}"
   archive_path="${EXTRACT_DIR}/package.tar.gz"
 
@@ -57,7 +55,10 @@ resolve_rts_bin() {
   echo "Extracting ${archive_path}" >&2
   tar -xzf "${archive_path}" -C "${EXTRACT_DIR}" || return 1
 
-  rtstest_path="$(find "${EXTRACT_DIR}" -type f -name rtstest_host -perm -u+x | head -n 1)"
+  rtstest_path="${EXTRACT_DIR}/rtstest_host"
+  if [[ ! -x "${rtstest_path}" ]]; then
+    rtstest_path="$(find "${EXTRACT_DIR}" -type f -name rtstest_host -perm -u+x | head -n 1)"
+  fi
   if [[ -z "${rtstest_path}" ]]; then
     echo "rtstest_host not found in extracted package" >&2
     return 1
@@ -125,7 +126,6 @@ main() {
       fail_count=$((fail_count + 1))
     fi
   done < "${param_file}"
-
   echo "Execution complete: total=${total_count}, failed=${fail_count}"
   if [[ ${fail_count} -ne 0 ]]; then
     exit 1
