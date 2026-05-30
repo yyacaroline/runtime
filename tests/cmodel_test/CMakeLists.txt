@@ -37,3 +37,10 @@ add_cann_third_party(protobuf)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/local_cmodel_build
                  ${CMAKE_BINARY_DIR}/tests/cmodel_test/local_cmodel_build)
 add_subdirectory(${RUNTIME_DIR}/src ${CMAKE_BINARY_DIR}/src)
+
+add_dependencies(mmpa c_sec)
+add_dependencies(static_mmpa c_sec)
+add_dependencies(runtime_platform_others c_sec)
+add_dependencies(runtime_platform_tiny c_sec)
+add_dependencies(runtime_platform_910B c_sec)
+add_dependencies(runtime_platform_kirin c_sec)

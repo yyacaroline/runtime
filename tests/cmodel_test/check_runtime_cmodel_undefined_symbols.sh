@@ -29,6 +29,7 @@ case "${HOST_ARCH}" in
 esac
 
 SIMULATOR_ROOT_DIR="/home/jenkins/Ascend/cann/${TARGET_ARCH_DIR}/simulator"
+TOOLKIT_LIB_DIR="/home/jenkins/Ascend/cann/${TARGET_ARCH_DIR}/lib64"
 SIMULATOR_PRODUCT_DIR=""
 ASCEND_INSTALL_PATH="${ASCEND_INSTALL_PATH:-${ASCEND_HOME_PATH:-/usr/local/Ascend/cann}}"
 
@@ -127,6 +128,7 @@ append_ld_library_path() {
 
 RUNTIME_CMODEL_CHECK_LD_LIBRARY_PATH=""
 append_ld_library_path "${LIB_DIR}"
+append_ld_library_path "${TOOLKIT_LIB_DIR}"
 append_ld_library_path "${ASCEND_INSTALL_PATH}/lib64"
 append_ld_library_path "${DRIVER_COMMON_LIB_DIR}"
 if [ -n "${LD_LIBRARY_PATH:-}" ]; then
@@ -163,10 +165,35 @@ except OSError as err:
 PY
 }
 
-check_with_ldd "${LIB_DIR}/libruntime_cmodel.so" || fail "ldd check failed for libruntime_cmodel.so"
-LD_LIBRARY_PATH="${RUNTIME_CMODEL_CHECK_LD_LIBRARY_PATH}" check_with_dlopen "${LIB_DIR}/libruntime_cmodel.so" || fail "dlopen check failed for libruntime_cmodel.so"
-check_with_ldd "${LIB_DIR}/libruntime_camodel.so" || fail "ldd check failed for libruntime_camodel.so"
-LD_LIBRARY_PATH="${RUNTIME_CMODEL_CHECK_LD_LIBRARY_PATH}" check_with_dlopen "${LIB_DIR}/libruntime_camodel.so" || fail "dlopen check failed for libruntime_camodel.so"
+check_one_so() {
+  local so_path="$1"
+  [ -f "${so_path}" ] || fail "shared library not found: ${so_path}"
+  check_with_ldd "${so_path}" || fail "ldd check failed for ${so_path}"
+  LD_LIBRARY_PATH="${RUNTIME_CMODEL_CHECK_LD_LIBRARY_PATH}" check_with_dlopen "${so_path}" || fail "dlopen check failed for ${so_path}"
+}
+
+SIMULATOR_SO_LIST=(
+  "${LIB_DIR}/libruntime_cmodel.so"
+  "${LIB_DIR}/libruntime_camodel.so"
+)
+
+TOOLKIT_SO_LIST=(
+  "${TOOLKIT_LIB_DIR}/libacl_rt.so"
+  "${TOOLKIT_LIB_DIR}/libacl_rt_impl.so"
+  "${TOOLKIT_LIB_DIR}/libruntime.so"
+  "${TOOLKIT_LIB_DIR}/libruntime_common.so"
+  "${TOOLKIT_LIB_DIR}/libruntime_v100.so"
+  "${TOOLKIT_LIB_DIR}/libruntime_v200.so"
+  "${TOOLKIT_LIB_DIR}/libruntime_v201.so"
+)
+
+for so_path in "${SIMULATOR_SO_LIST[@]}"; do
+  check_one_so "${so_path}"
+done
+
+for so_path in "${TOOLKIT_SO_LIST[@]}"; do
+  check_one_so "${so_path}"
+done
 
 echo "[PASS] undefined symbol check success!"
 exit 0
