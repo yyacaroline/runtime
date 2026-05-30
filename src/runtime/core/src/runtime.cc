@@ -4916,9 +4916,8 @@ rtError_t Runtime::CreateReportRasThread()
     void * const reportRas = ValueToPtr(THREAD_REPORTRAS);
     constexpr const char_t* threadName = "REPORT_RAS";
     hbmRasThread_.reset(OsalFactory::CreateThread(threadName, &ras_, reportRas));
-    // xxxxx 用EE1013 掉新接口获取 LocalThread 的大小
-    // 用这个，COND_RETURN_AND_MSG_OUTER(hbmRasThread_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, std::to_string(sizeof(ModuleMemInfo))); 
-    NULL_PTR_RETURN_MSG(hbmRasThread_, RT_ERROR_MEMORY_ALLOCATION);
+    COND_RETURN_AND_MSG_OUTER(hbmRasThread_ == nullptr, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, OsalFactory::GetThreadObjectSize());
     hbmRasThreadRunFlag_ = true;
     const int32_t error = hbmRasThread_->Start();
     if (error != EN_OK) {
