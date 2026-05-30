@@ -339,8 +339,9 @@ rtError_t rtStreamSwitchN(void *ptr, uint32_t size, void *valuePtr, rtStream_t *
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((size == 0U), RT_ERROR_INVALID_VALUE, size, "not equal to 0");
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((elementSize == 0U),
         RT_ERROR_INVALID_VALUE, elementSize, "not equal to 0");
-    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM(((INVALID_UINT32 / size) <= elementSize),
-        RT_ERROR_INVALID_VALUE, elementSize, "elementSize is too large and causes total data size overflow");
+    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER(((INVALID_UINT32 / size) <= elementSize),
+        RT_ERROR_INVALID_VALUE, ErrorCode::EE1011, __func__, std::to_string(elementSize), "elementSize",
+        "elementSize should be less than INVALID_UINT32 / size to avoid total data size overflow");
     std::vector<Stream *> realTrueStreams(elementSize);
     for (uint32_t i = 0U; i < elementSize; ++i) {
         RT_VALIDATE_AND_UNWRAP_OBJECT(trueStreamPtr[i], Stream, trueExeStream);
