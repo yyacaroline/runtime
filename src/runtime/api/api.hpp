@@ -163,6 +163,10 @@ public:
     virtual rtError_t DependencyRegister(Program * const mProgram, Program * const sProgram) = 0;
     virtual rtError_t FunctionRegister(Program * const prog, const void * const stubFunc,
         const char_t * const stubName, const void * const kernelInfoExt, const uint32_t funcMode) = 0;
+    virtual rtError_t RegisterVariable(void * const binHandle, const void * const hostVar,
+        const char_t * const deviceVarName, const size_t size, const uint32_t flags) = 0;
+    virtual rtError_t SymbolLookup(const void * const hostVar, void ** const devPtr,
+        size_t * const size) = 0;
     virtual rtError_t GetFunctionByName(const char_t * const stubName, void ** const stubFunc) = 0;
     virtual rtError_t GetAddrByFun(const void * const stubFunc, void ** const addr) = 0;
     virtual rtError_t GetAddrAndPrefCntWithHandle(void * const hdl, const void * const kernelInfoExt,

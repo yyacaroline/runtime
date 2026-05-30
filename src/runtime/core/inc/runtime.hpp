@@ -14,6 +14,7 @@
 #include "osal.hpp"
 #include "reference.hpp"
 #include "kernel.hpp"
+#include "symbol_table.hpp"
 #include "program.hpp"
 #include "tsch_defines.h"
 #include "driver.hpp"
@@ -226,6 +227,10 @@ public:
         return xpuCtxt_;
     }
 
+    SymbolTable &GetSymbolTable() {
+        return symbolTable_;
+    }
+
     rtError_t MallocProgramAndReg(const rtDevBinary_t *const bin, Program **const newProg) const;
     rtKernelAttrType Magic2KernelAttrType(const uint32_t magic) const;
     rtKernelAttrType GetDefaultKernelAttrType(void) const;
@@ -243,6 +248,7 @@ public:
         const void * const kernelInfoExt, const uint32_t funcMode, const char_t *kernelName);
     const Kernel *KernelLookup(const void * const stub);
     const void *StubFuncLookup(const char_t * const name);
+
     rtError_t LookupAddrByFun(const void * const stubFunc, Context * const ctx, void ** const addr);
     rtError_t LookupAddrAndPrefCntWithHandle(const void * const handlePtr, const void * const kernelInfoExt,
                                              Context * const ctx, void ** const addr, uint32_t * const prefetchCnt);
@@ -691,6 +697,7 @@ public:
 
     DriverFactory driverFactory_;
     KernelTable kernelTable_;
+    SymbolTable symbolTable_;
     FacadeDriver facadeDriver_;
     rtErrorCallback excptCallBack_;
     uint32_t deviceCnt = 0U;

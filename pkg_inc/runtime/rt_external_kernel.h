@@ -449,6 +449,19 @@ RTS_API rtError_t rtFusionLaunch(void * const fusionInfo, rtStream_t const stm, 
  */
 RTS_API rtError_t rtNopTask(rtStream_t stm);
 
+/**
+ * @ingroup rt_kernel
+ * @brief register device variable symbol mapping relationship.
+ * @param [in] binHandle   binary handle (Program pointer).
+ * @param [in] hostVar   device symbol reference.
+ * @param [in] deviceVarName   device symbol name.
+ * @param [in] size   size of object associated with symbol.
+ * @param [in] flags   symbol attribute flags (bit0: ext; bit1: global).
+ * @param [in] reserve   reserved parameter.
+ */
+RTS_API void rtRegisterVariable(void *binHandle, const void *hostVar, const char *deviceVarName,
+                                size_t size, uint32_t flags, void *reserve);
+
 #if defined(__cplusplus)
 }
 #endif

@@ -386,6 +386,7 @@ set(libruntime_cmodel_src_files
     ${RUNTIME_CORE_DIR}/src/kernel/module.cc
     ${RUNTIME_CORE_DIR}/src/kernel/program.cc
     ${RUNTIME_CORE_DIR}/src/kernel/program_common.cc
+    ${RUNTIME_CORE_DIR}/src/kernel/symbol_table.cc
     ${RUNTIME_CORE_DIR}/src/kernel/kernel_utils.cc
     ${RUNTIME_FEATURE_DIR}/soma/soma.cc
     ${RUNTIME_FEATURE_DIR}/soma/stream_mem_pool.cc
@@ -509,6 +510,7 @@ set(libruntime_cmodel_v200_src_files
     ${RUNTIME_CORE_DIR}/src/kernel/module.cc
     ${RUNTIME_CORE_DIR}/src/kernel/program.cc
     ${RUNTIME_CORE_DIR}/src/kernel/program_common.cc
+    ${RUNTIME_CORE_DIR}/src/kernel/symbol_table.cc
     ${RUNTIME_CORE_DIR}/src/kernel/kernel_utils.cc
     ${RUNTIME_FEATURE_DIR}/soma/soma.cc
     ${RUNTIME_FEATURE_DIR}/soma/stream_mem_pool.cc

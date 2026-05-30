@@ -1254,6 +1254,27 @@ rtError_t rtMemManagedPrefetchBatchAsync(const void** ptrs, size_t* sizes, size_
     return ACL_ERROR_RT_FEATURE_NOT_SUPPORT;
 }
 
+VISIBILITY_DEFAULT
+void rtRegisterVariable(void *binHandle, const void *hostVar, const char *deviceVarName,
+                        size_t size, uint32_t flags, void *reserve)
+{
+    (void)binHandle;
+    (void)hostVar;
+    (void)deviceVarName;
+    (void)size;
+    (void)flags;
+    (void)reserve;
+}
+
+VISIBILITY_DEFAULT
+rtError_t rtSymbolLookup(const void *hostVar, void **devPtr, size_t *size)
+{
+    (void)hostVar;
+    (void)devPtr;
+    (void)size;
+    return ACL_ERROR_RT_FEATURE_NOT_SUPPORT;
+}
+
 
 VISIBILITY_DEFAULT
 rtError_t rtBinaryGetGlobal(const rtBinHandle binHandle, const char *name, void **dptr, size_t *size)

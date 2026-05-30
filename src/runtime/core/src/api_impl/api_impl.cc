@@ -85,6 +85,7 @@
 #include "fast_recover.hpp"
 #include "simd_memsetd32.h"
 #include "common_memset_d32.h"
+#include "kernel/symbol_table.hpp"
 #include "snapshot_callback_manager.hpp"
 #include "snapshot_process_helper.hpp"
 
@@ -410,6 +411,29 @@ rtError_t ApiImpl::FunctionRegister(Program * const prog, const void * const stu
     RT_LOG(RT_LOG_DEBUG, "register function, type=%d, stubFunc=%p, funcMode=%u, funcName=%s, kernelInfoExt=%s.",
         prog->GetDefaultKernelAttrType(), stubFunc, funcMode, (stubName != nullptr) ? stubName : "(none)", kernelInfoExt);
     return Runtime::Instance()->KernelRegister(prog, stubFunc, stubName, kernelInfoExt, funcMode);
+}
+
+rtError_t ApiImpl::RegisterVariable(void * const binHandle, const void * const hostVar,
+    const char_t * const deviceVarName, const size_t size, const uint32_t flags)
+{
+    RT_LOG(RT_LOG_INFO, "register variable, hostVar=%p, deviceVarName=%s, size=%zu, flags=%u.",
+        hostVar, deviceVarName, size, flags);
+    return Runtime::Instance()->GetSymbolTable().Register(binHandle, hostVar, deviceVarName, size, flags);
+}
+
+rtError_t ApiImpl::SymbolLookup(const void * const hostVar, void ** const devPtr,
+    size_t * const size)
+{
+    Context * const curCtx = CurrentContext();
+    CHECK_CONTEXT_VALID_WITH_RETURN(curCtx, RT_ERROR_CONTEXT_NULL);
+    NULL_PTR_RETURN_MSG(curCtx->Device_(), RT_ERROR_DEVICE_NULL);
+    const uint32_t deviceId = static_cast<uint32_t>(curCtx->Device_()->Id_());
+
+    RT_LOG(RT_LOG_DEBUG, "lookup symbol, hostVar=%p, device_id=%u.", hostVar, deviceId);
+    rtError_t error = Runtime::Instance()->GetSymbolTable().GetDeviceAddress(hostVar, deviceId, devPtr);
+    COND_RETURN_WITH_NOLOG(error != RT_ERROR_NONE, error);
+    error = Runtime::Instance()->GetSymbolTable().GetSize(hostVar, size);
+    return error;
 }
 
 rtError_t ApiImpl::GetFunctionByName(const char_t * const stubName, void ** const stubFunc)

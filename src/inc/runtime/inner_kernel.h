@@ -90,6 +90,18 @@ RTS_API rtError_t rtFunctionGetParamInfo(const void *func, size_t paramIndex,
 RTS_API rtError_t rtFunctionGetAvailDynUbufPerBlock(void *func, uint32_t flags, size_t *dynamicUbufSize);
 
 /**
+ * @ingroup rt_kernel
+ * @brief find the device address and size associated with symbol.
+ * @param [in] hostVar   device symbol reference.
+ * @param [out] devPtr   device pointer associated with symbol.
+ * @param [out] size   size of object associated with symbol.
+ * @retval ACL_RT_SUCCESS for ok.
+ * @retval RT_ERROR_INVALID_SYMBOL invalid device symbol.
+ * @retval ACL_ERROR_RT_PARAM_INVALID for error input.
+ */
+RTS_API rtError_t rtSymbolLookup(const void *hostVar, void **devPtr, size_t *size);
+
+/**
  * @ingroup rts_kernel
  * @brief Get global symbol address and size from binary.
  * @param [in] binHandle    bin handle

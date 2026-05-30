@@ -408,6 +408,7 @@ set(runtimeut_src_tiny_exclude_list
     ${TOP_DIR}/src/runtime/core/src/task/task_info/event/notify_task_v200.cc
     ${TOP_DIR}/src/runtime/core/src/memory/common_memset_d32.cpp
     ${TOP_DIR}/src/runtime/core/src/memory/simd_memsetd32.cpp
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
 )
 
 set(runtimeut_src_tiny_include_list
@@ -425,6 +426,7 @@ set(runtimeut_src_tiny_include_list
     ${TOP_DIR}/src/runtime/core/src/engine/engine_factory_tiny_stub.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/binary_loader_tiny_stub.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program_common.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table_tiny_stub.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel_utils.cc
     ${TOP_DIR}/src/runtime/core/src/profiler/api_profile_log_decoratoc_tiny_stub.cc
     ${TOP_DIR}/src/runtime/core/src/profiler/api_profile_decorator_tiny_stub.cc
@@ -504,6 +506,7 @@ set(runtimeut_src_list
     ${TOP_DIR}/src/runtime/core/src/kernel/program_common.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/v100/program_plat.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel_utils.cc
     ${TOP_DIR}/src/runtime/feature/soma/soma.cc
     ${TOP_DIR}/src/runtime/feature/soma/stream_mem_pool.cc
@@ -669,6 +672,7 @@ set(runtimeut_david_src_list
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/module.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
     ${TOP_DIR}/src/runtime/feature/soma/soma.cc
     ${TOP_DIR}/src/runtime/feature/soma/stream_mem_pool.cc
     ${TOP_DIR}/src/runtime/core/src/launch/label.cc
@@ -727,6 +731,7 @@ set(runtimeut_david_src_list
     ${TOP_DIR}/src/runtime/core/src/runtime_v200/runtime_adapt.cc
     ${TOP_DIR}/src/runtime/feature/xpu/program_plat.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program_common.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel_utils.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/json_parse.cc
@@ -843,6 +848,7 @@ add_executable(runtime_utest
     test/rt_utest_module.cc
     test/rt_utest_elf.cc
     test/rt_utest_program.cc
+    test/rt_utest_symbol.cc
     test/rt_utest_runtime.cc
     test/rt_utest_kernel.cc
     test/rt_utest_config.cc
@@ -1505,6 +1511,7 @@ set(runtimeut_v201_src_list
     ${TOP_DIR}/src/runtime/core/src/kernel/module.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
     ${TOP_DIR}/src/runtime/core/src/runtime_v200/runtime_adapt.cc
     ${TOP_DIR}/src/runtime/feature/xpu/program_plat.cc
     ${TOP_DIR}/src/runtime/feature/soma/soma.cc

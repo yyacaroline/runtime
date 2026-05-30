@@ -1394,6 +1394,32 @@ rtError_t rtBinaryGetGlobal(const rtBinHandle binHandle, const char *name, void 
 }
 
 VISIBILITY_DEFAULT
+void rtRegisterVariable(void *binHandle, const void *hostVar, const char *deviceVarName,
+                        size_t size, uint32_t flags, void *reserve)
+{
+    UNUSED(reserve);
+    Api * const apiInstance = Api::Instance();
+    if (unlikely(apiInstance == nullptr)) {
+        RT_LOG(RT_LOG_ERROR, "Null apiInstance pointer");
+        return;
+    }
+
+    (void)apiInstance->RegisterVariable(binHandle, hostVar, deviceVarName, size, flags);
+    return;
+}
+
+VISIBILITY_DEFAULT
+rtError_t rtSymbolLookup(const void *hostVar, void **devPtr, size_t *size)
+{
+    Api * const apiInstance = Api::Instance();
+    NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
+
+    const rtError_t error = apiInstance->SymbolLookup(hostVar, devPtr, size);
+    ERROR_RETURN_WITH_EXT_ERRCODE(error);
+    return ACL_RT_SUCCESS;
+}
+
+VISIBILITY_DEFAULT
 rtError_t rtFunctionGetParamCount(const void *func, size_t *paramCount)
 {
     Api * const apiInstance = Api::Instance();

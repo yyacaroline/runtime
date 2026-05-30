@@ -279,6 +279,7 @@ set(runtimeut_910b_src_list
     ${TOP_DIR}/src/runtime/core/src/kernel/kernel.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/module.cc
     ${TOP_DIR}/src/runtime/core/src/kernel/program.cc
+    ${TOP_DIR}/src/runtime/core/src/kernel/symbol_table.cc
     ${TOP_DIR}/src/runtime/feature/soma/soma.cc
     ${TOP_DIR}/src/runtime/feature/soma/stream_mem_pool.cc
     ${TOP_DIR}/src/runtime/core/src/launch/cmo_barrier_common.cc

@@ -119,6 +119,32 @@ rtError_t ApiErrorDecorator::FunctionRegister(Program * const prog, const void *
     return error;
 }
 
+rtError_t ApiErrorDecorator::RegisterVariable(void * const binHandle, const void * const hostVar,
+    const char_t * const deviceVarName, const size_t size, const uint32_t flags)
+{
+    NULL_PTR_RETURN_MSG_OUTER(binHandle, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN_MSG_OUTER(hostVar, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN_MSG_OUTER(deviceVarName, RT_ERROR_INVALID_VALUE);
+    
+    const auto len = strnlen(deviceVarName, static_cast<size_t>(NAME_MAX_LENGTH));
+    COND_RETURN_AND_MSG_OUTER_WITH_PARAM(len >= NAME_MAX_LENGTH, RT_ERROR_INVALID_VALUE, len, 
+        "less than " + std::to_string(NAME_MAX_LENGTH));
+
+    const rtError_t error = impl_->RegisterVariable(binHandle, hostVar, deviceVarName, size, flags);
+    ERROR_RETURN(error, "Register variable failed, hostVar=%p, deviceVarName=%s.", hostVar, deviceVarName);
+    return error;
+}
+
+rtError_t ApiErrorDecorator::SymbolLookup(const void * const hostVar, void ** const devPtr,
+    size_t * const size)
+{
+    NULL_PTR_RETURN_MSG_OUTER(devPtr, RT_ERROR_INVALID_VALUE);
+    NULL_PTR_RETURN_MSG_OUTER(size, RT_ERROR_INVALID_VALUE);
+    const rtError_t error = impl_->SymbolLookup(hostVar, devPtr, size);
+    ERROR_RETURN(error, "Symbol lookup failed, hostVar=%p.", hostVar);
+    return error;
+}
+
 rtError_t ApiErrorDecorator::GetFunctionByName(const char_t * const stubName, void ** const stubFunc)
 {
     NULL_PTR_RETURN_MSG_OUTER(stubFunc, RT_ERROR_INVALID_VALUE);

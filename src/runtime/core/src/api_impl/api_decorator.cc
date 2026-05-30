@@ -80,6 +80,18 @@ rtError_t ApiDecorator::FunctionRegister(Program * const prog, const void * cons
     return impl_->FunctionRegister(prog, stubFunc, stubName, kernelInfoExt, funcMode);
 }
 
+rtError_t ApiDecorator::RegisterVariable(void * const binHandle, const void * const hostVar,
+    const char_t * const deviceVarName, const size_t size, const uint32_t flags)
+{
+    return impl_->RegisterVariable(binHandle, hostVar, deviceVarName, size, flags);
+}
+
+rtError_t ApiDecorator::SymbolLookup(const void * const hostVar, void ** const devPtr,
+    size_t * const size)
+{
+    return impl_->SymbolLookup(hostVar, devPtr, size);
+}
+
 rtError_t ApiDecorator::GetFunctionByName(const char_t * const stubName, void ** const stubFunc)
 {
     return impl_->GetFunctionByName(stubName, stubFunc);
