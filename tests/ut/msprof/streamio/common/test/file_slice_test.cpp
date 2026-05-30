@@ -436,5 +436,48 @@ TEST_F(COMMON_FILE_SLICE_TEST, WriteCtrlDataToFile) {
     wfTransport.WriteCtrlDataToFile("/tmp/ctrl_data.txt", "test", data.size());
     remove("/tmp/ctrl_data.txt");
 
-    
+
+}
+
+// stars_soc.data must finalize each slice on a 64-byte boundary; the chunk that crosses the slice
+// threshold is split so the head fills the current slice to a 64-byte multiple and the unaligned
+// remainder is carried into the next slice.
+TEST_F(COMMON_FILE_SLICE_TEST, WriteStarsSliceAligned_split_and_carry) {
+    const std::string dir = "/tmp";
+    const std::string slice0 = "/tmp/stars_soc.data.slice_0";
+    const std::string slice1 = "/tmp/stars_soc.data.slice_1";
+    remove(slice0.c_str());
+    remove(slice1.c_str());
+
+    // sliceFileMaxKByte_ = 1 -> slice threshold is 1 * 1024 = 1024 bytes (a multiple of 64).
+    FileSlice wfTransport(1, dir, "500MB");
+    EXPECT_EQ(PROFILING_SUCCESS, wfTransport.Init());
+
+    // Avoid exercising the .done/ageing machinery; only the slice rollover behaviour matters here.
+    MOCKER_CPP(&analysis::dvvp::transport::FileSlice::CreateDoneFile)
+        .stubs()
+        .will(returnValue(true));
+
+    std::string keyName = "stars_soc.data";
+    const std::string key = wfTransport.GetSliceKey(dir, keyName); // key -> /tmp/stars_soc.data.slice_
+
+    std::string fileName = "stars_soc.data";
+    char chunk[101];
+    memset_s(chunk, sizeof(chunk), 'a', sizeof(chunk));
+    const int chunkLen = 100; // not a multiple of 64
+
+    // 11 chunks of 100 bytes: the 11th crosses 1024 and triggers the split.
+    for (int i = 0; i < 11; ++i) {
+        EXPECT_EQ(PROFILING_SUCCESS,
+            wfTransport.WriteToLocalFiles(key, chunk, chunkLen, -1, false, fileName));
+    }
+
+    // slice_0 filled to the first 64-aligned size >= 1024: 1100 - (1100 % 64) = 1088.
+    EXPECT_EQ(1088, analysis::dvvp::common::utils::Utils::GetFileSize(slice0));
+    EXPECT_EQ(0, analysis::dvvp::common::utils::Utils::GetFileSize(slice0) % 64);
+    // remainder (1100 - 1088 = 12 bytes) carried into slice_1.
+    EXPECT_EQ(12, analysis::dvvp::common::utils::Utils::GetFileSize(slice1));
+
+    remove(slice0.c_str());
+    remove(slice1.c_str());
 }

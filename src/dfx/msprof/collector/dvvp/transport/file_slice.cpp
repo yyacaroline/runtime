@@ -120,11 +120,61 @@ int32_t FileSlice::SetChunkTime(const std::string &key, uint64_t startTime, uint
 int32_t FileSlice::WriteToLocalFiles(const std::string &key, CONST_CHAR_PTR data, int32_t dataLen,
     int32_t offset, bool isLastChunk, std::string &fileName)
 {
+    if (needSlice_ && !isLastChunk && offset == -1 && data != nullptr && dataLen > 0 &&
+        fileName.find("stars_soc.data") != std::string::npos) {
+        return WriteStarsSliceAligned(key, data, dataLen, isLastChunk, fileName);
+    }
+
     int32_t res = WriteDataToFile(key, data, dataLen, offset);
     if (res != PROFILING_SUCCESS) {
         return res;
     }
 
+    return HandleFileCompletion(key, fileName, isLastChunk);
+}
+
+int32_t FileSlice::WriteStarsSliceAligned(const std::string &key, CONST_CHAR_PTR data, int32_t dataLen,
+    bool isLastChunk, std::string &fileName)
+{
+    if (sliceNum_.find(key) == sliceNum_.end()) {
+        sliceNum_[key] = 0;
+    }
+    const std::string absolutePath = key + std::to_string(sliceNum_[key]);
+    const int64_t curSize = Utils::IsFileExist(absolutePath) ? Utils::GetFileSize(absolutePath) : 0;
+    const int64_t sliceMax = static_cast<int64_t>(sliceFileMaxKByte_) * MEGABYTE_CONVERT;
+
+    if (curSize < 0 || curSize + static_cast<int64_t>(dataLen) < sliceMax) {
+        int32_t res = WriteDataToFile(key, data, dataLen, -1);
+        if (res != PROFILING_SUCCESS) {
+            return res;
+        }
+        return HandleFileCompletion(key, fileName, isLastChunk);
+    }
+
+    int64_t newSize = curSize + static_cast<int64_t>(dataLen);
+    int64_t alignedSize = newSize - (newSize % STARS_RECORD_ALIGN_BYTES);
+    int32_t headLen = static_cast<int32_t>(alignedSize - curSize);
+    if (headLen < 0 || headLen > dataLen) { // defensive: fall back to writing the whole chunk
+        headLen = dataLen;
+    }
+
+    int32_t res = WriteDataToFile(key, data, headLen, -1);
+    if (res != PROFILING_SUCCESS) {
+        return res;
+    }
+    // isLastChunk is false here, so HandleFileCompletion finalizes purely on the aligned-size rule.
+    res = HandleFileCompletion(key, fileName, false);
+    if (res != PROFILING_SUCCESS) {
+        return res;
+    }
+
+    const int32_t tailLen = dataLen - headLen;
+    if (tailLen > 0) {
+        res = WriteDataToFile(key, data + headLen, tailLen, -1);
+        if (res != PROFILING_SUCCESS) {
+            return res;
+        }
+    }
     return HandleFileCompletion(key, fileName, isLastChunk);
 }
 
@@ -190,9 +240,8 @@ int32_t FileSlice::HandleFileCompletion(const std::string &key, const std::strin
         MSPROF_LOGI("create done file:%s.done", Utils::BaseName(absolutePath).c_str());
         return PROFILING_SUCCESS;
     }
-    int64_t fileSizeUnit = 64;
     if ((fileSize >= sliceFileMaxKByte_ * MEGABYTE_CONVERT || (isLastChunk && Utils::IsFileExist(absolutePath)))
-        && (fileName.find("stars_soc.data") == std::string::npos || (fileSize % fileSizeUnit == 0))) {
+        && (fileName.find("stars_soc.data") == std::string::npos || (fileSize % STARS_RECORD_ALIGN_BYTES == 0))) {
         if (!(CreateDoneFile(absolutePath, std::to_string(fileSize), std::to_string(chunkStartTime_[absolutePath]),
             std::to_string(chunkEndTime_[absolutePath]), absolutePath))) {
             MSPROF_LOGE("Failed to create file:%s_%" PRIu64, Utils::BaseName(key).c_str(), sliceNum_[key]);

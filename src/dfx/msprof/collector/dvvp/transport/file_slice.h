@@ -24,6 +24,9 @@ using namespace Analysis::Dvvp::Common::Statistics;
 using namespace analysis::dvvp::common::utils;
 
 constexpr int32_t MEGABYTE_CONVERT = 1024;
+// stars_soc.data is a stream of fixed-size records; downstream parsing rejects files exceeding its
+// max parseable size, so every finalized slice must end on a record boundary (multiple of 64 bytes).
+constexpr int64_t STARS_RECORD_ALIGN_BYTES = 64;
 
 class FileSlice {
 public:
@@ -44,6 +47,8 @@ private:
     int32_t SetChunkTime(const std::string &key, uint64_t startTime, uint64_t endTime);
     int32_t WriteToLocalFiles(const std::string &key, CONST_CHAR_PTR data, int32_t dataLen, int32_t offset, bool isLastChunk, std::string &fileName);
     int32_t WriteDataToFile(const std::string &key, CONST_CHAR_PTR data, int32_t dataLen, int32_t offset);
+    int32_t WriteStarsSliceAligned(const std::string &key, CONST_CHAR_PTR data, int32_t dataLen,
+        bool isLastChunk, std::string &fileName);
     int32_t HandleFileCompletion(const std::string &key, const std::string &fileName, bool isLastChunk);
     int32_t CheckDirAndMessage(SHARED_PTR_ALIA<analysis::dvvp::ProfileFileChunk> fileChunkReq,
         const std::string &storageDir) const;
