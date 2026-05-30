@@ -180,12 +180,13 @@ rtError_t CaptureModel::ExecuteCommon(Stream * const stm, int32_t timeout, const
     RT_LOG(RT_LOG_INFO, "capture model execute, model_id=%u!", Id_());
 
     if (IsCapturing()) {
-        RT_LOG(RT_LOG_ERROR, "model is capturing, can't execute, model_id=%u!", Id_());
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1017, __func__, "model", "Model is in capturing state, status=CAPTURING");
         return RT_ERROR_MODEL_CAPTURED;
     }
 
     if (captureModelStatus_ != RtCaptureModelStatus::READY) {
-        RT_LOG(RT_LOG_ERROR, "model is not ready, can't execute, model_id=%u, status=%d", Id_(), captureModelStatus_);
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1017, __func__, "model",
+            "Model is not ready, status=" + std::to_string(static_cast<int>(captureModelStatus_)));
         return RT_ERROR_MODEL_EXE_FAILED;
     }
 
@@ -513,7 +514,7 @@ rtError_t CaptureModel::BuildSqCq(Stream * const exeStream)
 
     sqCqArray_ = new (std::nothrow) rtDeviceSqCqInfo_t[streamNum];
     COND_RETURN_AND_MSG_OUTER(sqCqArray_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, 
-        std::to_string(sizeof(rtDeviceSqCqInfo_t) * streamNum));
+        sizeof(rtDeviceSqCqInfo_t) * streamNum);
 
     rtError_t error = AllocSqCqProc(streamNum);
     ERROR_PROC_RETURN_MSG_INNER(error, DELETE_A(sqCqArray_);,
@@ -632,7 +633,7 @@ rtError_t CaptureModel::BindSqCq(void)
 
     if (switchInfo_ == nullptr) {
         switchInfo_ = new (std::nothrow) struct sq_switch_stream_info[sqCqNum_]();
-        COND_RETURN_AND_MSG_OUTER(switchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, std::to_string(sizeof(sq_switch_stream_info) * sqCqNum_));
+        COND_RETURN_AND_MSG_OUTER(switchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(sq_switch_stream_info) * sqCqNum_);
     }
 
     /* bind sq to stream */
@@ -832,7 +833,7 @@ rtError_t CaptureModel::SetShapeInfo(const Stream* const stm, const uint32_t tas
     const size_t totalSize = MS_PROF_SHAPE_INFO_SIZE + MS_PROF_SHAPE_HEADER_SIZE + infoSize;
     auto rawMemPtr = std::make_unique<uint8_t []>(totalSize);
     if (unlikely(rawMemPtr == nullptr)) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(totalSize));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, totalSize);
         return RT_ERROR_MEMORY_ALLOCATION;
     }
     MsprofShapeInfo *shapeInfo = RtPtrToPtr<MsprofShapeInfo *, uint8_t *>(rawMemPtr.get());

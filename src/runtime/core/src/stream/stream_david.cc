@@ -171,8 +171,7 @@ rtError_t DavidStream::CreateStreamArgRes()
     } else {
         argManage_ = new (std::nothrow) PcieArgManage(this);
     }
-    COND_RETURN_AND_MSG_OUTER(argManage_ == nullptr, RT_ERROR_CALLOC, ErrorCode::EE1013,
-        std::to_string(sizeof(UbArgManage)));
+    COND_RETURN_AND_MSG_OUTER(argManage_ == nullptr, RT_ERROR_CALLOC, ErrorCode::EE1013, sizeof(UbArgManage));
 
     if ((flags_ & RT_STREAM_FAST_LAUNCH) == 0U) {
         RT_LOG(RT_LOG_INFO, "Non-fast_launch stream does not alloc args res, stream_id=%d, flags=0x%x",
@@ -545,7 +544,7 @@ rtError_t DavidStream::SetupByFlagAndCheck(void)
     taskPublicBuffSize_ = GetSqDepth();
     taskPublicBuff_ = new (std::nothrow) uint32_t[taskPublicBuffSize_];
     COND_RETURN_AND_MSG_OUTER(taskPublicBuff_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-        std::to_string(sizeof(uint32_t) * taskPublicBuffSize_));
+        sizeof(uint32_t) * taskPublicBuffSize_);
     error = CreateArgRecycleList(static_cast<uint32_t>(taskPublicBuffSize_));
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, RT_ERROR_STREAM_NEW, "Failed to create args recycle list, stream_id=%d, size=%u, retCode=%#x.",
         streamId_, taskPublicBuffSize_, static_cast<uint32_t>(error));

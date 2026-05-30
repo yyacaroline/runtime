@@ -443,6 +443,24 @@ TEST_F(KernelTest, Kernel_ParamInfo_CopyParamsToBuffer_MemcpyFailure)
     delete kernel;
 }
 
+TEST_F(KernelTest, Kernel_ParamInfo_CopyParamsToBuffer_NullArrayElement)
+{
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICPU);
+    Program *program = &stubProg;
+    Kernel *kernel = new Kernel("test", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICPU, 10);
+
+    kernel->SetHasParamSummary(true);
+    kernel->SetParamCount(1);
+
+    void *argsArray[1] = {nullptr};
+    char dest[16] = {0};
+
+    rtError_t error = CopyKernelParamsToBuffer(kernel, argsArray, dest);
+    EXPECT_EQ(error, RT_ERROR_INVALID_VALUE);
+
+    delete kernel;
+}
+
 TEST_F(KernelTest, Kernel_ParamInfo_SetAndGetParamTotalSize)
 {
     PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICPU);

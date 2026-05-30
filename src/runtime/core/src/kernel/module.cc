@@ -282,7 +282,7 @@ rtError_t Module::GetPrefetchCnt(const Kernel * const kernelIn, uint32_t &icache
             prefetchMaxSize = aicoreIcachePrefetchSizeMax;
             break;
         default:
-            RT_LOG(RT_LOG_ERROR, "get prefetch cnt failed, kernelAttrType=%d.", kernelIn->GetKernelAttrType());
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Get prefetch cnt failed, kernelAttrType=%d.", kernelIn->GetKernelAttrType());
             return RT_ERROR_INVALID_VALUE;
     }
 
@@ -336,7 +336,7 @@ rtError_t Module::GetPrefetchCnt(const Kernel * const kernelIn, uint32_t &icache
             prefetchMaxSize2 = aivectorIcachePrefetchSizeMax;
             break;
         default:
-            RT_LOG(RT_LOG_ERROR, "get prefetch cnt failed, kernelAttrType=%d.", kernelIn->GetKernelAttrType());
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Get prefetch cnt failed, kernelAttrType=%d.", kernelIn->GetKernelAttrType());
             return RT_ERROR_INVALID_VALUE;
     }
 

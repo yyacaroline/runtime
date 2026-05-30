@@ -108,7 +108,7 @@ rtError_t BinaryLoader::ParseLoadOptions()
         return RT_ERROR_NONE;
     }
     if (loadOptions_->options == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "optionalCfg is not null, but options is nullptr");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Load Options is not nullptr, but loadOptions.options is nullptr.");
         return RT_ERROR_INVALID_VALUE;
     }
 
@@ -121,22 +121,20 @@ rtError_t BinaryLoader::ParseLoadOptions()
             } else if (lazyLoadCfg == LOAD_OPTION_LAZY_LOAD_DISABLE) {
                 isLazyLoad_ = false;
             } else {
-                RT_LOG(RT_LOG_ERROR, "Binary load failed, RT_LOAD_BINARY_OPT_LAZY_LOAD value is illegal, "
-                    "val=%u, should be [0, 1]", lazyLoadCfg);
+                RT_LOG_INNER_MSG(RT_LOG_ERROR, "Lazy load Cfg %u is invalid, valid value is [0, 1].", lazyLoadCfg);
                 return RT_ERROR_INVALID_VALUE;
             }
             RT_LOG(RT_LOG_DEBUG, "Parse binary load option isLazyLoad=%u", lazyLoadCfg);
         } else if (optionId == RT_LOAD_BINARY_OPT_MAGIC) {
             if (isLoadFromFile_) {
-                RT_LOG(RT_LOG_ERROR, "Binary load failed, RT_LOAD_BINARY_OPT_MAGIC does not support in load from file");
+                RT_LOG_INNER_MSG(RT_LOG_ERROR, "Binary load failed, RT_LOAD_BINARY_OPT_MAGIC does not support in load from file.");
                 return RT_ERROR_INVALID_VALUE;
             }
             const uint32_t magic = loadOptions_->options[idx].value.magic;
             if ((magic != RT_DEV_BINARY_MAGIC_ELF) && (magic != RT_DEV_BINARY_MAGIC_ELF_AICUBE) &&
                 (magic != RT_DEV_BINARY_MAGIC_ELF_AIVEC)) {
-                RT_LOG(RT_LOG_ERROR, "binary load failed, RT_LOAD_BINARY_OPT_MAGIC value=%#x is illegal, "
-                    "should be {%#x, %#x, %#x}", magic, RT_DEV_BINARY_MAGIC_ELF, RT_DEV_BINARY_MAGIC_ELF_AICUBE,
-                    RT_DEV_BINARY_MAGIC_ELF_AIVEC);
+                RT_LOG_INNER_MSG(RT_LOG_ERROR, "magic %#x is invalid, valid value is {%#x, %#x, %#x}.",
+                    magic, RT_DEV_BINARY_MAGIC_ELF, RT_DEV_BINARY_MAGIC_ELF_AICUBE, RT_DEV_BINARY_MAGIC_ELF_AIVEC);
                 return RT_ERROR_INVALID_VALUE;
             }
             magic_ = magic;
@@ -145,8 +143,7 @@ rtError_t BinaryLoader::ParseLoadOptions()
             const rtError_t ret = SetCpuBinInfo(loadOptions_->options[idx].value);
             ERROR_RETURN(ret, "set cpu bin info failed! ret=%#x", ret);
         } else {
-            RT_LOG(RT_LOG_ERROR, "Binary load failed, load option type[%d] is illegal, should be [1, %u)", optionId,
-                RT_LOAD_BINARY_OPT_MAX);
+            RT_LOG_OUTER_MSG_INVALID_PARAM(optionId, "[1, " + std::to_string(RT_LOAD_BINARY_OPT_MAX) + ")");
             return RT_ERROR_INVALID_VALUE;
         }
     }
@@ -290,7 +287,7 @@ ElfProgram* BinaryLoader::LoadFromFile()
 
     ElfProgram *prog = new (std::nothrow) ElfProgram(kernelAttrType);
     if (prog == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(ElfProgram)));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(ElfProgram));
         char_t *buffer = RtPtrToPtr<char_t *, void *>(binaryBuffer_);
         DELETE_A(buffer);
         return nullptr;
@@ -338,7 +335,7 @@ PlainProgram* BinaryLoader::LoadCpuKernelFromData()
 {
     PlainProgram *prog = new (std::nothrow) PlainProgram(RT_KERNEL_REG_TYPE_CPU, RT_KERNEL_ATTR_TYPE_AICPU);
     if (prog == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(PlainProgram)));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(PlainProgram));
         return nullptr;
     }
 
@@ -359,7 +356,7 @@ ElfProgram* BinaryLoader::LoadFromData() const
 
     ElfProgram *prog = new (std::nothrow) ElfProgram(kernelAttrType);
     if (prog == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(ElfProgram)));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(ElfProgram));
         return nullptr;
     }
     RT_LOG(RT_LOG_INFO, "New ElfProgram ok, magic=%u, kernelAttrType=%d, Runtime_alloc_size=%zu",
@@ -391,7 +388,7 @@ PlainProgram* BinaryLoader::ParseJsonAndRegisterCpuKernel()
 {
     PlainProgram *prog = new (std::nothrow) PlainProgram(RT_KERNEL_REG_TYPE_CPU, RT_KERNEL_ATTR_TYPE_AICPU);
     if (prog == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(PlainProgram)));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(PlainProgram));
         return nullptr;
     }
     RT_LOG(RT_LOG_INFO, "New PlainProgram ok, Runtime_alloc_size %zu", sizeof(PlainProgram));

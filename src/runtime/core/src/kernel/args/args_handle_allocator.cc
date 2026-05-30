@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "args_handle_allocator.hpp"
+#include "error_message_manage.hpp"
 
 namespace cce {
 namespace runtime {
@@ -39,10 +40,11 @@ rtError_t ArgsHandleAllocator::CreateInnerArgsHandle()
     if (localArgsHandle_ == nullptr) {
         size_t size = sizeof(RtArgsHandle) + (sizeof(ParaDetail) * MAX_PARAM_CNT);
         uint8_t *argsHandleBuff = new (std::nothrow) uint8_t[size];
-        COND_RETURN_ERROR(argsHandleBuff == nullptr, RT_ERROR_MEMORY_ALLOCATION, "new args handle failed");
+        COND_RETURN_AND_MSG_OUTER(argsHandleBuff == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, size);
         localArgsHandle_ = RtPtrToPtr<RtArgsHandle *, uint8_t *>(argsHandleBuff);
         uint8_t *buffer = new (std::nothrow) uint8_t[MAX_ARGS_BUFF_SIZE];
         if (buffer == nullptr) {
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, MAX_ARGS_BUFF_SIZE);
             DELETE_A(argsHandleBuff);
             return RT_ERROR_MEMORY_ALLOCATION;
         }

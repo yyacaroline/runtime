@@ -4810,8 +4810,9 @@ rtError_t ApiErrorDecorator::CheckDeviceIdIsValid(const int32_t devId) const
     NULL_PTR_RETURN_MSG(npuDrv, RT_ERROR_DRV_NULL);
     const rtError_t error = npuDrv->GetDeviceCount(&devCnt);
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "Get device cnt failed, retCode=%#x", static_cast<uint32_t>(error));
+    COND_RETURN_ERROR_MSG_INNER(devCnt < 0, RT_ERROR_INVALID_VALUE, "The device count %d obtained from the driver is invalid.", devCnt);
     COND_RETURN_AND_MSG_OUTER_WITH_PARAM((devId < 0) || ((devId >= devCnt) && (devCnt != 0)), RT_ERROR_DEVICE_ID, 
-        devId, "[0, " + std::to_string(devCnt) + ")");    
+        devId, "[0, " + std::to_string(devCnt) + ")");
     return RT_ERROR_NONE;
 }
 

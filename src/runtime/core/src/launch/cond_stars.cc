@@ -45,7 +45,7 @@ rtError_t CondStreamSwitchEx(
         rtStreamSwitchTask->id, error);
 
     error = curCtx->Device_()->SubmitTask(rtStreamSwitchTask, curCtx->TaskGenCallback_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switch task submit failed, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switch task submit failed, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtStreamSwitchTask, streamId);
 
@@ -81,7 +81,7 @@ rtError_t CondStreamSwitchN(
     error = devArgLdr->LoadStreamSwitchNArgs(
         stm, valuePtr, size * elementSize, trueStreamPtr, elementSize, dataType, &result);
 
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switchN args load failed, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switchN args load failed, retCode=%#x.", error);
 
     error = StreamSwitchNTaskInit(
         rtStreamSwitchNTask, ptr, size, result.valuePtr, result.trueStreamPtr, elementSize, dataType);
@@ -90,7 +90,7 @@ rtError_t CondStreamSwitchN(
         rtStreamSwitchNTask->id, error);
 
     error = curCtx->Device_()->SubmitTask(rtStreamSwitchNTask, curCtx->TaskGenCallback_());
-    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switchN task submit failed, retCode=%#x", error);
+    ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Stream switchN task submit failed, retCode=%#x.", error);
 
     GET_THREAD_TASKID_AND_STREAMID(rtStreamSwitchNTask, streamId);
 

@@ -415,7 +415,7 @@ void SetKernelLaunchParams(const Stream *const stm, const rtArgsEx_t *const args
 
     launchParam.placeHoderPtr = new (std::nothrow) rtHostInputInfo_t[placeHoderNum];
     if (launchParam.placeHoderPtr == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtHostInputInfo_t) * placeHoderNum));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(rtHostInputInfo_t) * placeHoderNum);
         return;
     }
     launchParam.placeHoderNum = placeHoderNum;
@@ -441,8 +441,8 @@ rtError_t CopyKernelParamsToBuffer(const Kernel *kernel, void **argsArray, void 
     for (uint32_t i = 0U; i < paramCount; i++) {
         uint32_t offset = 0U;
         uint32_t size = 0U;
-        COND_RETURN_ERROR(argsArray[i] == nullptr, RT_ERROR_INVALID_VALUE,
-                       "argsArray[%u] is null.", i);
+        COND_RETURN_AND_MSG_OUTER(argsArray[i] == nullptr,
+            RT_ERROR_INVALID_VALUE, ErrorCode::EE1004, __func__, std::string("argsArray[") + std::to_string(i) + std::string("]"));
         rtError_t error = kernel->GetParamInfo(i, &offset, &size);
         COND_RETURN_ERROR((error != RT_ERROR_NONE), error,
                        "GetParamInfo failed, index=%u, retCode=%#x.", i, static_cast<uint32_t>(error));        
@@ -450,8 +450,9 @@ rtError_t CopyKernelParamsToBuffer(const Kernel *kernel, void **argsArray, void 
         void *destAddr = static_cast<uint8_t *>(dest) + offset;
         const errno_t ret = memcpy_s(destAddr, static_cast<size_t>(size), 
                                      argsArray[i], static_cast<size_t>(size));
-        COND_RETURN_ERROR((ret != EOK), RT_ERROR_SEC_HANDLE,
-                        "memcpy_s failed, index=%u, offset=%u, size=%u, ret=%d.", i, offset, size, ret);     
+        COND_RETURN_ERROR_MSG_INNER((ret != EOK), RT_ERROR_SEC_HANDLE,
+                        "Failed to call memcpy_s to copy argsArray[%u], dest=%p, dest_max=%zu, src=%p, count=%zu, retCode=%d.",
+                        i, destAddr, static_cast<size_t>(size), argsArray[i], static_cast<size_t>(size), ret);     
     }
     return RT_ERROR_NONE;
 }

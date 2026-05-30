@@ -153,7 +153,7 @@ std::unique_ptr<char_t[]> GetStringTableCopy(const char_t * const src, const uin
     /* + 1 so that we can '\0' terminate invalid string table sections.  */
     std::unique_ptr<char_t[]> strTbl(new (std::nothrow) char_t[size + 1UL]);
     if (strTbl == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(size + 1UL));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, size + 1UL);
         return nullptr;
     }
 
@@ -203,7 +203,7 @@ int32_t Get64bitSectionHeaders(rtElfData * const elfData)
 
     elfData->section_headers = new (std::nothrow) Elf_Internal_Shdr[num];
     if (elfData->section_headers == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(Elf_Internal_Shdr) * num));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(Elf_Internal_Shdr) * num);
         return ELF_FAIL;
     }
 
@@ -283,7 +283,7 @@ std::unique_ptr<Elf_Internal_Sym[]> Get64bitElfSymbols(const rtElfData * const e
 
     std::unique_ptr<Elf_Internal_Sym[]> isyms(new (std::nothrow) Elf_Internal_Sym[number]);
     if (isyms == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(Elf_Internal_Sym) * number));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(Elf_Internal_Sym) * number);
         return nullptr;
     }
 
@@ -930,7 +930,7 @@ uint32_t GetRatioEnum(ElfKernelInfo * elfKernelInfo)
 rtError_t ConvertTaskRation(ElfKernelInfo * elfKernelInfo, uint32_t& taskRation)
 {
     if (elfKernelInfo == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "elfKernelInfo is null");
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "elfKernelInfo is null");
         return RT_ERROR_INVALID_VALUE;
     }
 
@@ -999,7 +999,7 @@ rtError_t SetKernelFunctionEntry(RtKernel * const kernels, const ElfKernelInfo *
     } else if (functionEntryFlag == KERNEL_FUNCTION_ENTRY_DISABLE) {
         metaInfo->funcEntryType = KernelFunctionEntryType::KERNEL_TYPE_NOT_SUPPORT_FUNCTION_ENTRY;
     } else {
-        RT_LOG(RT_LOG_ERROR, "kernel function meta info error! kernel name=%s, functionEntryFlag=%u",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "Kernel function meta info error, kernel name=%s, functionEntryFlag=%u.",
             kernels->name, functionEntryFlag);
         return RT_ERROR_INVALID_VALUE;
     }
@@ -1035,6 +1035,7 @@ static rtError_t UpdateCachedParamInfos(RtKernelMetaInfo *metaInfo,
     );
 
     if (metaInfo->paramInfos == nullptr) {
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(ElfParamInfo) * kernelInfo->paramCount);
         RT_LOG(RT_LOG_ERROR, "Failed to allocate memory for paramInfos, kernel_name=%s, paramCount=%u.",
                kernelName, kernelInfo->paramCount);
         return RT_ERROR_MEMORY_ALLOCATION;
@@ -1534,7 +1535,7 @@ int32_t GetEhSizeOffset(void * const elfData, const uint32_t elfLen, uint32_t* o
     rtElfData *elfDataF = new (std::nothrow) rtElfData();
 
     if (elfDataF == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new elfDataF failed.");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(rtElfData));
         return ELF_FAIL;
     }
 
@@ -1671,7 +1672,7 @@ rtError_t GetBinaryMetaInfo(const rtElfData * const elfData, const uint16_t type
     if ((error != RT_ERROR_NONE) && (numOfMeta == 0U)) {
         return RT_ERROR_NONE;
     }
-    ERROR_RETURN(error, "Get meta section failed, meta type=%u, numOfMeta=%zu, ret=%d", type, numOfMeta, error);
+    ERROR_RETURN_MSG_INNER(error, "Get meta section failed, meta type=%u, numOfMeta=%zu, ret=%d.", type, numOfMeta, error);
 
     auto metaInfo = GetMetaInfo(elfData, section, type);
     // numOfMeta为0不需要特殊处理

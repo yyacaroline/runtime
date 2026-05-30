@@ -30,7 +30,7 @@ rtError_t StarsLaunchDvppRRProcess(Stream * const stm)
     Device* const dev = stm->Device_();
     NULL_PTR_RETURN_MSG(dev, RT_ERROR_DEVICE_NULL);
     const uint64_t addr = RtPtrToValue<void *>(stm->GetDvppRRTaskAddr());
-    COND_RETURN_ERROR((addr == 0ULL), RT_ERROR_MEMORY_ALLOCATION,
+    COND_RETURN_ERROR_MSG_INNER((addr == 0ULL), RT_ERROR_MEMORY_ALLOCATION,
         "Dvpp task alloc mem failed, stream_id=%d.", streamId);
     for (uint32_t i = 0U; i < DVPP_RR_TASK_NUM; i++) {
         TaskInfo submitTask = {};
@@ -75,7 +75,7 @@ rtError_t StarsLaunch(const void * const sqe, const uint32_t sqeLen, Stream * co
 
     error = dev->SubmitTask(rtStarsCommonTask, nullptr, &taskId);
     ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE,
-        "task submit failed, streamId=%d, taskId=%hu, sqeType=%hu, retCode=%#x",
+        "Task submit failed, streamId=%d, taskId=%hu, sqeType=%hu, retCode=%#x.",
         streamId, rtStarsCommonTask->id, sqeType, error);
 
     SET_THREAD_TASKID_AND_STREAMID(streamId, taskId);

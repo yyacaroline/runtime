@@ -688,6 +688,197 @@ TEST_F(RuntimeTest, feature_version_1)
     EXPECT_EQ(result, true);
 }
 
+TEST_F(RuntimeTest, GetElfOffset_NullElfData)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    uint32_t offset = 0;
+    EXPECT_EQ(rtInstance->GetElfOffset(nullptr, 0, &offset), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(RuntimeTest, GetElfOffset_NullOffset)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    uint32_t elfData = 0;
+    EXPECT_EQ(rtInstance->GetElfOffset(&elfData, 4, nullptr), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(RuntimeTest, SetWatchDogDevStatus_NullDevice)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->SetWatchDogDevStatus(nullptr, RT_DEVICE_STATUS_ABNORMAL), RT_ERROR_DEVICE_NULL);
+}
+
+TEST_F(RuntimeTest, LookupAddrByFun_KernelNotFound)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    int dummyStub = 0;
+    void *addr = nullptr;
+    EXPECT_EQ(rtInstance->LookupAddrByFun(&dummyStub, nullptr, &addr), RT_ERROR_KERNEL_LOOKUP);
+}
+
+TEST_F(RuntimeTest, LookupAddrAndPrefCntWithHandle_KernelNotFound)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    void *addr = nullptr;
+    uint32_t prefetchCnt = 0;
+    EXPECT_EQ(rtInstance->LookupAddrAndPrefCntWithHandle(nullptr, "nonexistent_kernel", nullptr, &addr, &prefetchCnt),
+              RT_ERROR_KERNEL_LOOKUP);
+}
+
+TEST_F(RuntimeTest, GetPriCtxByDeviceId_InvalidDevId)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->GetPriCtxByDeviceId(RT_MAX_DEV_NUM + 1, 0), nullptr);
+}
+
+TEST_F(RuntimeTest, GetPriCtxByDeviceId_InvalidTsId)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->GetPriCtxByDeviceId(0, RT_MAX_TS_ID + 1), nullptr);
+}
+
+TEST_F(RuntimeTest, GetRefPriCtx_InvalidDevId)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->GetRefPriCtx(RT_MAX_DEV_NUM + 1, 0), nullptr);
+}
+
+TEST_F(RuntimeTest, GetRefPriCtx_InvalidTsId)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->GetRefPriCtx(0, RT_MAX_TS_ID + 1), nullptr);
+}
+
+TEST_F(RuntimeTest, PrimaryContextRetain_InvalidDevId)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    EXPECT_EQ(rtInstance->PrimaryContextRetain(RT_MAX_DEV_NUM + 1), nullptr);
+}
+
+TEST_F(RuntimeTest, FreeAiCpuStreamId_Invalid)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    int64_t oldCnt = rtInstance->GetAicpuCnt();
+    rtInstance->SetAicpuCnt(16);
+    rtInstance->FreeAiCpuStreamId(0);
+    rtInstance->SetAicpuCnt(oldCnt);
+}
+
+TEST_F(RuntimeTest, GetKernelBinByFileName_EmptyFile)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    std::string emptyFile = "/tmp/rt_utest_empty_bin.o";
+    std::ofstream ofs(emptyFile, std::ios::binary);
+    ofs.close();
+
+    char_t *buffer = nullptr;
+    uint32_t length = 0;
+    EXPECT_EQ(rtInstance->GetKernelBinByFileName(emptyFile.c_str(), &buffer, &length), RT_ERROR_INVALID_VALUE);
+    std::remove(emptyFile.c_str());
+}
+
+TEST_F(RuntimeTest, LookupAddrAndPrefCnt_NoProgram)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    PlainProgram prog(RT_KERNEL_ATTR_TYPE_AICPU);
+    Kernel kernel("test", 0ULL, &prog, RT_KERNEL_ATTR_TYPE_AICPU, 0);
+    kernel.program_ = nullptr;
+    rtKernelDetailInfo_t info = {};
+    EXPECT_EQ(rtInstance->LookupAddrAndPrefCnt(&kernel, nullptr, &info), RT_ERROR_KERNEL_LOOKUP);
+}
+
+TEST_F(RuntimeTest, LookupAddrAndPrefCnt_NoProgram_Overload2)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    PlainProgram prog(RT_KERNEL_ATTR_TYPE_AICPU);
+    Kernel kernel("test", 0ULL, &prog, RT_KERNEL_ATTR_TYPE_AICPU, 0);
+    kernel.program_ = nullptr;
+    void *addr = nullptr;
+    uint32_t prefetchCnt = 0;
+    EXPECT_EQ(rtInstance->LookupAddrAndPrefCnt(&kernel, nullptr, &addr, &prefetchCnt), RT_ERROR_KERNEL_LOOKUP);
+}
+
+TEST_F(RuntimeTest, InitSocVersionAndChipType_HalGetSocVersionFail)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    MOCKER(halGetSocVersion).stubs().will(returnValue(DRV_ERROR_INVALID_VALUE));
+    EXPECT_NE(rtInstance->InitSocVersionAndChipType(0), RT_ERROR_NONE);
+}
+
+TEST_F(RuntimeTest, InitSocVersionAndChipType_HalGetDeviceInfoFail)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    MOCKER(halGetSocVersion).stubs().will(returnValue(DRV_ERROR_NOT_SUPPORT));
+    MOCKER(halGetDeviceInfo).stubs().will(returnValue(DRV_ERROR_INVALID_VALUE));
+    EXPECT_NE(rtInstance->InitSocVersionAndChipType(0), RT_ERROR_NONE);
+}
+
+TEST_F(RuntimeTest, LookupAddrAndPrefCnt_NoModule)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Context *ctx = rtInstance->GetPriCtxByDeviceId(0, 0);
+    ASSERT_NE(ctx, nullptr);
+
+    PlainProgram *prog = new PlainProgram(RT_KERNEL_ATTR_TYPE_AICPU);
+    Kernel *kernel = new Kernel("test", 0ULL, prog, RT_KERNEL_ATTR_TYPE_AICPU, 0);
+
+    rtKernelDetailInfo_t info = {};
+    rtError_t ret = rtInstance->LookupAddrAndPrefCnt(kernel, ctx, &info);
+    EXPECT_EQ(ret, RT_ERROR_KERNEL_LOOKUP);
+
+    delete kernel;
+    delete prog;
+}
+
+TEST_F(RuntimeTest, InitSocVersionAndChipType_HalGetDeviceInfoFail2)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    MOCKER(halGetSocVersion).stubs().will(returnValue(DRV_ERROR_NOT_SUPPORT));
+    MOCKER(halGetDeviceInfo).stubs()
+        .will(returnValue(DRV_ERROR_NONE))
+        .then(returnValue(DRV_ERROR_INVALID_VALUE));
+    EXPECT_NE(rtInstance->InitSocVersionAndChipType(0), RT_ERROR_NONE);
+}
+
+TEST_F(RuntimeTest, InitAicpuFlowGw_NoDevice)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    bool oldHaveDevice = rtInstance->isHaveDevice_;
+    rtInstance->isHaveDevice_ = false;
+    EXPECT_EQ(rtInstance->InitAicpuFlowGw(0, nullptr), RT_ERROR_FEATURE_NOT_SUPPORT);
+    rtInstance->isHaveDevice_ = oldHaveDevice;
+}
+
+TEST_F(RuntimeTest, MallocProgramAndReg_InvalidMagic)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    rtDevBinary_t bin = {};
+    bin.magic = 0xDEADBEEF;
+    bin.version = 1;
+    bin.data = nullptr;
+    bin.length = 0;
+    Program *prog = nullptr;
+    EXPECT_EQ(rtInstance->MallocProgramAndReg(&bin, &prog), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(RuntimeTest, SetAicpuAttr_TsdError)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    auto oldFunc = rtInstance->tsdSetAttr_;
+    rtInstance->tsdSetAttr_ = [](const char_t *, const char_t *) { return static_cast<TDT_StatusType>(1); };
+    EXPECT_EQ(rtInstance->SetAicpuAttr("key", "val"), RT_ERROR_DRV_TSD_ERR);
+    rtInstance->tsdSetAttr_ = oldFunc;
+}
+
+TEST_F(RuntimeTest, ProfilerStop_ConfigMismatch)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    bool oldMode = rtInstance->profileLogModeEnable_;
+    rtInstance->profileLogModeEnable_ = true;
+    EXPECT_EQ(rtInstance->ProfilerStop(0, 0, nullptr, 0), RT_ERROR_PROF_STATUS);
+    rtInstance->profileLogModeEnable_ = oldMode;
+}
+
 class RuntimeTest2 : public testing::Test
 {
 protected:

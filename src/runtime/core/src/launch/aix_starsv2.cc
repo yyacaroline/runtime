@@ -219,13 +219,13 @@ static rtError_t CheckUpdateDavidTaskInfo(const TaskInfo * const updateTask, con
                                           const Stream * const stm)
 {
     if (updateTask->stream->Model_() == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "The update task must be a sinked task, stream_id=%d, task_id=%hu.",
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The update task must be a sinked task, stream_id=%d, task_id=%hu.",
                updateTask->stream->Id_(), updateTask->id);
         return RT_ERROR_MODEL_NULL;
     }
 
     if (stm->Model_() != nullptr) {
-        RT_LOG(RT_LOG_ERROR, "The update stream must be a single operator stream, "
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "The update stream must be a single operator stream, "
             "stream_id=%d, task_id=%hu.",
             updateTask->stream->Id_(), updateTask->id);
         return RT_ERROR_STREAM_MODEL;
@@ -234,7 +234,7 @@ static rtError_t CheckUpdateDavidTaskInfo(const TaskInfo * const updateTask, con
     if ((updateTask->u.aicTaskInfo.kernel->GetMixType() != kernel->GetMixType()) ||
         (updateTask->u.aicTaskInfo.kernel->GetFuncType() != kernel->GetFuncType()) ||
         (updateTask->u.aicTaskInfo.kernel->GetKernelAttrType() != kernel->GetKernelAttrType())) {
-        RT_LOG(RT_LOG_ERROR, "check kernel type failed, stream_id=%d, task_id=%hu, "
+        RT_LOG_INNER_MSG(RT_LOG_ERROR, "check kernel type failed, stream_id=%d, task_id=%hu, "
             "old mixType=%u, funcType=%u, kernelAttrType=%d, "
             "new mixType=%u, funcType=%u, kernelAttrType=%d.",
             updateTask->stream->Id_(), updateTask->id, updateTask->u.aicTaskInfo.kernel->GetMixType(),
@@ -397,7 +397,7 @@ rtError_t StreamLaunchKernelWithHandle(void * const progHandle, const uint64_t t
 
     if (kernelTask->isUpdateSinkSqe == 1U) {
         error = CheckUpdateDavidTaskInfo(kernelTask, registeredKernel, stm);
-        ERROR_RETURN_MSG_INNER(error, "Failed to check update task info, stream_id=%d, d, retCode=%#x.", stm->Id_(),
+        ERROR_RETURN_MSG_INNER(error, "Failed to check update task info, stream_id=%d, retCode=%#x.", stm->Id_(),
                                static_cast<uint32_t>(error));
     } else {
         SaveTaskCommonInfo(kernelTask, dstStm, pos);

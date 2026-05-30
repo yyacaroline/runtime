@@ -404,7 +404,7 @@ void SetStarsResultForModelExecuteTask(TaskInfo * const taskInfo, const rtLogicC
         }
         if (logicCq.errorType == 0x4U) {
             taskInfo->errorCode = TS_ERROR_TASK_TIMEOUT;
-            RT_LOG(RT_LOG_ERROR, "ModelExecuteTask timout, model_id=%u, stream_id=%hu, task_id=%hu",
+            RT_LOG(RT_LOG_ERROR, "ModelExecuteTask timeout, model_id=%u, stream_id=%hu, task_id=%hu",
                    modelExecuteTaskInfo->modelId, taskInfo->stream->Id_(), taskInfo->id);
             return;
         }

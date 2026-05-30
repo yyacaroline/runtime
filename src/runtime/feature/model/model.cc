@@ -174,7 +174,7 @@ rtError_t Model::Setup(Context * const contextIn)
     } else {
         labelAllocator_ = new (std::nothrow) LabelAllocator(static_cast<uint16_t>(RT_MAX_LABEL_NUM));
     }
-    COND_RETURN_AND_MSG_OUTER(labelAllocator_ == nullptr, RT_ERROR_LABEL_ALLOCATOR, ErrorCode::EE1013, std::to_string(sizeof(LabelAllocator)));
+    COND_RETURN_AND_MSG_OUTER(labelAllocator_ == nullptr, RT_ERROR_LABEL_ALLOCATOR, ErrorCode::EE1013, sizeof(LabelAllocator));
 
     if (dev->IsStarsPlatform()) {
         error = dev->Driver_()->DevMemAlloc(&labelCountPtr_, sizeof(uint64_t), RT_MEMORY_DDR, dev->Id_());
@@ -775,7 +775,7 @@ rtError_t Model::BuildSqCqForAutoSplit()
         modelSwitchInfo_ = new (std::nothrow) struct sq_switch_stream_info[streamNum]();
         COND_PROC_RETURN_AND_MSG_OUTER(modelSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, 
             RT_LOG(RT_LOG_ERROR, "new sq switch info failed, model_id=%u, auto_split_sq=%d, sq_num=%u.", Id_(), IsAutoSplitSq(), streamNum),
-            std::to_string(sizeof(sq_switch_stream_info) * streamNum));  
+            sizeof(sq_switch_stream_info) * streamNum);  
     }
     uint32_t index = 0U;
     for (auto stm : StreamList_()) {
@@ -1410,7 +1410,8 @@ rtError_t Model::PacketAllStreamInfo(rtAicpuModelInfo_t * const aicpuModelInfoIn
 {
     const size_t streamInfoSize = aicpuModelInfoIn->streamInfoNum * sizeof(rtModelStreamInfo_t);
     rtModelStreamInfo_t *streamInfo = new (std::nothrow)rtModelStreamInfo_t[aicpuModelInfoIn->streamInfoNum];
-    COND_RETURN_AND_MSG_OUTER(streamInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, std::to_string(sizeof(rtModelStreamInfo_t) * aicpuModelInfoIn->streamInfoNum));
+    COND_RETURN_AND_MSG_OUTER(streamInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION,
+        ErrorCode::EE1013, sizeof(rtModelStreamInfo_t) * aicpuModelInfoIn->streamInfoNum);
 
     rtModelStreamInfo_t *curStreamInfo = streamInfo;
     for (Stream * const streamObj : streams_) {
@@ -1469,7 +1470,8 @@ rtError_t Model::PacketAicpuTaskInfo(rtAicpuModelInfo_t * const infoAicpuModel)
     const uint64_t aicpuTaskSize = infoAicpuModel->aicpuTaskNum * sizeof(rtAicpuTaskInfo_t);
 
     rtAicpuTaskInfo_t *taskInfo = new (std::nothrow)rtAicpuTaskInfo_t[infoAicpuModel->aicpuTaskNum];
-    COND_RETURN_AND_MSG_OUTER(taskInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, std::to_string(sizeof(rtAicpuTaskInfo_t) * infoAicpuModel->aicpuTaskNum));
+    COND_RETURN_AND_MSG_OUTER(taskInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
+        sizeof(rtAicpuTaskInfo_t) * infoAicpuModel->aicpuTaskNum);
     rtAicpuTaskInfo_t *curTaskInfo = taskInfo;
     for (auto &iter : mapAicpuTask_) {
         for (auto &tempTask : iter.second) {

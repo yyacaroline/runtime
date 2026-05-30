@@ -1344,3 +1344,19 @@ TEST_F(ELFTest, GetKernelTlvInfo_MultipleTlv)
     }
     delete elfData;
 }
+
+TEST_F(ELFTest, GetBinaryMetaInfo_Error)
+{
+    rtElfData *tempData = new rtElfData;
+    (void)ProcessObject((char_t *)elf_o, tempData);
+    if (tempData->section_headers != nullptr) {
+        delete [] tempData->section_headers;
+    }
+    delete tempData;
+
+    rtElfData elfData = {};
+    void *data = nullptr;
+    size_t dataSize = 0;
+    rtError_t ret = GetBinaryMetaInfo(&elfData, 99, 1, &data, &dataSize);
+    EXPECT_NE(ret, RT_ERROR_NONE);
+}

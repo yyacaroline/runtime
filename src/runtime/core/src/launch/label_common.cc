@@ -23,7 +23,7 @@ rtError_t CondLabelCreate(Label** const result, Model* const mdl, Context* const
     rtError_t error = RT_ERROR_NONE;
     Label* newLabel = new (std::nothrow) Label(mdl);
     COND_GOTO_MSG_OUTER(newLabel == nullptr, ERROR_RETURN, error, RT_ERROR_LABEL_NEW,
-        ErrorCode::EE1013, std::to_string(sizeof(Label)));
+        ErrorCode::EE1013, sizeof(Label));
 
     error = newLabel->Setup(ctx);
     ERROR_GOTO_MSG_INNER(error, ERROR_RECYCLE, "Setup label failed, retCode=%#x.", error);

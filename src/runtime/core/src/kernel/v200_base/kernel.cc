@@ -53,7 +53,7 @@ rtError_t GetPrefetchCnt(Kernel * const kernel)
             prefetchMaxSize2 = aivectorIcachePrefetchSizeMax;
             break;
         default:
-            RT_LOG(RT_LOG_ERROR, "get prefetch cnt failed, kernelAttrType=%d.", kernel->GetKernelAttrType());
+            RT_LOG_INNER_MSG(RT_LOG_ERROR, "Get prefetch cnt failed, kernelAttrType=%d.", kernel->GetKernelAttrType());
             return RT_ERROR_INVALID_VALUE;
     }
 

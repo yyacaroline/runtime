@@ -730,7 +730,7 @@ rtError_t MdlAddEndGraph(Model * const mdl, Stream * const stm, const uint32_t f
             RT_LOG(RT_LOG_INFO, "create notify, stream_id=%d", stm->Id_());
             notify = new (std::nothrow) Notify(stm->Device_()->Id_(), stm->Device_()->DevGetTsId());
             if (notify == nullptr) {
-                RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(Notify)));
+                RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(Notify));
                 return RT_ERROR_NOTIFY_NEW;
             }
 

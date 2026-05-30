@@ -329,6 +329,24 @@ TEST_F(TaskTest, model_execute_task_print)
     rtStreamDestroy(stream);
 }
 
+TEST_F(TaskTest, SetStarsResult_ModelExecuteTask_Timeout)
+{
+    TaskInfo task = {};
+    rtStream_t stream = NULL;
+    EXPECT_EQ(rtStreamCreate(&stream, 0), RT_ERROR_NONE);
+    InitByStream(&task, rt_ut::UnwrapOrNull<Stream>(stream));
+    ModelExecuteTaskInit(&task, NULL, 0, 1);
+
+    rtLogicCqReport_t logicCq = {};
+    logicCq.errorType = 0x4U;
+    logicCq.errorCode = 0;
+
+    SetStarsResultForModelExecuteTask(&task, logicCq);
+    EXPECT_EQ(task.errorCode, TS_ERROR_TASK_TIMEOUT);
+
+    rtStreamDestroy(stream);
+}
+
 TEST_F(TaskTest, davinci_kernel_task_print)
 {
     TaskInfo task = {};

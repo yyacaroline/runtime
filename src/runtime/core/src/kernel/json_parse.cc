@@ -36,7 +36,7 @@ rtError_t GetJsonObj(const std::string &path, std::string &jsonFileRealPath,
     try {
         kernelJsonObj = nlohmann::json::parse(f);
     } catch (nlohmann::json::exception &e) {
-        RT_LOG(RT_LOG_ERROR, "Parse kenerl json file=[%s] failed, because %s.", jsonFileRealPath.c_str(), e.what());
+        RT_LOG(RT_LOG_ERROR, "Parse kernel json file=[%s] failed, because %s.", jsonFileRealPath.c_str(), e.what());
         return RT_ERROR_INVALID_VALUE;
     }
 

@@ -188,7 +188,6 @@ rtError_t CheckCaptureModelSupportSoftwareSq(Device* const dev)
     return RT_ERROR_NONE;
 }
 rtError_t CheckCaptureModelForUpdate(const Stream* stm) {
-    NULL_PTR_RETURN(stm, RT_ERROR_STREAM_NULL);
     Device* dev = stm->Device_();
     static rtError_t isSupportResult = CheckCaptureModelSupportSoftwareSq(dev);
     COND_RETURN_WITH_NOLOG((isSupportResult != RT_ERROR_NONE), isSupportResult);
@@ -203,10 +202,8 @@ rtError_t CheckCaptureModelForUpdate(const Stream* stm) {
         RawDevice* const rawDev = dynamic_cast<RawDevice *>(dev);
         rawDev->PollEndGraphNotifyInfoByModelId(mdl->Id_());
         if (!captureModel->CanUpdate()) {
-            RT_LOG_INNER_MSG(RT_LOG_ERROR,
-                "The ACL Graph model %u bound to the current stream %d does not meet the update condition. "
-                "All ACL Graph models in the running or capture state cannot be updated, capture_model_status=%d.",
-                captureModel->Id_(), stm->Id_(), static_cast<int>(captureModel->GetCaptureModelStatus()));
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1017, __func__, "model",
+                "Model is in running or capture state, status=" + std::to_string(static_cast<int>(captureModel->GetCaptureModelStatus())));
             return RT_ERROR_MODEL_UPDATE_FAILED;    
         }
     }

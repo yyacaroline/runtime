@@ -151,7 +151,7 @@ rtError_t KernelTable::AllocKernelArr()
     if (kernelArr_ == nullptr) {
         kernelArr_ = new (std::nothrow) rtKernelArr_t[kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC];
         COND_RETURN_AND_MSG_OUTER(kernelArr_ == nullptr, RT_ERROR_CALLOC, ErrorCode::EE1013,
-            std::to_string(sizeof(rtKernelArr_t) * kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC));
+            sizeof(rtKernelArr_t) * kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC);
         RT_LOG(RT_LOG_DEBUG, "KernelTable AllocKernelArr success.");
     } else if (rtKernelArrPos_ >= kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC) {
         kernelArrAllocTimes_ += 1U;
@@ -159,7 +159,7 @@ rtError_t KernelTable::AllocKernelArr()
                       new (std::nothrow) rtKernelArr_t[kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC];
         if (kernelArrTmp == nullptr) {
             RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013,
-                std::to_string(sizeof(rtKernelArr_t) * kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC));
+                sizeof(rtKernelArr_t) * kernelArrAllocTimes_ * KERNEL_ARRAY_SIZE_PER_ALLOC);
             return RT_ERROR_CALLOC;
         }
         const uint32_t copySize = static_cast<uint32_t>(sizeof(rtKernelArr_t)) *

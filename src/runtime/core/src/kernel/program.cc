@@ -410,7 +410,7 @@ rtError_t Program::BuildTilingTbl(TilingTabl **tilingTab, uint32_t *kernelLen)
     const uint32_t size = kernelPos_;
     TilingTabl *tilingTabInfo = (TilingTabl *)malloc(sizeof(TilingTabl) * size);
     if (tilingTabInfo == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "malloc fail size = %u.", (sizeof(TilingTabl) * size));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(TilingTabl) * size);
         kernelMapLock_.Unlock();
         return RT_ERROR_PROGRAM_SIZE;
     }
@@ -457,8 +457,8 @@ rtError_t Program::DavidBuildTilingTblForNewFlow(TilingTablForDavid **tilingTab,
     kernelMapLock_.Lock();
     const uint32_t size = kernelPos_;
     TilingTablForDavid* tilingTabInfo = (TilingTablForDavid*)malloc(sizeof(TilingTablForDavid) * size);
-    COND_PROC_RETURN_ERROR(tilingTabInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION, kernelMapLock_.Unlock(),	 
-         "Call malloc failed, copy size is %u", (sizeof(TilingTablForDavid) * size));
+    COND_PROC_RETURN_AND_MSG_OUTER(tilingTabInfo == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013, kernelMapLock_.Unlock(),
+        sizeof(TilingTablForDavid) * size);
     uint64_t function1 = 0ULL;
     uint64_t function2 = 0ULL;
     rtError_t err = RT_ERROR_NONE;
@@ -504,7 +504,7 @@ rtError_t Program::BuildTilingTblForDavid(const Module *mdl, TilingTablForDavid 
     const uint32_t size = kernelPos_;
     TilingTablForDavid *tilingTabInfo = (TilingTablForDavid *)malloc(sizeof(TilingTablForDavid) * size);
     if (tilingTabInfo == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "malloc fail size = %u.", (sizeof(TilingTablForDavid) * size));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(TilingTablForDavid) * size);
         kernelMapLock_.Unlock();
         return RT_ERROR_PROGRAM_SIZE;
     }
@@ -612,12 +612,12 @@ rtError_t Program::CopyKernelLiteralNameToDevice(const std::string &literalName,
     void *devAddr = nullptr;
     const rtMemType_t memType = runtime->GetTsMemType(MEM_REQUEST_FEATURE_DEFAULT, static_cast<uint64_t>(nameSize));
 	rtError_t ret = curDrv->DevMemAlloc(&devAddr, nameSize, memType, devId);
-    ERROR_RETURN(ret, "fail to alloc device memory for literalName, ret=%d, devId=%u.", ret, devId);
+    ERROR_RETURN(ret, "Failed to alloc device memory for literalName, ret=%d, devId=%u.", ret, devId);
     
     // copy soName and funcName to device
     ret = curDrv->MemCopySync(devAddr, nameSize, literalName.c_str(), nameSize, RT_MEMCPY_HOST_TO_DEVICE);
     if (ret != RT_ERROR_NONE) {
-        RT_LOG(RT_LOG_ERROR, "fail to copy literalName to device, ret=%d, devId=%u.", ret, devId);
+        RT_LOG(RT_LOG_ERROR, "Failed to copy literalName to device, ret=%d, devId=%u.", ret, devId);
         (void)curDrv->DevMemFree(devAddr, devId);
         return ret;
     }   
@@ -644,7 +644,7 @@ rtError_t Program::StoreKernelLiteralNameToDevice(Kernel *const kernel)
         soNameDevAddr = iterSoName->second;
     } else {
         rtError_t ret = CopyKernelLiteralNameToDevice(kernel->GetCpuKernelSo(), &soNameDevAddr, curCtx->Device_());
-        ERROR_RETURN(ret, "fail to copy soName to device, ret=%d.", ret);
+        ERROR_RETURN(ret, "Failed to copy soName to device, ret=%d.", ret);
         soNameDevAddrMap_[devId][kernel->GetCpuKernelSo()] = soNameDevAddr;
     }
 
@@ -654,7 +654,7 @@ rtError_t Program::StoreKernelLiteralNameToDevice(Kernel *const kernel)
         funcNameDevAddr = iterFuncName->second;
     } else {
         rtError_t ret = CopyKernelLiteralNameToDevice(kernel->GetCpuFuncName(), &funcNameDevAddr, curCtx->Device_());
-        ERROR_RETURN(ret, "fail to copy funcName to device, ret=%d.", ret);
+        ERROR_RETURN(ret, "Failed to copy funcName to device, ret=%d.", ret);
         funcNameDevAddrMap_[devId][kernel->GetCpuFuncName()] = funcNameDevAddr;
     }
     kernel->SetKernelLiteralNameDevAddr(soNameDevAddr, funcNameDevAddr, devId);
@@ -669,7 +669,7 @@ rtError_t Program::FreeKernelLiteralNameDevMem(const Device *const device)
     for (auto iter = soNameDevAddrMap_[deviceId].begin(); iter != soNameDevAddrMap_[deviceId].end(); ) {
         if (iter->second != nullptr) {
             rtError_t ret = curDrv->DevMemFree(iter->second, deviceId);
-            ERROR_RETURN(ret, "fail to free soNameDevMem %s, ret=%d, devId=%u.", iter->first.c_str(), ret, deviceId);
+            ERROR_RETURN(ret, "Failed to free soNameDevMem %s, ret=%d, devId=%u.", iter->first.c_str(), ret, deviceId);
         }
         iter = soNameDevAddrMap_[deviceId].erase(iter);
     }
@@ -677,7 +677,7 @@ rtError_t Program::FreeKernelLiteralNameDevMem(const Device *const device)
     for (auto iter = funcNameDevAddrMap_[deviceId].begin(); iter != funcNameDevAddrMap_[deviceId].end(); ) {
         if (iter->second != nullptr) {
             rtError_t ret = curDrv->DevMemFree(iter->second, deviceId);
-            ERROR_RETURN(ret, "fail to free funcNameDevMem %s, ret=%d, devId=%u.", iter->first.c_str(), ret, deviceId);
+            ERROR_RETURN(ret, "Failed to free funcNameDevMem %s, ret=%d, devId=%u.", iter->first.c_str(), ret, deviceId);
         }    
         iter = funcNameDevAddrMap_[deviceId].erase(iter);
     }
@@ -834,7 +834,7 @@ rtError_t Program::RegisterSingleCpuKernel(const char *const funcName, const cha
 
     Kernel *kernel = new (std::nothrow) Kernel(kernelName, 0U, this, RT_KERNEL_ATTR_TYPE_AICPU, 0U);
     COND_PROC_RETURN_AND_MSG_OUTER(kernel == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-        kernelMapLock_.Unlock();, std::to_string(sizeof(Kernel)));
+        kernelMapLock_.Unlock();, sizeof(Kernel));
 
     kernel->SetKernelRegisterType(RT_KERNEL_REG_TYPE_CPU);
     std::string tmpFuncName = funcName;
@@ -854,7 +854,7 @@ rtError_t Program::RegisterSingleCpuKernel(const char *const funcName, const cha
     if (ret != RT_ERROR_NONE) {
         delete kernel;
         kernelMapLock_.Unlock();
-        RT_LOG(RT_LOG_ERROR, "fail to store kernel %s literal name to device, ret=%d", kernelName, ret);
+        RT_LOG(RT_LOG_ERROR, "Failed to store kernel %s literal name to device, ret=%d", kernelName, ret);
         return ret;
     }
     InitEmbeddedInnerHandle<Kernel>(kernel);
@@ -871,7 +871,7 @@ ElfProgram::ElfProgram(const rtKernelAttrType kernelAttrType) : Program(kernelAt
     SetType(Program::ELF_PROGRAM);
     elfData_ = new (std::nothrow) rtElfData();
     if (elfData_ == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(rtElfData)));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(rtElfData));
     }
 }
 
@@ -1100,7 +1100,7 @@ rtError_t ElfProgram::UnifiedKernelRegister()
         if (KernelTable_ == nullptr) {
             KernelTable_ = new (std::nothrow) rtKernelArray_t[GetKernelsCount()];
             COND_RETURN_AND_MSG_OUTER(KernelTable_ == nullptr, RT_ERROR_MEMORY_ALLOCATION, ErrorCode::EE1013,
-                std::to_string(sizeof(rtKernelArray_t) * GetKernelsCount()));
+                sizeof(rtKernelArray_t) * GetKernelsCount());
         }
 
         /* add kernel to KernelTable */
@@ -1202,8 +1202,7 @@ rtError_t Program::ProcCpuKernelH2DMem(bool isLoadCpuSo, Device * const device)
     std::vector<void *> allocMem;
     std::unique_ptr<Stream, void(*)(Stream*)> stm(StreamFactory::CreateStream(device, 0U, RT_STREAM_DEFAULT),
                                                   [](Stream* ptr) {ptr->Destructor();});
-    COND_RETURN_AND_MSG_OUTER(stm == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-                std::to_string(sizeof(Stream)));
+    COND_RETURN_AND_MSG_OUTER(stm == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sizeof(Stream));
     ret = stm->Setup();
     ERROR_RETURN_MSG_INNER(ret, "Stream setup failed, retCode=%#x.", static_cast<uint32_t>(ret));
 
@@ -1298,7 +1297,7 @@ rtError_t Program::CopySoAndNameToCurrentDevice()
             Kernel *kernel = item.second;
             ret = StoreKernelLiteralNameToDevice(kernel);
             if (unlikely(ret != RT_ERROR_NONE)) {
-                RT_LOG(RT_LOG_ERROR, "fail to store kernel %s literal name to device_id=%d, retCode=%#x", item.first.c_str(), device->Id_(), ret);
+                RT_LOG(RT_LOG_ERROR, "Failed to store kernel %s literal name to device_id=%d, retCode=%#x", item.first.c_str(), device->Id_(), ret);
                 ResetEmbeddedInnerHandle<Kernel>(kernel);
                 delete kernel;
                 kernelNameMap_.erase(item.first);
@@ -1635,8 +1634,7 @@ rtError_t ElfProgram::BuildNewKernel(const std::string tripKernelName, const RtK
 
     Kernel *kernelObj = new (std::nothrow) Kernel(tripKernelName.c_str(), tilingKey, this, kernelAttrType,
         static_cast<uint32_t>(elfkernelInfo->offset), 0U, mixType);
-    COND_RETURN_AND_MSG_OUTER((kernelObj == nullptr), RT_ERROR_KERNEL_NEW, ErrorCode::EE1013,
-        std::to_string(sizeof(Kernel)));
+    COND_RETURN_AND_MSG_OUTER((kernelObj == nullptr), RT_ERROR_KERNEL_NEW, ErrorCode::EE1013, sizeof(Kernel));
 
     // set other attrs
     SetKernelAttribute(elfkernelInfo, kernelObj);

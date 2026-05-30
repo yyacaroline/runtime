@@ -663,3 +663,59 @@ TEST_F(BinaryLoaderTest, TestLoadFromData)
     delete(prg);
 }
 
+TEST_F(BinaryLoaderTest, TestParseLoadOptions_NullOptions)
+{
+    rtLoadBinaryConfig_t cfg;
+    cfg.options = nullptr;
+    cfg.numOpt = 1;
+    BinaryLoader binaryLoader(nullptr, 0, &cfg);
+    EXPECT_EQ(binaryLoader.ParseLoadOptions(), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(BinaryLoaderTest, TestParseLoadOptions_LazyLoadInvalid)
+{
+    rtLoadBinaryOption_t option;
+    option.optionId = RT_LOAD_BINARY_OPT_LAZY_LOAD;
+    option.value.isLazyLoad = 2;
+    rtLoadBinaryConfig_t cfg;
+    cfg.options = &option;
+    cfg.numOpt = 1;
+    BinaryLoader binaryLoader(nullptr, 0, &cfg);
+    EXPECT_EQ(binaryLoader.ParseLoadOptions(), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(BinaryLoaderTest, TestParseLoadOptions_MagicFromFile)
+{
+    rtLoadBinaryOption_t option;
+    option.optionId = RT_LOAD_BINARY_OPT_MAGIC;
+    option.value.magic = RT_DEV_BINARY_MAGIC_ELF;
+    rtLoadBinaryConfig_t cfg;
+    cfg.options = &option;
+    cfg.numOpt = 1;
+    BinaryLoader binaryLoader("fake.o", &cfg);
+    EXPECT_EQ(binaryLoader.ParseLoadOptions(), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(BinaryLoaderTest, TestParseLoadOptions_InvalidMagic)
+{
+    rtLoadBinaryOption_t option;
+    option.optionId = RT_LOAD_BINARY_OPT_MAGIC;
+    option.value.magic = 0xDEADBEEF;
+    rtLoadBinaryConfig_t cfg;
+    cfg.options = &option;
+    cfg.numOpt = 1;
+    BinaryLoader binaryLoader(nullptr, 0, &cfg);
+    EXPECT_EQ(binaryLoader.ParseLoadOptions(), RT_ERROR_INVALID_VALUE);
+}
+
+TEST_F(BinaryLoaderTest, TestParseLoadOptions_InvalidOptionId)
+{
+    rtLoadBinaryOption_t option;
+    option.optionId = RT_LOAD_BINARY_OPT_MAX;
+    rtLoadBinaryConfig_t cfg;
+    cfg.options = &option;
+    cfg.numOpt = 1;
+    BinaryLoader binaryLoader(nullptr, 0, &cfg);
+    EXPECT_EQ(binaryLoader.ParseLoadOptions(), RT_ERROR_INVALID_VALUE);
+}
+

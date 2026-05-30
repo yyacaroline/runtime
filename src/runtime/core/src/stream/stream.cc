@@ -385,7 +385,7 @@ rtError_t Stream::CreateArgRecycleList(uint32_t size)
 {
     argRecycleList_ = new (std::nothrow) RecycleArgs *[size]{};
     if (argRecycleList_ == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(RecycleArgs *) * size));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(RecycleArgs *) * size);
         return RT_ERROR_MEMORY_ALLOCATION;
     }
     argRecycleListSize_ = size;
@@ -393,7 +393,7 @@ rtError_t Stream::CreateArgRecycleList(uint32_t size)
         argRecycleList_[i] = new (std::nothrow) RecycleArgs();
         if (argRecycleList_[i] == nullptr) {
             argRecycleListSize_ = i;
-            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(RecycleArgs)));
+            RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(RecycleArgs));
             return RT_ERROR_MEMORY_ALLOCATION;
         }
         argRecycleList_[i]->argHandle = nullptr;
@@ -620,7 +620,7 @@ rtError_t Stream::Setup()
         taskPublicBuff_ = new (std::nothrow) uint32_t[taskPublicBuffSize_];
         TIMESTAMP_END(rtStreamCreate_taskPublicBuff);
         COND_RETURN_AND_MSG_OUTER(taskPublicBuff_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-            std::to_string(sizeof(uint32_t) * taskPublicBuffSize_));
+            sizeof(uint32_t) * taskPublicBuffSize_);
     }
 
     if (CheckASyncRecycle() && !IsSeparateSendAndRecycle()) {
@@ -628,13 +628,13 @@ rtError_t Stream::Setup()
         davinciTaskListSize_ = STREAM_PUBLIC_TASK_BUFF_SIZE;
         davinciTaskList_ = new (std::nothrow) uint32_t[davinciTaskListSize_];
         COND_RETURN_AND_MSG_OUTER(davinciTaskList_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-            std::to_string(sizeof(uint32_t) * davinciTaskListSize_));
+            sizeof(uint32_t) * davinciTaskListSize_);
     }
 
     posToTaskIdMapSize_ = rtsqDepth;
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
     COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-        std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));    
+        sizeof(uint16_t) * posToTaskIdMapSize_);
 
     const errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
@@ -647,7 +647,7 @@ rtError_t Stream::Setup()
 
     wrRecordQueue_.queue = new (std::nothrow) uint32_t[rtsqDepth];
     if (wrRecordQueue_.queue == nullptr) {
-        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, std::to_string(sizeof(uint32_t) * rtsqDepth));
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(uint32_t) * rtsqDepth);
         return RT_ERROR_STREAM_NEW;
     }
     (void)memset_s(wrRecordQueue_.queue, rtsqDepth * sizeof(uint32_t), 0, rtsqDepth * sizeof(uint32_t));
@@ -810,7 +810,7 @@ rtError_t Stream::CreateStreamArgRes()
 {
     argManage_ = new (std::nothrow) PcieArgManage(this);
     if (argManage_ == nullptr) {
-        RT_LOG(RT_LOG_ERROR, "new PcieArgManage fail for stream.");
+        RT_LOG_OUTER_MSG_IMPL(ErrorCode::EE1013, sizeof(PcieArgManage));
         return RT_ERROR_CALLOC;
     }
     return RT_ERROR_NONE;
@@ -847,12 +847,12 @@ rtError_t Stream::SetupWithoutBindSq()
     posToTaskIdMapSize_ = GetSqDepth();
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
     COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-        std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));
+        sizeof(uint16_t) * posToTaskIdMapSize_);
 
     errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
-        "Failed to call memset_s to set posToTaskIdMap_, dest=%p, dest_max=%zu, c=0xFF, count=%zu, retCode=%d",
+        "Failed to call memset_s to set posToTaskIdMap_, dest=%p, dest_max=%zu, c=0xFF, count=%zu, retCode=%d.",
         posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), posToTaskIdMapSize_ * sizeof(uint16_t), ret);
 
     error = CreateStreamArgRes(); // only for stars v2
@@ -884,8 +884,7 @@ rtError_t Stream::SetupWithoutBindSq()
 
     sqeBufferSize_ = STREAM_SQE_BUFFER_MAX_SIZE;
     sqeBuffer_ = new (std::nothrow) uint8_t[sqeBufferSize_];
-    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-            std::to_string(sqeBufferSize_));
+    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sqeBufferSize_);
 
     ret = memset_s(sqeBuffer_, sqeBufferSize_, 0U, sqeBufferSize_);
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
@@ -914,7 +913,7 @@ rtError_t Stream::InitAutoSplitBasicParams()
     streamSwitchInfo_ = new (std::nothrow) struct sq_switch_stream_info[1U]();
     COND_PROC_RETURN_AND_MSG_OUTER(streamSwitchInfo_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
         RT_LOG(RT_LOG_ERROR, "new sq switch info failed, stream_id=%u.", Id_()),
-        std::to_string(sizeof(sq_switch_stream_info)));
+        sizeof(sq_switch_stream_info));
     return RT_ERROR_NONE;
 }
 
@@ -923,12 +922,12 @@ rtError_t Stream::AllocPosToTaskIdMap()
     posToTaskIdMapSize_ = GetSqDepth();
     posToTaskIdMap_ = new (std::nothrow) uint16_t[posToTaskIdMapSize_];
     COND_RETURN_AND_MSG_OUTER(posToTaskIdMap_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-            std::to_string(sizeof(uint16_t) * posToTaskIdMapSize_));
+            sizeof(uint16_t) * posToTaskIdMapSize_);
 
     errno_t ret = memset_s(posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), 0XFF,
         posToTaskIdMapSize_ * sizeof(uint16_t));
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
-        "Failed to call memset_s to set posToTaskIdMap_, dest=%p, dest_max=%zu, c=0xFF, count=%zu, retCode=%d",
+        "Failed to call memset_s to set posToTaskIdMap_, dest=%p, dest_max=%zu, c=0xFF, count=%zu, retCode=%d.",
         posToTaskIdMap_, posToTaskIdMapSize_ * sizeof(uint16_t), posToTaskIdMapSize_ * sizeof(uint16_t), ret);
 
     return RT_ERROR_NONE;
@@ -937,8 +936,8 @@ rtError_t Stream::AllocPosToTaskIdMap()
 rtError_t Stream::AllocAutoSplitContext()
 {
     autoSplitCtx_ = new (std::nothrow) AutoSplitSqContext();
-    COND_RETURN_AND_MSG_OUTER(autoSplitCtx_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-                std::to_string(sizeof(AutoSplitSqContext)));
+    COND_RETURN_AND_MSG_OUTER(autoSplitCtx_ == nullptr, RT_ERROR_STREAM_NEW,
+        ErrorCode::EE1013, sizeof(AutoSplitSqContext));
 
     autoSplitCtx_->masterStream = nullptr;  // master stream 此字段为空
     autoSplitCtx_->exposedStreamId = streamId_;
@@ -951,12 +950,11 @@ rtError_t Stream::AllocSqeBufferForAutoSplit()
 {
     sqeBufferSize_ = STREAM_SQE_BUFFER_INIT_SIZE;
     sqeBuffer_ = new (std::nothrow) uint8_t[sqeBufferSize_];
-    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-                std::to_string(sqeBufferSize_));
+    COND_RETURN_AND_MSG_OUTER(sqeBuffer_ == nullptr, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sqeBufferSize_);
 
     errno_t ret = memset_s(sqeBuffer_, sqeBufferSize_, 0U, sqeBufferSize_);
     COND_RETURN_ERROR_MSG_INNER(ret != EOK, RT_ERROR_STREAM_NEW,
-        "Failed to call memset_s to set sqeBuffer_, dest=%p, dest_max=%u, c=0, count=%u, retCode=%d",
+        "Failed to call memset_s to set sqeBuffer_, dest=%p, dest_max=%u, c=0, count=%u, retCode=%d.",
         sqeBuffer_, sqeBufferSize_, sqeBufferSize_, ret);
 
     return RT_ERROR_NONE;
@@ -1952,7 +1950,7 @@ rtError_t Stream::Synchronize(const bool isNeedWaitSyncCq, int32_t timeout)
         "The stream %u is in abort state.", Id_());
 
     Event *event = new (std::nothrow) Event(device_, RT_EVENT_DEFAULT, Context_(), true);
-    COND_RETURN_AND_MSG_OUTER(event == nullptr, RT_ERROR_EVENT_NEW, ErrorCode::EE1013, std::to_string(sizeof(Event)));
+    COND_RETURN_AND_MSG_OUTER(event == nullptr, RT_ERROR_EVENT_NEW, ErrorCode::EE1013, sizeof(Event));
     uint32_t tryCount = 50U;
 
     while (tryCount > 0U) {
@@ -2659,8 +2657,7 @@ rtError_t Stream::ProcRecordTask(TaskInfo *&tsk)
     rtError_t errorReason;
     if (lastHalfRecord_ == nullptr) {
         lastHalfRecord_ = new (std::nothrow) Event(device_, RT_EVENT_STREAM_MARK, Context_(), true);
-        COND_RETURN_AND_MSG_OUTER(lastHalfRecord_ == nullptr, RT_ERROR_EVENT_NEW, ErrorCode::EE1013,
-            std::to_string(sizeof(Event)));
+        COND_RETURN_AND_MSG_OUTER(lastHalfRecord_ == nullptr, RT_ERROR_EVENT_NEW, ErrorCode::EE1013, sizeof(Event));
         error = lastHalfRecord_->GenEventId();
         COND_PROC_RETURN_ERROR(error != RT_ERROR_NONE, error, DELETE_O(lastHalfRecord_), "Alloc event id failed.");
     }
@@ -3450,8 +3447,7 @@ rtError_t Stream::UpdateAllPersistentTask()
     CaptureModel* captureModel = dynamic_cast<CaptureModel*>(mdl);
     // 存在融合后sqe变多的场景，这里的buffer是按内存64字节逐个访问，为了提升性能不做memset
     std::unique_ptr<uint8_t[]> sqeBufferBackup(new (std::nothrow) uint8_t[sqeBufferSize_]);
-    COND_RETURN_AND_MSG_OUTER(!sqeBufferBackup, RT_ERROR_STREAM_NEW, ErrorCode::EE1013,
-            std::to_string(sqeBufferSize_));
+    COND_RETURN_AND_MSG_OUTER(!sqeBufferBackup, RT_ERROR_STREAM_NEW, ErrorCode::EE1013, sqeBufferSize_);
 
     uint32_t totalSendSqeNum = 0U;
     rtError_t error = RT_ERROR_NONE;
@@ -3527,7 +3523,7 @@ rtError_t Stream::UpdateAllPersistentTask()
         ret = memset_s(sqeBuffer_, sqeBufferSize_, 0U, sqeBufferSize_);
         COND_RETURN_ERROR_MSG_INNER(
             ret != EOK, RT_ERROR_STREAM_NEW,
-            "Failed to call memset_s to set sqeBuffer_, dest=%p, dest_max=%u, c=0, count=%u, retCode=%d", sqeBuffer_,
+            "Failed to call memset_s to set sqeBuffer_, dest=%p, dest_max=%u, c=0, count=%u, retCode=%d.", sqeBuffer_,
             sqeBufferSize_, sqeBufferSize_, ret);
         taskPersistentHead_.Set(0U);
         taskPersistentTail_.Set(0U);
