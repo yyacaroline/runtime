@@ -26,7 +26,6 @@
 namespace {
     constexpr uint32_t TLV_WITH_SHAPE = 1000;
     constexpr uint32_t TLV_WITH_DTYPE = 1001;
-    constexpr uint32_t HCCL_COMM_TIMEOUT_CURSOR = 4U;
 }
 namespace AicpuSchedule {
     bool AicpuModelManager::isUsed_(false);
@@ -49,92 +48,7 @@ namespace AicpuSchedule {
             return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
         }
 
-        auto initType = HcclInitType::INIT_TYPE_NUM;
-        if (cfgInfo != nullptr) {
-            const auto hcclInitRet = InitHccl(cfgInfo, initType);
-            if (hcclInitRet != AICPU_SCHEDULE_OK) {
-                aicpusd_err("InitHccl fail");
-                return static_cast<int32_t>(hcclInitRet);
-            }
-        }
-        const auto ret = allModel_[modelId].ModelLoad(modelInfo, cfgInfo);
-        if ((cfgInfo != nullptr) && (ret != static_cast<int32_t>(AICPU_SCHEDULE_OK))) {
-            GuardHccl(initType);
-        }
-        return ret;
-    }
-
-    StatusCode AicpuModelManager::InitHcclForEmbedding(const ModelCfgInfo * const cfgInfo)
-    {
-        if (hcclCommEmbRefs_ == 0U) {
-            const HcclResult ret = StubHcclInitCsComm(PtrToPtr<void, char_t>(ValueToPtr(cfgInfo->rankTableAddr)),
-                cfgInfo->rankId, PtrToPtr<void, char_t>(ValueToPtr(cfgInfo->roleTableAddr)), nullptr, &hcclComm_);
-            if (ret != HCCL_SUCCESS) {
-                aicpusd_err("InitHcclForEmbedding fail for %d", static_cast<int32_t>(ret));
-                return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-            } else {
-                aicpusd_info("InitHcclForEmbedding success.");
-                hcclEmbInit_ = true;
-            }
-        }
-        ++hcclCommEmbRefs_;
-        return AICPU_SCHEDULE_OK;
-    }
-
-    StatusCode AicpuModelManager::InitHcclForSyncEvent(const ModelCfgInfo * const cfgInfo)
-    {
-        if (hcclCommSyncRefs_ == 0U) {
-            HcclResult ret = HCCL_SUCCESS;
-            char_t * const commName = PtrToPtr<void, char_t>(ValueToPtr(cfgInfo->hcclCommNameAddr));
-            if (commName != nullptr) {
-                std::unique_ptr<HcclCommConfig> commConfig(new (std::nothrow) HcclCommConfig());
-                AICPUSD_CHECK((commConfig != nullptr), AICPU_SCHEDULE_ERROR_INNER_ERROR,
-                              "Fail to alloc memory for commConfig");
-                int32_t *timeout = PtrToPtr<char_t, int32_t>(
-                    &(commConfig->reserved[HCCL_COMM_CONFIG_INFO_BYTES - HCCL_COMM_TIMEOUT_CURSOR]));
-                *timeout = cfgInfo->hcclTimeOut;
-                const errno_t retCpy = strncpy_s(&(commConfig->hcclCommName[0U]), COMM_NAME_MAX_LENGTH, commName,
-                                                 COMM_NAME_MAX_LENGTH - 1);
-                if (retCpy != EOK) {
-                    aicpusd_err("copy hcclCommName failed, retCpy=%d.", retCpy);
-                    return AICPU_SCHEDULE_ERROR_INNER_ERROR;
-                }
-                aicpusd_info("timeout[%ds], commName[%s].", *timeout, &(commConfig->hcclCommName[0U]));
-                ret = StubHcclCpuCommInit(PtrToPtr<void, char_t>(ValueToPtr(cfgInfo->rankTableAddr)),
-                    static_cast<uint32_t>(cfgInfo->rankId), commConfig.get());
-            } else {
-                ret = StubHcomInitByRankTable(PtrToPtr<void, char_t>(ValueToPtr(cfgInfo->rankTableAddr)),
-                    static_cast<uint32_t>(cfgInfo->rankId));
-            }
-
-            if (ret != HCCL_SUCCESS) {
-                aicpusd_err("InitHcclForSyncEvent fail for %d", static_cast<int32_t>(ret));
-                return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-            } else {
-                aicpusd_info("InitHcclForSyncEvent success.");
-                hcclSyncInit_ = true;
-            }
-        }
-        ++hcclCommSyncRefs_;
-        return AICPU_SCHEDULE_OK;
-    }
-
-    StatusCode AicpuModelManager::InitHccl(const ModelCfgInfo * const cfgInfo, HcclInitType &initType)
-    {
-        std::lock_guard<std::mutex> lockForComm(mutexForHcclComm_);
-        if ((hcclCommEmbRefs_ == 0U) && (hcclCommSyncRefs_ == 0U)) {
-            HcclSoManager::GetInstance()->LoadSo();
-        }
-        if (cfgInfo->modelType == static_cast<uint32_t>(kModelWithEmbedding)) {
-            initType = HcclInitType::INIT_TYPE_FOR_EMBEDDING;
-            return InitHcclForEmbedding(cfgInfo);
-        } else if (cfgInfo->modelType == static_cast<uint32_t>(kModelWithSyncEvent)) {
-            initType = HcclInitType::INIT_TYPE_FOR_SYNC_EVENT;
-            return InitHcclForSyncEvent(cfgInfo);
-        } else {
-            aicpusd_err("Invalid model type: %u", cfgInfo->modelType);
-            return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
-        }
+        return allModel_[modelId].ModelLoad(modelInfo, cfgInfo);
     }
 
     AicpuModel *AicpuModelManager::GetModel(const uint32_t modelId)
@@ -193,7 +107,6 @@ namespace AicpuSchedule {
                 ret = AICPU_SCHEDULE_ERROR_MODEL_EXIT_ERR;
             }
         }
-        FinalizeHccl();
         tensorDescMap_.clear();
         msgQMap_.clear();
         return ret;
@@ -626,74 +539,6 @@ namespace AicpuSchedule {
         }
         return AICPU_SCHEDULE_OK;
     }
-
-    void AicpuModelManager::GuardHccl(const HcclInitType initType)
-    {
-        if (!hcclEmbInit_ && !hcclSyncInit_) {
-            return;
-        }
-
-        std::lock_guard<std::mutex> lockForComm(mutexForHcclComm_);
-        if ((initType == HcclInitType::INIT_TYPE_FOR_EMBEDDING) && hcclEmbInit_ && (--hcclCommEmbRefs_ == 0U)) {
-            FinalizeHcclForEmbedding();
-        } else if ((initType == HcclInitType::INIT_TYPE_FOR_SYNC_EVENT) &&
-            hcclSyncInit_ && (--hcclCommSyncRefs_ == 0U)) {
-            FinalizeHcclForSyncEvent();
-        } else {
-            aicpusd_info("No need to finalize hccl, hcclCommEmbRefs[%u], hcclCommSyncRefs[%u]",
-                hcclCommEmbRefs_, hcclCommSyncRefs_);
-        }
-        if (!hcclEmbInit_ && !hcclSyncInit_) {
-            HcclSoManager::GetInstance()->UnloadSo();
-        }
-    }
-
-    void AicpuModelManager::FinalizeHcclForEmbedding()
-    {
-        if (!hcclEmbInit_) {
-            return;
-        }
-        const auto ret = StubHcclFinalizeComm(hcclComm_);
-        if (ret != HCCL_SUCCESS) {
-            aicpusd_err("FinalizeHcclForEmbedding fail, ret: %d", static_cast<int32_t>(ret));
-        }
-        hcclEmbInit_ = false;
-        aicpusd_info("FinalizeHcclForEmbedding success.");
-    }
-
-    void AicpuModelManager::FinalizeHcclForSyncEvent()
-    {
-        if (!hcclSyncInit_) {
-            return;
-        }
-        const auto ret = StubHcomDestroy();
-        if (ret != HCCL_SUCCESS) {
-            aicpusd_err("FinalizeHcclForSyncEvent fail, ret: %d", static_cast<int32_t>(ret));
-        }
-        hcclSyncInit_ = false;
-        aicpusd_info("FinalizeHcclForSyncEvent success.");
-    }
-
-    void AicpuModelManager::FinalizeHccl()
-    {
-        const bool needUnload = (!hcclEmbInit_ || !hcclSyncInit_);
-        FinalizeHcclForEmbedding();
-        FinalizeHcclForSyncEvent();
-        if (needUnload) {
-            HcclSoManager::GetInstance()->UnloadSo();
-        }
-    }
-
-    HcclComm *AicpuModelManager::GetHcclComm()
-    {
-        if (hcclEmbInit_) {
-            return &hcclComm_;
-        } else {
-            aicpusd_warn("HcclComm has not been initialized");
-            return nullptr;
-        }
-    }
-
     StatusCode AicpuModelManager::GetModelMsgQueues(const uint32_t modelId, const bool isInput, int32_t &queueId) const
     {
         const auto iter = msgQMap_.find(modelId);

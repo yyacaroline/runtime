@@ -114,8 +114,6 @@ int halMbufChainGetMbufNumFack(Mbuf *mbufChainHead, unsigned int *num);
 int halMbufGetDataLenFake(Mbuf *mbuf, uint64_t *len);
 uint32_t calcGuardBufSize(bool isSingleMbuflistOutput);
 void setSimpleAicpuPrepareInfo(AicpuPrepareInfo &info);
-HcclResult HcclWaitOneSuccessFake(int32_t count, HcclRequest requestArray[], int32_t *compCount, int32_t compIndices[],
-                                  HcclStatus compStatus[]);
 int32_t AlignTimestampStub1(BatchDequeueInfo &batchDeqInfo, const RunContext &taskContext,
     uint32_t &maxAlignTimestamp, uint32_t &minAlignTimestamp, uint32_t &minTimestampIndex);
 int32_t AlignTimestampStub2(BatchDequeueInfo &batchDeqInfo, const RunContext &taskContext, uint32_t &maxAlignTimestamp,

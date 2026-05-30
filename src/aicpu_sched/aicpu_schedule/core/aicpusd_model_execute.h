@@ -18,12 +18,12 @@
 #include <unordered_set>
 #include <thread>
 #include <list>
+#include <mutex>
 #include "aicpusd_status.h"
 #include "aicpusd_common.h"
 #include "aicpusd_info.h"
 #include "aicpu_task_struct.h"
 #include "aicpusd_util.h"
-#include "aicpusd_hccl_api.h"
 #include "aicpusd_model.h"
 
 namespace AicpuSchedule {
@@ -134,23 +134,12 @@ namespace AicpuSchedule {
 
         StatusCode SetEventPriority(const AicpuPriInfo &cfg, const std::vector<uint32_t> &deviceVec);
 
-        HcclComm *GetHcclComm();
-
-        void GuardHccl(const HcclInitType initType);
-
         StatusCode GetModelMsgQueues(const uint32_t modelId, const bool isInput, int32_t &queueId) const;
 
         static bool IsUsed();
 
     private:
         AicpuModelManager();
-
-        StatusCode InitHccl(const ModelCfgInfo * const cfgInfo, HcclInitType &initType);
-        StatusCode InitHcclForEmbedding(const ModelCfgInfo * const cfgInfo);
-        StatusCode InitHcclForSyncEvent(const ModelCfgInfo * const cfgInfo);
-        void FinalizeHccl();
-        void FinalizeHcclForEmbedding();
-        void FinalizeHcclForSyncEvent();
         StatusCode CheckModelConfigShape(const uint32_t type, const uint32_t tlvLen, int32_t &unparseLen) const;
         StatusCode CheckModelConfigDtype(const TlvHead tlvHeadAddr, int32_t &unparseLen) const;
 
@@ -165,13 +154,6 @@ namespace AicpuSchedule {
         int32_t curEventPri_ = INVALID_ESCAPE_PRI_VALUE;
         std::mutex mutexForSetPidPri_;
         std::mutex mutexForSetEvnPri_;
-        HcclComm hcclComm_;
-        bool hcclEmbInit_{false};
-        bool hcclSyncInit_{false};
-        std::mutex mutexForHcclComm_;
-        uint32_t hcclCommEmbRefs_{0U};
-        uint32_t hcclCommSyncRefs_{0U};
-        std::vector<uint64_t> registerMemory_;
         static bool isUsed_;
     };
 }

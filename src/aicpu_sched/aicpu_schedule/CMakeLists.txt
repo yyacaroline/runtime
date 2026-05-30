@@ -71,13 +71,6 @@ set(operator_kernel_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/operator_kernel_common.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/operator_kernel_register.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/operator_kernel.cpp
-    # communication
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_batch_process.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_get_update_req.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_lookup_req.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_lookup_resp.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_remote_comm.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/communication/operator_kernel_set_update_resp.cpp
     # control_flow
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/control_flow/operator_kernel_active_entry_stream.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/control_flow/operator_kernel_active_model.cpp
@@ -114,7 +107,6 @@ set(operator_kernel_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/preprocess/operator_kernel_model_prepare_non_zero_copy_input.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/preprocess/operator_kernel_model_prepare_output.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/preprocess/operator_kernel_prepare_dynamic_input_output.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/operator_kernel/preprocess/operator_kernel_prepare_mem.cpp
 )
 
 set(hwts_kernel_src_file
@@ -160,7 +152,6 @@ set(commom_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpu_context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpu_sharder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_cpu_driver.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_hccl_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/stub_transfer_dump.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpusd_cust_dump_process_stub.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpusd_mc2_maintenance_thread_stub.cpp
@@ -201,7 +192,6 @@ set(commom_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/core/dfx/aicpusd_lastword.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_message_queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_context.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_hccl_api.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_util.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_sqe_adapter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/ts_to_aicpu_msg_adapter/ts_aicpu_msg_info_adapter.cpp

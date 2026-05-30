@@ -106,13 +106,6 @@ set(operator_kernel_src_file
     ${SRC_PATH}/core/operator_kernel/operator_kernel_common.cpp
     ${SRC_PATH}/core/operator_kernel/operator_kernel_register.cpp
     ${SRC_PATH}/core/operator_kernel/operator_kernel.cpp
-    # communication
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_batch_process.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_get_update_req.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_lookup_req.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_lookup_resp.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_remote_comm.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_set_update_resp.cpp
     # control_flow
     ${SRC_PATH}/core/operator_kernel/control_flow/operator_kernel_active_entry_stream.cpp
     ${SRC_PATH}/core/operator_kernel/control_flow/operator_kernel_active_model.cpp
@@ -149,27 +142,22 @@ set(operator_kernel_src_file
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_model_prepare_non_zero_copy_input.cpp
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_model_prepare_output.cpp
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_prepare_dynamic_input_output.cpp
-    ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_prepare_mem.cpp
 )
 
 set(operator_kernel_test_src_file
     testcase/operator_kernel/operator_kernel_stub.cpp
     testcase/operator_kernel/operator_kernel_active_entry_stream_test.cpp
     testcase/operator_kernel/operator_kernel_active_model_test.cpp
-    testcase/operator_kernel/operator_kernel_batch_process_test.cpp
     testcase/operator_kernel/operator_kernel_check_input_tensor_desc_test.cpp
     testcase/operator_kernel/operator_kernel_common_test.cpp
     testcase/operator_kernel/operator_kernel_dyn_output_post_process._test.cpp
     testcase/operator_kernel/operator_kernel_end_graph_test.cpp
     testcase/operator_kernel/operator_kernel_gather_dequeue_test.cpp
-    testcase/operator_kernel/operator_kernel_get_update_req_test.cpp
     testcase/operator_kernel/operator_kernel_lock_table_test.cpp
-    testcase/operator_kernel/operator_kernel_lookup_resp_test.cpp
     testcase/operator_kernel/operator_kernel_mark_step_test.cpp
     testcase/operator_kernel/operator_kernel_model_batch_dequeue_test.cpp
     testcase/operator_kernel/operator_kernel_model_batch_dequeue_buff_test.cpp
     testcase/operator_kernel/operator_kernel_model_batch_enqueue_test.cpp
-    testcase/operator_kernel/operator_kernel_lookup_req_test.cpp
     testcase/operator_kernel/operator_kernel_model_dequeue_test.cpp
     testcase/operator_kernel/operator_kernel_model_enqueue_test.cpp
     testcase/operator_kernel/operator_kernel_model_enqueue_buff_test.cpp
@@ -181,11 +169,8 @@ set(operator_kernel_test_src_file
     testcase/operator_kernel/operator_kernel_model_wait_end_graph_test.cpp
     testcase/operator_kernel/operator_kernel_post_process_dynamic_output_test.cpp
     testcase/operator_kernel/operator_kernel_prepare_dynamic_input_output_test.cpp
-    testcase/operator_kernel/operator_kernel_prepare_mem_test.cpp
     testcase/operator_kernel/operator_kernel_record_notify_test.cpp
     testcase/operator_kernel/operator_kernel_register_test.cpp
-    testcase/operator_kernel/operator_kernel_remote_comm_test.cpp
-    testcase/operator_kernel/operator_kernel_set_update_resp_test.cpp
     testcase/operator_kernel/operator_kernel_stream_repeat_test.cpp
     testcase/operator_kernel/operator_kernel_unlock_table_test.cpp
     testcase/operator_kernel/operator_kernel_wait_notify_test.cpp
@@ -266,7 +251,6 @@ set(LOCAL_SRC_FILES
     ${SRC_PATH}/core/aicpusd_model_err_process.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
     ${SRC_PATH}/common/aicpusd_context.cpp
-    ${SRC_PATH}/common/aicpusd_hccl_api.cpp
     ${SRC_PATH}/common/aicpusd_util.cpp
     ${SRC_PATH}/core/dfx/aicpusd_cust_dump_process.cpp
     ${SRC_PATH}/core/platform_info/aicpusd_send_platform_Info_to_custom.cpp
@@ -296,9 +280,9 @@ set(LOCAL_SRC_FILES
     testcase/aicpusd_queue_event_process_test.cc
     testcase/aicpusd_drv_manager_test.cc
     testcase/aicpusd_interface_process_test.cc
+    testcase/aicpusd_model_execute_test.cc
     testcase/aicpusd_resource_manager_test.cc
     testcase/aicpusd_meminfo_process_test.cc
-    testcase/aicpusd_model_execute_test.cc
     testcase/aicpusd_event_process_test.cc
     testcase/aicpusd_monitor_test.cc
     testcase/aicpusd_lastword_test.cc
@@ -309,7 +293,6 @@ set(LOCAL_SRC_FILES
     testcase/aicpusd_model_err_process_test.cc
     testcase/aicpusd_sub_module_interface_test.cc
     testcase/aicpusd_dump_task_test.cc
-    testcase/aicpusd_hccl_api_test.cc
     testcase/aicpusd_task_queue_test.cc
     testcase/aicpusd_threads_process_test.cc
     testcase/aicpusd_message_queue_test.cc
@@ -369,7 +352,6 @@ add_executable(aicpu_aicpuschedule_utest_host_cpu
     ${SRC_PATH}/core/aicpusd_meminfo_process.cpp
     ${SRC_PATH}/core/dfx/aicpusd_lastword.cpp
     ${SRC_PATH}/core/aicpusd_so_manager.cpp
-    ${SRC_PATH}/common/aicpusd_hccl_api.cpp
     ${SRC_PATH}/common/aicpusd_util.cpp
     ${SRC_PATH}/stub/aicpusd_monitor.cpp
     ${SRC_PATH}/stub/host_cpu_driver.cpp

@@ -18,12 +18,12 @@
 #include <unordered_set>
 #include <thread>
 #include <list>
+#include <mutex>
 #include "aicpusd_status.h"
 #include "aicpusd_common.h"
 #include "aicpusd_info.h"
 #include "aicpu_task_struct.h"
 #include "aicpusd_util.h"
-#include "aicpusd_hccl_api.h"
 #include "aicpu_event_struct.h"
 
 #define AICPUSD_EXCEPTION_CATCH(expr0, expr1) \
@@ -37,12 +37,6 @@
 namespace AicpuSchedule {
 
     constexpr int64_t INVALID_TABLE_ID = -1;
-
-    enum class HcclInitType : int32_t {
-        INIT_TYPE_FOR_EMBEDDING,
-        INIT_TYPE_FOR_SYNC_EVENT,
-        INIT_TYPE_NUM
-    };
     class AicpuStream {
     public:
         AicpuStream() = default;
@@ -131,11 +125,6 @@ namespace AicpuSchedule {
 
             return ss.str();
         }
-    };
-
-    struct AsyncTaskInfo {
-        HcclRequest request;
-        Mbuf *outputMbuf;
     };
 
     class AicpuModel {
@@ -292,34 +281,9 @@ namespace AicpuSchedule {
             return abnormalEnabled_.load();
         }
 
-        inline MBufferPool &GetInputBufPool(const uint32_t index)
-        {
-            return inputBufPools_[index];
-        }
-
-        inline MBufferPool &GetOutputBufPool(const uint32_t index)
-        {
-            return outputBufPools_[index];
-        }
-
         inline uint32_t GetId() const
         {
             return modelId_;
-        }
-
-        inline int32_t GetTag() const
-        {
-            return hcclTag_;
-        }
-
-        inline int32_t GetPsId() const
-        {
-            return psId_;
-        }
-
-        inline bool IsSupportCounterFilter() const
-        {
-            return isSupportCounterFilter_;
         }
 
         void WaitReleaseThreadsFinish();
@@ -334,11 +298,6 @@ namespace AicpuSchedule {
             return nullDataFlag_.load();
         }
 
-        inline HcclInitType GetHcclInitType() const
-        {
-            return hcclInitType_;
-        }
-
         inline uint32_t GetInputQueueCount() const
         {
             return static_cast<uint32_t>(inputQueueIds_.size());
@@ -348,10 +307,6 @@ namespace AicpuSchedule {
         {
             return inputQueueIds_.count(queueId) > 0U;
         }
-
-        StatusCode InitModelGroups(const ModelCfgInfo * const cfgInfo);
-
-        void DestroyModelGroups();
 
         StoreResult StoreDequedMbuf(const uint64_t transId, const uint32_t routeLabel, const size_t qIndex, Mbuf *const mbuf,
             const uint32_t queueCount);
@@ -415,8 +370,6 @@ namespace AicpuSchedule {
         {
             return staticNNCurOutIndex_;
         }
-
-        int32_t AddAsyncTask(const AsyncTaskInfo &task);
 
         int32_t ProcessDataException(const uint64_t transId, const uint32_t type);
 
@@ -484,11 +437,6 @@ namespace AicpuSchedule {
         void LoadWaitNotifyId(const AicpuTaskInfo &aicpuTaskInfo,
                               std::unordered_set<size_t> &waitNotifyIdSet) const;
 
-        StatusCode LoadCfgForEmbedding(const ModelCfgInfo * const cfgInfo);
-        StatusCode LoadCfgForSyncEvent(const ModelCfgInfo * const cfgInfo);
-        StatusCode LoadCfg(const ModelCfgInfo * const cfgInfo);
-        int32_t InitBufPool(const ModelCfgInfo * const cfgInfo);
-        StatusCode PrepareHcclLink(const ModelCfgInfo * const cfgInfo);
         GatherResult GatherDequedMbuf(Mbuf ***mbufPptr, std::pair<uint64_t, uint32_t> &mbufKey,
             const int32_t timeOutMs, const uint32_t cacheNum);
         void ClearDequedMbuf(const uint64_t transId, const uint32_t routeLabel);
@@ -499,10 +447,6 @@ namespace AicpuSchedule {
         int32_t AttachReportStatusQueue();
 
         int32_t ModelClearInputQueues(const std::unordered_set<size_t> &queueIds, const uint32_t deviceId) const;
-
-        void ReleaseMem();
-        void DoReleaseMem(AsyncTaskInfo &task);
-        void StopAsyncThread();
 
         bool IsNewVersion();
         void SetVersion(bool isNewVersion);
@@ -571,13 +515,9 @@ namespace AicpuSchedule {
         bool headNodeFlag_ = false;
         // ge model id
         uint32_t extModelId_ = INVALID_NUMBER;
-        HcclInitType hcclInitType_{HcclInitType::INIT_TYPE_NUM};
         // for loadModelWithEvent: input bufpool
-        std::unordered_map<uint32_t, MBufferPool> inputBufPools_;
         // for loadModelWithEvent: output bufpool
-        std::unordered_map<uint32_t, MBufferPool> outputBufPools_;
         // for loadModelWithEvent: hccl tag
-        int32_t hcclTag_{0};
         // for loadModelWithEmbedding: ps id
         int32_t psId_{-1};
         // for Embedding counter filter feature
@@ -585,7 +525,6 @@ namespace AicpuSchedule {
         std::vector<uint32_t> otherAicpuStreams_;
         // if dataFlag is 0 and has EOS flag, then only transport data to output. Do not active model.
         std::atomic<bool> nullDataFlag_{false};
-        std::vector<std::string> groupList_;
         std::unordered_map<uint64_t, std::unordered_map<uint32_t, QueueMbufStore>> gatheredMbuf_;
         std::unordered_map<uint32_t, uint32_t> tableLocked_;
         int64_t tableTryLock_{INVALID_TABLE_ID};
@@ -597,9 +536,6 @@ namespace AicpuSchedule {
         std::unordered_set<size_t> outputMsgQueueIds_;
         uint32_t staticNNCurOutIndex_{0U};
         std::mutex mutexForAsyncTask_;
-        std::vector<std::thread> asyncTaskThreads_;
-        std::list<AsyncTaskInfo> asyncTasks_;
-        bool asyncTaskRunning_{false};
         std::map<size_t, uint64_t> gatheredMbufCntList_;
         std::mutex mutexForExceptionTrans_;
         std::unordered_map<uint32_t, bool> exceptionTranses_;

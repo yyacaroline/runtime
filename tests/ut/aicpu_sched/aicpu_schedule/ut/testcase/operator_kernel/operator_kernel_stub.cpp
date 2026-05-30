@@ -225,14 +225,6 @@ void setSimpleAicpuPrepareInfo(AicpuPrepareInfo &info)
     info.mbufPtrlist =reinterpret_cast<uint64_t>(inputAddrList);
 }
 
-HcclResult HcclWaitOneSuccessFake(int32_t count, HcclRequest requestArray[], int32_t *compCount, int32_t compIndices[],
-                                  HcclStatus compStatus[])
-{
-    *compCount = 1;
-    compIndices[0U] = 0;
-    compStatus[0U].error = 0;
-    return HCCL_SUCCESS;
-}
 
 int32_t AlignTimestampStub1(BatchDequeueInfo &batchDeqInfo, const RunContext &taskContext,
     uint32_t &maxAlignTimestamp, uint32_t &minAlignTimestamp, uint32_t &minTimestampIndex)

@@ -418,10 +418,6 @@ namespace AicpuSchedule {
         }
 
         const auto ret =  model->ModelDestroy();
-        const auto initType = model->GetHcclInitType();
-        if (initType != HcclInitType::INIT_TYPE_NUM) {
-            AicpuModelManager::GetInstance().GuardHccl(initType);
-        }
         AicpuModelManager::GetInstance().ModelConfigClear(modelId);
         return ret;
     }

@@ -321,19 +321,6 @@ namespace AicpuSchedule {
             return ret;
         }
 
-        // load info from cfg
-        ret = static_cast<int32_t>(LoadCfg(cfgInfo));
-        if (ret != AICPU_SCHEDULE_OK) {
-            lockForModel.unlock();
-            aicpusd_err("Model[%u] load cfg failed, ret[%d].", modelId, ret);
-            const int32_t destroyRet = ModelDestroy();
-            if (destroyRet != AICPU_SCHEDULE_OK) {
-                aicpusd_err("Model[%u] load cfg failed and rollback failed, rollback ret[%d].",
-                            modelId, destroyRet);
-            }
-            aicpusd_info("Model[%u] rollback end.", modelId);
-            return ret;
-        }
         // load success set isValid true;
         SetExtModelId(AicpuModelManager::GetInstance().GetExtModelId(modelId));
         isValid = true;
@@ -483,7 +470,6 @@ namespace AicpuSchedule {
             aicpusd_err("Model[%u] destroy failed, as ReleaseModelResource failed ret[%d].", modelId_, ret);
             return ret;
         }
-        DestroyModelGroups();
         ClearLoadInfo();
         aicpusd_info("Model[%u] destroy success", modelId_);
         return AICPU_SCHEDULE_OK;
@@ -615,7 +601,6 @@ namespace AicpuSchedule {
             const std::unique_lock<std::mutex> lockForModel(mutexForModel_);
             // destroy all resource.
             const int32_t ret = ReleaseModelResource();
-            DestroyModelGroups();
             ClearLoadInfo();
             if (ret != AICPU_SCHEDULE_OK) {
                 aicpusd_err("Model[%u] Exit failed, as ReleaseModelResource failed ret[%d].", modelId_, ret);
@@ -914,25 +899,6 @@ namespace AicpuSchedule {
         if (msgRet != AICPU_SCHEDULE_OK) {
             return msgRet;
         }
-        if (hcclInitType_ == HcclInitType::INIT_TYPE_FOR_EMBEDDING) {
-            HcclComm *commHandle = AicpuModelManager::GetInstance().GetHcclComm();
-            if (commHandle != nullptr) {
-                aicpusd_info("abort hccl for tag:%d", hcclTag_);
-                StubHcclAbortSelf(*commHandle, hcclTag_);
-            }
-        }
-
-        StopAsyncThread();
-        DeployContext deployCtx = DeployContext::DEVICE;
-        (void)GetAicpuDeployContext(deployCtx);
-        if (deployCtx != DeployContext::DEVICE) {
-            for (auto &item : inputBufPools_) {
-                (void)item.second.FreeAll();
-            }
-            for (auto &item : outputBufPools_) {
-                (void)item.second.FreeAll();
-            }
-        }
 
         ClearAllLockedTable();
         return AICPU_SCHEDULE_OK;
@@ -1018,6 +984,28 @@ namespace AicpuSchedule {
         return AICPU_SCHEDULE_OK;
     }
 
+    void AicpuModel::LoadWaitNotifyId(const AicpuTaskInfo &aicpuTaskInfo,
+                                      std::unordered_set<size_t> &waitNotifyIdSet) const
+    {
+        if ((aicpuTaskInfo.kernelSo != 0U) || ((aicpuTaskInfo.kernelType != aicpu::KERNEL_TYPE_CCE) &&
+                                              (aicpuTaskInfo.kernelType != aicpu::KERNEL_TYPE_AICPU))) {
+            return;
+        }
+        const auto kernelName = PtrToPtr<void, char_t>(ValueToPtr(aicpuTaskInfo.kernelName));
+        if ((kernelName == nullptr) || (std::string(kernelName) != "waitNotify")) {
+            return;
+        }
+        const auto notifyId = PtrToPtr<void, uint32_t>(ValueToPtr(aicpuTaskInfo.paraBase));
+        if (notifyId == nullptr) {
+            aicpusd_warn("Stream[%u] taskId[%u] is waitNotify, but paraBase is null.",
+                         aicpuTaskInfo.streamID, aicpuTaskInfo.taskID);
+            return;
+        }
+        (void)waitNotifyIdSet.emplace(*notifyId);
+        aicpusd_info("Model[%u] stream[%u] taskId[%u] use notifyId[%u]",
+                     modelId_, aicpuTaskInfo.streamID, aicpuTaskInfo.taskID, *notifyId);
+    }
+
     int32_t AicpuModel::LoadQueueInfo(const AicpuModelInfo * const modelInfo)
     {
         aicpusd_info("LoadQueueInfo for model[%u] begin.", modelId_);
@@ -1094,217 +1082,6 @@ namespace AicpuSchedule {
         return AICPU_SCHEDULE_OK;
     }
 
-    int32_t AicpuModel::InitBufPool(const ModelCfgInfo * const cfgInfo)
-    {
-        if (((cfgInfo->inputNum > 0U) && ((cfgInfo->inBuffPoolSizeAddr == 0U) || (cfgInfo->inBuffSizeAddr == 0U))) ||
-            ((cfgInfo->outputNum > 0U) && ((cfgInfo->outBuffPoolSizeAddr == 0U) || (cfgInfo->outBuffSizeAddr == 0U)))) {
-            aicpusd_err("Invalid bufferPool config for inputNum[%u], outputNum[%u].",
-                cfgInfo->inputNum, cfgInfo->outputNum);
-            return RET_FAILED;
-        }
-
-        int32_t ret = RET_SUCCESS;
-        std::vector<MBufferPool *> poolsToRecover;
-        const ScopeGuard mbufGuard([&poolsToRecover, this]() {
-            if (poolsToRecover.empty()) {
-                return;
-            }
-            for (auto pool : poolsToRecover) {
-                pool->UnInit();
-            }
-            inputBufPools_.clear();
-            outputBufPools_.clear();
-        });
-
-        uint16_t *const inputBlockNum = PtrToPtr<void, uint16_t>(ValueToPtr(cfgInfo->inBuffPoolSizeAddr));
-        uint64_t *const inputBlockSize = PtrToPtr<void, uint64_t>(ValueToPtr(cfgInfo->inBuffSizeAddr));
-        for (uint32_t inputIndex = 0U; inputIndex < cfgInfo->inputNum; inputIndex++) {
-            ret = inputBufPools_[inputIndex].Init(inputBlockNum[inputIndex], inputBlockSize[inputIndex],
-                cfgInfo->memoryRegister);
-            if (ret != RET_SUCCESS) {
-                aicpusd_err("Fail to init inputBufPool[%u:%lu], ret is %d",
-                    inputBlockNum[inputIndex], inputBlockSize[inputIndex], ret);
-                return ret;
-            }
-            poolsToRecover.emplace_back(&inputBufPools_[inputIndex]);
-        }
-
-        uint16_t *const outputBlockNum = PtrToPtr<void, uint16_t>(ValueToPtr(cfgInfo->outBuffPoolSizeAddr));
-        uint64_t *const outputBlockSize = PtrToPtr<void, uint64_t>(ValueToPtr(cfgInfo->outBuffSizeAddr));
-        for (uint32_t outputIndex = 0U; outputIndex < cfgInfo->outputNum; outputIndex++) {
-            ret = outputBufPools_[outputIndex].Init(outputBlockNum[outputIndex], outputBlockSize[outputIndex],
-                cfgInfo->memoryRegister);
-            if (ret != RET_SUCCESS) {
-                aicpusd_err("Fail to init outputBufPool[%u:%lu], ret is %d",
-                    outputBlockNum[outputIndex], outputBlockSize[outputIndex], ret);
-                return ret;
-            }
-            poolsToRecover.emplace_back(&outputBufPools_[outputIndex]);
-        }
-
-        poolsToRecover.clear();
-        return ret;
-    }
-
-    StatusCode AicpuModel::LoadCfgForEmbedding(const ModelCfgInfo * const cfgInfo)
-    {
-        hcclInitType_ = HcclInitType::INIT_TYPE_FOR_EMBEDDING;
-        // register memory in initbufpool, this action should be done before AssociateWorkers
-        const auto ret = InitBufPool(cfgInfo);
-        if (ret != RET_SUCCESS) {
-            aicpusd_err("InitBufPoll fail for model[%u], ret is %d", modelId_, ret);
-            return AICPU_SCHEDULE_ERROR_INNER_ERROR;
-        }
-
-        HcclComm *commHandle = AicpuModelManager::GetInstance().GetHcclComm();
-        if (commHandle == nullptr) {
-            aicpusd_err("Hcom has not been initialized.");
-            return AICPU_SCHEDULE_ERROR_INNER_ERROR;
-        }
-        uint32_t *clientRanks = PtrToPtr<void, uint32_t>(ValueToPtr(cfgInfo->clientRankAddr));
-        if ((cfgInfo->clientRankNum > 0U) && (clientRanks == nullptr)) {
-            aicpusd_err("Invalid clientRanks");
-            return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
-        }
-        // memoryRegister:true means lookup, then need associate
-        if (cfgInfo->memoryRegister) {
-            const auto hcclRet = StubHcclPsAssociateWorkers(*commHandle, cfgInfo->tagId,
-                clientRanks, cfgInfo->clientRankNum);
-            if (hcclRet != HCCL_SUCCESS) {
-                aicpusd_err("Create resource for tag[%d] fail, ret is %d.",
-                    cfgInfo->tagId, static_cast<int32_t>(hcclRet));
-                return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-            }
-            aicpusd_info("Successfully created resource for tag[%d] of model[%u].", cfgInfo->tagId, modelId_);
-        }
-
-        isSupportCounterFilter_ = cfgInfo->supportCounterFilter;
-        aicpusd_info("kModelWithEmbedding isSupportCounterFilter[%d].", static_cast<int32_t>(isSupportCounterFilter_));
-        return AICPU_SCHEDULE_OK;
-    }
-
-    StatusCode AicpuModel::LoadCfgForSyncEvent(const ModelCfgInfo * const cfgInfo)
-    {
-        hcclInitType_ = HcclInitType::INIT_TYPE_FOR_SYNC_EVENT;
-        const auto groupRet = InitModelGroups(cfgInfo);
-        if (groupRet != AICPU_SCHEDULE_OK) {
-            aicpusd_err("InitModelGroups fail for model[%u].", modelId_);
-            return groupRet;
-        }
-        const auto ret = PrepareHcclLink(cfgInfo);
-        if (ret != AICPU_SCHEDULE_OK) {
-            aicpusd_err("PrepareHcclLink fail for model[%u].", modelId_);
-            return ret;
-        }
-        const auto bufRet = InitBufPool(cfgInfo);
-        if (bufRet != RET_SUCCESS) {
-            aicpusd_err("InitBufPoll fail for model[%u], ret is %d", modelId_, bufRet);
-            return AICPU_SCHEDULE_ERROR_INNER_ERROR;
-        }
-        isSupportCounterFilter_ = cfgInfo->supportCounterFilter;
-        aicpusd_info("kModelWithSyncEvent isSupportCounterFilter[%d].", static_cast<int32_t>(isSupportCounterFilter_));
-        return AICPU_SCHEDULE_OK;
-    }
-
-    StatusCode AicpuModel::LoadCfg(const ModelCfgInfo * const cfgInfo)
-    {
-        if (cfgInfo == nullptr) {
-            return AICPU_SCHEDULE_OK;
-        }
-        aicpusd_info("LoadCfg for model[%u].", modelId_);
-
-        if (cfgInfo->modelType == static_cast<uint32_t>(kModelWithEmbedding)) {
-            const auto ret = LoadCfgForEmbedding(cfgInfo);
-            if (ret != AICPU_SCHEDULE_OK) {
-                return ret;
-            }
-        } else if (cfgInfo->modelType == static_cast<uint32_t>(kModelWithSyncEvent)) {
-            const auto ret = LoadCfgForSyncEvent(cfgInfo);
-            if (ret != AICPU_SCHEDULE_OK) {
-                return ret;
-            }
-        } else {
-            aicpusd_err("Invalid model type: %u", cfgInfo->modelType);
-            return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
-        }
-        hcclTag_ = cfgInfo->tagId;
-        psId_ = cfgInfo->psId;
-        return AICPU_SCHEDULE_OK;
-    }
-
-    StatusCode AicpuModel::PrepareHcclLink(const ModelCfgInfo * const cfgInfo)
-    {
-        const ModelCommOpList *const commOps =
-            PtrToPtr<void, ModelCommOpList>(ValueToPtr(cfgInfo->modelCommOpListAddr));
-        if (commOps == nullptr) {
-            aicpusd_err("Null commops");
-            return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
-        }
-
-        const uint32_t opNum = commOps->opNum;
-        const HcomOpDesc * const opList = PtrToPtr<void, HcomOpDesc>(ValueToPtr(commOps->commOpDescsListAddr));
-        if ((opNum == 0U) || (opList == nullptr)) {
-            aicpusd_err("Empty opList");
-            return AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID;
-        }
-
-        std::vector<HcomRequest> requests;
-        for (size_t i = 0U; i < static_cast<size_t>(opNum); ++i) {
-            HcomRequest req = {};
-            const auto ret = StubHcomPrepareStart(&opList[i], &req);
-            if (ret != HCCL_SUCCESS) {
-                aicpusd_err("StubHcomPrepareStart fail, ret is %d", static_cast<int32_t>(ret));
-                return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-            }
-            requests.emplace_back(req);
-        }
-
-        aicpusd_run_info("Begin to test whether prepareStart is finished");
-        for (auto req: requests) {
-            HcomStatus status = {};
-            uint32_t tries = 0U;
-            while (true) {
-                const auto ret = StubHcomPrepareQuery(req, &status);
-                if ((ret != HCCL_SUCCESS) || (status.status == STATUS_FAILED)) {
-                    aicpusd_err("StubHcomPrepareQuery fail");
-                    return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-                }
-                if (status.status == STATUS_SUCCESS) {
-                    break;
-                }
-                (void)usleep(HCCL_QUERY_PREPARE_INTERVAL);
-                if ((++tries % HCCL_QUERY_LOG_INTERVAL) == 0U) {
-                    aicpusd_run_info("[%u]th test prepareStart", tries);
-                }
-            }
-        }
-        aicpusd_run_info("PrepareStart finished");
-        return AICPU_SCHEDULE_OK;
-    }
-
-    void AicpuModel::LoadWaitNotifyId(const AicpuTaskInfo &aicpuTaskInfo,
-                                      std::unordered_set<size_t> &waitNotifyIdSet) const
-    {
-        // waitNotify task so is null and type is cce or aicpu
-        if ((aicpuTaskInfo.kernelSo != 0U) || ((aicpuTaskInfo.kernelType != aicpu::KERNEL_TYPE_CCE) &&
-                                              (aicpuTaskInfo.kernelType != aicpu::KERNEL_TYPE_AICPU))) {
-            return;
-        }
-        const auto kernelName = PtrToPtr<void, char_t>(ValueToPtr(aicpuTaskInfo.kernelName));
-        if ((kernelName == nullptr) || (std::string(kernelName) != "waitNotify")) {
-            return;
-        }
-        const auto notifyId = PtrToPtr<void, uint32_t>(ValueToPtr(aicpuTaskInfo.paraBase));
-        if (notifyId == nullptr) {
-            aicpusd_warn("Stream[%u] taskId[%u] is waitNotify, but paraBase is null.",
-                         aicpuTaskInfo.streamID, aicpuTaskInfo.taskID);
-            return;
-        }
-        (void)waitNotifyIdSet.emplace(*notifyId);
-        aicpusd_info("Model[%u] stream[%u] taskId[%u] use notifyId[%u]",
-                     modelId_, aicpuTaskInfo.streamID, aicpuTaskInfo.taskID, *notifyId);
-    }
-
     void AicpuModel::ClearLoadInfo()
     {
         aicpusd_info("Model[%u] clear load info begin.", modelId_);
@@ -1335,7 +1112,6 @@ namespace AicpuSchedule {
                 } else if (itQueueInfo.flag == static_cast<uint32_t>(QueueDirectionFlag::QUEUE_OUTPUT_FLAG)) {
                     (void) AicpuDrvManager::GetInstance().UnSubscribeQueueNotFullEvent(itQueueInfo.queueID);
                 } else {
-                    // ignore unknown flag
                     aicpusd_err("queue[%u] flag[%u] is unknown.", itQueueInfo.queueID, itQueueInfo.flag);
                 }
             }
@@ -1348,28 +1124,7 @@ namespace AicpuSchedule {
             modelNotifyId_.clear();
         }
 
-        DeployContext deployCtx = DeployContext::DEVICE;
-        (void)GetAicpuDeployContext(deployCtx);
-        if (deployCtx != DeployContext::DEVICE) {
-            for (auto &item : inputBufPools_) {
-                item.second.UnInit();
-            }
-            inputBufPools_.clear();
-
-            for (auto &item : outputBufPools_) {
-                item.second.UnInit();
-            }
-            outputBufPools_.clear();
-        }
-
         ClearGatheredMbuf();
-        if (hcclInitType_ == HcclInitType::INIT_TYPE_FOR_EMBEDDING) {
-            HcclComm *commHandle = AicpuModelManager::GetInstance().GetHcclComm();
-            if (commHandle != nullptr) {
-                aicpusd_info("destroy resource for tag:%d", hcclTag_);
-                (void)StubHcclDestroyResouce(*commHandle, hcclTag_);
-            }
-        }
 
         for (const auto inputMsgQ : inputMsgQueueIds_) {
             (void) AicpuDrvManager::GetInstance().UnSubscribeQueueNotEmptyEvent(static_cast<uint32_t>(inputMsgQ));
@@ -1379,44 +1134,8 @@ namespace AicpuSchedule {
             (void) AicpuDrvManager::GetInstance().UnSubscribeQueueNotFullEvent(static_cast<uint32_t>(outputMsgQ));
         }
         outputMsgQueueIds_.clear();
-        // clear model id
         iteratorCount_ = 0UL;
         aicpusd_info("Model[%u] clear load info end.", modelId_);
-    }
-
-    StatusCode AicpuModel::InitModelGroups(const ModelCfgInfo * const cfgInfo)
-    {
-        if (cfgInfo->commGroupsAddr == 0UL) {
-            return AICPU_SCHEDULE_OK;
-        }
-        const CommGroups *const commGrups = PtrToPtr<void, CommGroups>(ValueToPtr(cfgInfo->commGroupsAddr));
-        uint32_t index = 0;
-        for (index = 0; index < commGrups->groupNum; index++) {
-            const auto ret = StubHcomCreateGroup(commGrups->groups[index].groupName, commGrups->groups[index].rankNum,
-                                                 commGrups->groups[index].rankIds);
-            if (ret != HCCL_SUCCESS) {
-                aicpusd_err("StubHcomCreateGroup fail, ret is %d", static_cast<int32_t>(ret));
-                return AICPU_SCHEDULE_ERROR_CALL_HCCL;
-            }
-            // 将group存储下来在model destroy的时候要destroy对应的group
-            if (commGrups->groups[index].groupName != nullptr) {
-                groupList_.push_back(commGrups->groups[index].groupName);
-            }
-        }
-        return AICPU_SCHEDULE_OK;
-    }
-
-    void AicpuModel::DestroyModelGroups()
-    {
-        for (auto &group : groupList_) {
-            const auto ret = StubHcomDestroyGroup(group.c_str());
-            if (ret != HCCL_SUCCESS) {
-                aicpusd_err("StubHcomDestroyGroup fail, ret is %d, name:%s", static_cast<int32_t>(ret), group.c_str());
-            } else {
-                aicpusd_info("StubHcomDestroyGroup success name:%s", group.c_str());
-            }
-        }
-        groupList_.clear();
     }
 
     StoreResult AicpuModel::StoreDequedMbuf(const uint64_t transId, const uint32_t routeLabel,
@@ -1598,76 +1317,6 @@ namespace AicpuSchedule {
     uint32_t &AicpuModel::GetInputConsumeNumRef()
     {
         return inputConsumeNum_;
-    }
-
-    int32_t AicpuModel::AddAsyncTask(const AsyncTaskInfo &task)
-    {
-        aicpusd_info("model[%u] lock for adding async task.", modelId_);
-        const std::unique_lock<std::mutex> lockForAsyncTask(mutexForAsyncTask_);
-        aicpusd_info("model[%u] add async task.", modelId_);
-        asyncTasks_.push_back(task);
-        if (asyncTaskThreads_.empty()) {
-            asyncTaskRunning_ = true;
-            AICPUSD_EXCEPTION_CATCH(asyncTaskThreads_.emplace_back(&AicpuModel::ReleaseMem, this), return AICPU_SCHEDULE_ERROR_INNER_ERROR);
-            aicpusd_run_info("model[%u] start thread for async task success.", modelId_);
-        }
-        aicpusd_info("model[%u] add async task finish.", modelId_);
-        return AICPU_SCHEDULE_OK;
-    }
-
-    void AicpuModel::ReleaseMem()
-    {
-        AsyncTaskInfo task = {};
-        while(asyncTaskRunning_) {
-            {
-                std::unique_lock<std::mutex> lockForAsyncTask(mutexForAsyncTask_);
-                if (asyncTasks_.empty()) {
-                    lockForAsyncTask.unlock();
-                    (void) usleep(ASYNC_TASK_INTERVAL);
-                    continue;
-                }
-                task = asyncTasks_.front();
-                asyncTasks_.pop_front();
-            }
-            DoReleaseMem(task);
-        }
-    }
-
-    void AicpuModel::DoReleaseMem(AsyncTaskInfo &task) {
-        aicpusd_info("model[%u] send lookup response with async thread.", modelId_);
-        const auto ret = SingleHcclWait(task.request);
-        if (ret != RET_SUCCESS) {
-            aicpusd_err("model[%u] HcclWait fail when release mem", modelId_);
-        }
-
-        aicpusd_info("model[%u] after send lookup response, release outputMbuf.", modelId_);
-        // getoutputBufPool by 0 because there is only one output
-        GetOutputBufPool(0U).Free(task.outputMbuf);
-        if (isValid) {
-            AICPUSubEventInfo subEventInfo = {};
-            subEventInfo.modelId = modelId_;
-            const auto result = AicpuMsgSend::SendAICPUSubEvent(
-                PtrToPtr<AICPUSubEventInfo, const char_t>(&subEventInfo),
-                static_cast<uint32_t>(sizeof(AICPUSubEventInfo)), AICPU_SUB_EVENT_PREPARE_MEM,
-                CP_DEFAULT_GROUP_ID, true);
-            if (result != AICPU_SCHEDULE_OK) {
-                aicpusd_err("Send aicpu subevent failed. Event modelId is %u.", modelId_);
-            };
-        }
-    }
-
-    void AicpuModel::StopAsyncThread() {
-        aicpusd_run_info("model[%u] begin to StopAsyncThread.", modelId_);
-        asyncTaskRunning_ = false;
-        for (auto &thread : asyncTaskThreads_) {
-            if (thread.joinable()) {
-                thread.join();
-            }
-        }
-        const std::unique_lock<std::mutex> lockForAsyncTask(mutexForAsyncTask_);
-        asyncTasks_.clear();
-        asyncTaskThreads_.clear();
-        aicpusd_run_info("model[%u] end to StopAsyncThread.", modelId_);
     }
 
     size_t AicpuModel::GetCurDequeIndex(const size_t qCnt)

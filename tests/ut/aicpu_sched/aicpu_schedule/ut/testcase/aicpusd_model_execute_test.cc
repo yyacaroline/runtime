@@ -91,23 +91,7 @@ int32_t ExecuteTaskTestStub(const AicpuTaskInfo &kernelTaskInfo, const RunContex
     return AICPU_SCHEDULE_OK;
 }
 
-StatusCode GetAicpuDeployContextOnHost(DeployContext &deployCtx)
-{
-    deployCtx = DeployContext::HOST;
-    return AICPU_SCHEDULE_OK;
-}
 
-HcclResult hcomPrepareQueryStub2(HcomRequest request, HcomStatus *status)
-{
-    if (g_queryCount++ <= 500) {
-        status->status = 1;
-        return 0;
-    } else {
-        status->status == -1;
-        g_queryCount = 0;
-        return 1;
-    }
-}
 
 TEST_F(AICPUModelExecuteTEST, ExecuteNextTask_success1) {
     AsyncNotifyInfo notifyInfo;
@@ -373,40 +357,6 @@ TEST_F(AICPUModelExecuteTEST, ModelLoad_failed3) {
     aicpuModel = nullptr;
 }
 
-TEST_F(AICPUModelExecuteTEST, ModelLoad_failed4) {
-    AicpuModel *aicpuModel = new AicpuModel();
-
-    MOCKER_CPP(&AicpuModel::CheckOperateAndUpdateStatus)
-        .stubs()
-        .will(returnValue(0));
-
-    MOCKER_CPP(&AicpuModel::LoadStreamAndTask)
-        .stubs()
-        .will(returnValue(0));
-
-    MOCKER_CPP(&AicpuModel::LoadQueueInfo)
-        .stubs()
-        .will(returnValue(0));
-    
-    MOCKER_CPP(&AicpuModel::AttachReportStatusQueue)
-        .stubs()
-        .will(returnValue(0));
-
-    MOCKER_CPP(&AicpuModel::LoadCfg)
-        .stubs()
-        .will(returnValue(-1));
-
-    MOCKER_CPP(&AicpuModel::ModelDestroy)
-        .stubs()
-        .will(returnValue(0));
-
-    AicpuModelInfo modelInfoT = {0};
-    modelInfoT.moduleID = 1;
-    int ret = aicpuModel->ModelLoad(&modelInfoT);
-    EXPECT_EQ(ret, -1);
-    delete aicpuModel;
-    aicpuModel = nullptr;
-}
 
 int pthread_rwlock_trywrlock_stub(pthread_rwlock_t *rwlock) {
     return 0;
@@ -790,27 +740,6 @@ TEST_F(AICPUModelExecuteTEST, ResetModelForExecute_fialed2) {
     aicpuModel = nullptr;
 }
 
-TEST_F(AICPUModelExecuteTEST, ResetModelForExecute_Success) {
-    AicpuModel *aicpuModel = new AicpuModel();
-    ModelCfgInfo cfgInfo = {};
-    uint16_t blockNums[] = {100U};
-    uint64_t blockSizes[] = {1U};
-    cfgInfo.inputNum = 1U;
-    cfgInfo.inBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);
-    cfgInfo.inBuffSizeAddr = PtrToValue(&blockSizes[0U]);
-    cfgInfo.outputNum = 1U;
-    cfgInfo.outBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);;
-    cfgInfo.outBuffSizeAddr = PtrToValue(&blockSizes[0U]);
-
-    MOCKER(halBuffCreatePool).stubs().will(returnValue(static_cast<int32_t>(DRV_ERROR_NONE)));
-    auto ret = aicpuModel->InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, 0);
-    MOCKER(GetAicpuDeployContext).stubs().will(invoke(GetAicpuDeployContextOnHost));
-    ret = aicpuModel->ReleaseModelResource();
-    EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
-    delete aicpuModel;
-    aicpuModel = nullptr;
-}
 
 TEST_F(AICPUModelExecuteTEST, CheckOperateTest) {
     AicpuModel *aicpuModel = new AicpuModel();
@@ -1592,76 +1521,8 @@ TEST_F(AICPUModelExecuteTEST, StreamManager1) {
     EXPECT_STREQ(info.DebugString().c_str(), expectStr.c_str());
 }
 
-TEST_F(AICPUModelExecuteTEST, loadCfgErrorForEmbedding) {
-    ModelCfgInfo cfgInfo = {};
-    MOCKER_CPP(&AicpuModel::InitBufPool)
-        .stubs()
-        .will(returnValue(-1))
-        .then(returnValue(0));
-    cfgInfo.modelType = 0U;
-    cfgInfo.memoryRegister = true;
-    AicpuModel tempModel;
-    // fail for initbuffpool
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_ERROR_INNER_ERROR);
-    // fail for hcom was not initialiezed
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_ERROR_INNER_ERROR);
-    // fail for invalid client ranks
-    auto &modelManager = AicpuModelManager::GetInstance();
-    modelManager.hcclEmbInit_ = true;
-    cfgInfo.clientRankNum = 2U;
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID);
-    // fail for hccl
-    uint32_t ranks[2U] = {0U, 1U};
-    cfgInfo.clientRankAddr = PtrToValue(&ranks[0U]);
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_ERROR_CALL_HCCL);
-    // success
-    MOCKER(StubHcclPsAssociateWorkers).stubs().will(returnValue(HCCL_SUCCESS));
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_OK);
-    modelManager.hcclEmbInit_ = false;
-    GlobalMockObject::verify();
-}
 
-TEST_F(AICPUModelExecuteTEST, loadCfgErrorForSyncEvent) {
-    ModelCfgInfo cfgInfo = {};
-    MOCKER_CPP(&AicpuModel::InitModelGroups)
-        .stubs()
-        .will(returnValue(1))
-        .then(returnValue(0));
-    MOCKER_CPP(&AicpuModel::PrepareHcclLink)
-        .stubs()
-        .will(returnValue(1))
-        .then(returnValue(0));
-    MOCKER_CPP(&AicpuModel::InitBufPool)
-        .stubs()
-        .will(returnValue(-1));
-    cfgInfo.modelType = 1U;
-    AicpuModel tempModel;
-    // fail for InitModelGroups
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), 1);
-    // fail for PrepareHcclLink
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), 1);
-    // fail for InitBufPool
-    EXPECT_EQ(tempModel.LoadCfg(&cfgInfo), AICPU_SCHEDULE_ERROR_INNER_ERROR);
-    GlobalMockObject::verify();
-}
 
-TEST_F(AICPUModelExecuteTEST, loadCfgError_03) {
-    ModelCfgInfo cfgInfo;
-    MOCKER_CPP(&AicpuModel::InitModelGroups)
-        .stubs()
-        .will(returnValue(0));
-    MOCKER_CPP(&AicpuModel::PrepareHcclLink)
-        .stubs()
-        .will(returnValue(0));
-    MOCKER_CPP(&AicpuModel::InitBufPool)
-        .stubs()
-        .will(returnValue(-1));
-    cfgInfo.modelType = 1U;
-    AicpuModel tempModel;
-    StatusCode ret = tempModel.LoadCfg(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_INNER_ERROR);
-    GlobalMockObject::verify();
-}
 
 TEST_F(AICPUModelExecuteTEST, GatherDequedMbuf) {
     AicpuModel aicpuModel;
@@ -1828,41 +1689,6 @@ TEST_F(AICPUModelExecuteTEST, ModelLoadAttachAndDestroyFail) {
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID);
 }
 
-TEST_F(AICPUModelExecuteTEST, ModelLoadLoadCfgAndDestroyFail) {
-    StreamInfo stream = {
-        .streamID = 1U,
-        .streamFlag = AICPU_STREAM_INDEX|HEAD_STREAM_INDEX,
-    };
-
-    std::string kernelName = "endGraph";
-    AicpuTaskInfo task = {
-        .taskID = 0U,
-        .streamID = 1U,
-        .kernelType = 0,
-        .kernelName = PtrToValue(kernelName.data())
-    };
-
-    AicpuModelInfo modelInfoT = {
-        .moduleID = 961U,
-        .tsId = 1U,
-        .streamInfoNum = 1,
-        .aicpuTaskNum = 1,
-        .streamInfoPtr = PtrToValue(&stream),
-        .aicpuTaskPtr = PtrToValue(&task),
-        .queueSize = 0,
-        .queueInfoPtr = 0UL
-    };
-
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelType = UINT32_MAX;
-
-    MOCKER_CPP(&AicpuModel::ModelDestroy).stubs()
-        .will(returnValue(static_cast<int32_t>(AICPU_SCHEDULE_ERROR_INNER_ERROR)));
-
-    AicpuModel aicpuModel;
-    int ret = aicpuModel.ModelLoad(&modelInfoT, &cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID);
-}
 
 TEST_F(AICPUModelExecuteTEST, ActiveOtherAicpuStreamsSendEventFail) {
     AicpuModel aicpuModel;
@@ -2065,135 +1891,14 @@ TEST_F(AICPUModelExecuteTEST, LoadQueueInfoSubscribeEventFail) {
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_FROM_DRV);
 }
 
-TEST_F(AICPUModelExecuteTEST, InitBufPoolInitFail) {
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.inputNum = 1U;
-    uint16_t blockNums[] = {100U};
-    cfgInfo.inBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);
-    uint64_t blockSizes[] = {1U};
-    cfgInfo.inBuffSizeAddr = PtrToValue(&blockSizes[0U]);
 
-    MOCKER(halBuffCreatePool).stubs().will(returnValue(static_cast<int32_t>(DRV_ERROR_INVALID_VALUE)));
-    AicpuModel aicpuModel;
-    const int32_t ret = aicpuModel.InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, DRV_ERROR_INVALID_VALUE);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitBufPoolInitFailPartly) {
-    ModelCfgInfo cfgInfo = {};
-    uint16_t blockNums[] = {100U};
-    uint64_t blockSizes[] = {1U};
-    cfgInfo.inputNum = 1U;
-    cfgInfo.inBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);
-    cfgInfo.inBuffSizeAddr = PtrToValue(&blockSizes[0U]);
-    cfgInfo.outputNum = 1U;
-    cfgInfo.outBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);;
-    cfgInfo.outBuffSizeAddr = PtrToValue(&blockSizes[0U]);
 
-    MOCKER(halBuffCreatePool)
-        .stubs()
-        .will(returnValue(static_cast<int32_t>(DRV_ERROR_NONE)))
-        .then(returnValue(static_cast<int32_t>(DRV_ERROR_INVALID_VALUE)));
-    AicpuModel aicpuModel;
-    const int32_t ret = aicpuModel.InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, DRV_ERROR_INVALID_VALUE);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitBufPoolInitSuccess) {
-    ModelCfgInfo cfgInfo = {};
-    uint16_t blockNums[] = {100U};
-    uint64_t blockSizes[] = {1U};
-    cfgInfo.inputNum = 1U;
-    cfgInfo.inBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);
-    cfgInfo.inBuffSizeAddr = PtrToValue(&blockSizes[0U]);
-    cfgInfo.outputNum = 1U;
-    cfgInfo.outBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);;
-    cfgInfo.outBuffSizeAddr = PtrToValue(&blockSizes[0U]);
 
-    MOCKER(halBuffCreatePool).stubs().will(returnValue(static_cast<int32_t>(DRV_ERROR_NONE)));
-    AicpuModel aicpuModel;
-    const int32_t ret = aicpuModel.InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, 0);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitBufPoolInitFailed) {
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.inputNum = 1U;
-    cfgInfo.inBuffPoolSizeAddr = 0;
-    cfgInfo.outputNum = 1U;
-    cfgInfo.outBuffPoolSizeAddr = 0;
-    AicpuModel aicpuModel;
-    const int32_t ret = aicpuModel.InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, RET_FAILED);
-}
 
-TEST_F(AICPUModelExecuteTEST, LoadCfgPrepareHcclLinkFail) {
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelType = static_cast<uint32_t>(kModelWithSyncEvent);
 
-    MOCKER_CPP(&AicpuModel::InitModelGroups).stubs().will(returnValue(AICPU_SCHEDULE_OK));
-    MOCKER_CPP(&AicpuModel::PrepareHcclLink).stubs().will(returnValue(AICPU_SCHEDULE_ERROR_INNER_ERROR));
-
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.LoadCfg(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_INNER_ERROR);
-}
-
-TEST_F(AICPUModelExecuteTEST, PrepareHcclLinkCommOpsNullptr) {
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelCommOpListAddr = 0UL;
-
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.PrepareHcclLink(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID);
-}
-
-TEST_F(AICPUModelExecuteTEST, PrepareHcclLinkOpNumNull) {
-    ModelCommOpList opList = {};
-    opList.opNum = 0;
-
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelCommOpListAddr = PtrToValue(&opList);
-
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.PrepareHcclLink(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_PARAMETER_NOT_VALID);
-}
-
-TEST_F(AICPUModelExecuteTEST, PrepareHcclLinkHcomStartFail) {
-    HcomOpDesc opDesc = {};
-
-    ModelCommOpList opList = {};
-    opList.opNum = 1;
-    opList.commOpDescsListAddr = PtrToValue(&opDesc);
-
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelCommOpListAddr = PtrToValue(&opList);
-   
-
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.PrepareHcclLink(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_CALL_HCCL);
-}
-
-TEST_F(AICPUModelExecuteTEST, PrepareHcclLinkPrepareQueryFail) {
-    HcomOpDesc opDesc = {};
-
-    ModelCommOpList opList = {};
-    opList.opNum = 1;
-    opList.commOpDescsListAddr = PtrToValue(&opDesc);
-
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.modelCommOpListAddr = PtrToValue(&opList);
-
-   MOCKER(StubHcomPrepareStart).stubs().will(returnValue(0));
-   MOCKER(StubHcomPrepareQuery)
-        .stubs()
-        .will(invoke(hcomPrepareQueryStub2));
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.PrepareHcclLink(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_CALL_HCCL);
-}
 
 TEST_F(AICPUModelExecuteTEST, ClearLoadInfoOutputQueue) {
     AicpuModel aicpuModel;
@@ -2215,17 +1920,6 @@ TEST_F(AICPUModelExecuteTEST, ClearLoadInfoUnknownQueue) {
     EXPECT_EQ(aicpuModel.isDestroyModel_, true);
 }
 
-TEST_F(AICPUModelExecuteTEST, ClearLoadInfoInputBuf) {
-    AicpuModel aicpuModel;
-    aicpuModel.inputBufPools_.clear();
-    aicpuModel.outputBufPools_.clear();
-    MBufferPool poolTest;
-    aicpuModel.inputBufPools_[0].Init(1, 1, &poolTest);
-    aicpuModel.outputBufPools_[0].Init(1, 1, &poolTest);
-
-    aicpuModel.ClearLoadInfo();
-    EXPECT_EQ(aicpuModel.isDestroyModel_, true);
-}
 
 TEST_F(AICPUModelExecuteTEST, ClearLoadInfoQueueId) {
     AicpuModel aicpuModel;
@@ -2238,83 +1932,11 @@ TEST_F(AICPUModelExecuteTEST, ClearLoadInfoQueueId) {
     EXPECT_EQ(aicpuModel.isDestroyModel_, true);
 }
 
-TEST_F(AICPUModelExecuteTEST, ClearLoadInfoQueueId_Success) {
-    AicpuModel aicpuModel;
-    ModelCfgInfo cfgInfo = {};
-    uint16_t blockNums[] = {100U};
-    uint64_t blockSizes[] = {1U};
-    cfgInfo.inputNum = 1U;
-    cfgInfo.inBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);
-    cfgInfo.inBuffSizeAddr = PtrToValue(&blockSizes[0U]);
-    cfgInfo.outputNum = 1U;
-    cfgInfo.outBuffPoolSizeAddr = PtrToValue(&blockNums[0U]);;
-    cfgInfo.outBuffSizeAddr = PtrToValue(&blockSizes[0U]);
- 
-    MOCKER(halBuffCreatePool).stubs().will(returnValue(static_cast<int32_t>(DRV_ERROR_NONE)));
-    auto ret = aicpuModel.InitBufPool(&cfgInfo);
-    EXPECT_EQ(ret, 0);
-    MOCKER(GetAicpuDeployContext).stubs().will(invoke(GetAicpuDeployContextOnHost));
-    aicpuModel.ClearLoadInfo();
-    EXPECT_EQ(aicpuModel.isDestroyModel_, true);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitModelGroupsNullptr) {
-    ModelCfgInfo cfgInfo = {};
-    cfgInfo.commGroupsAddr = 0UL;
 
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.InitModelGroups(&cfgInfo);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitModelGroupsHcclFailed) {
-    std::vector<CommGroup> groupVec = {CommGroup(), CommGroup()};
-    CommGroups groupList = {};
-    groupList.groupNum = 2U;
-    groupList.groups = groupVec.data();
 
-    ModelCfgInfo cfg = {};
-    cfg.commGroupsAddr = &groupList;
-    MOCKER(StubHcomCreateGroup).stubs().will(returnValue(1));
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.InitModelGroups(&cfg);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_CALL_HCCL);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitModelGroupsOK) {
-    CommGroup testA = {"test", 0, nullptr};
-    std::vector<CommGroup> groupVec = {testA, CommGroup()};
-    CommGroups groupList = {};
-    groupList.groupNum = 2U;
-    groupList.groups = groupVec.data();
-
-    ModelCfgInfo cfg = {};
-    cfg.commGroupsAddr = &groupList;
-    MOCKER(StubHcomCreateGroup).stubs().will(returnValue(0));
-    AicpuModel aicpuModel;
-    const StatusCode ret = aicpuModel.InitModelGroups(&cfg);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
-}
-
-TEST_F(AICPUModelExecuteTEST, DestoryModelGroupsSuccess) {
-    AicpuModel aicpuModel;
-    aicpuModel.groupList_.push_back("test_queue");
-
-    MOCKER(StubHcomDestroyGroup).stubs().will(returnValue(HCCL_SUCCESS));
-
-    aicpuModel.DestroyModelGroups();
-    EXPECT_EQ(aicpuModel.groupList_.size(), 0);
-}
-
-TEST_F(AICPUModelExecuteTEST, DestoryModelGroupsFail) {
-    AicpuModel aicpuModel;
-    aicpuModel.groupList_.push_back("test_queue");
-
-    MOCKER(StubHcomDestroyGroup).stubs().will(returnValue(HCCL_E_NETWORK));
-
-    aicpuModel.DestroyModelGroups();
-    EXPECT_EQ(aicpuModel.groupList_.size(), 0);
-}
 
 TEST_F(AICPUModelExecuteTEST, ClearAllLockedTableSuccess) {
     AicpuModel aicpuModel;
@@ -2341,45 +1963,13 @@ TEST_F(AICPUModelExecuteTEST, GetModelsByTableIdSuccess) {
     EXPECT_EQ(ret.size(), 1);
 }
 
-TEST_F(AICPUModelExecuteTEST, AddAsyncTask_success)
-{
-    AicpuModel aicpuModel;
-    aicpuModel.isValid = true;
-    AsyncTaskInfo task = {};
-    MOCKER(SingleHcclWait).stubs().will(returnValue(0));
-    EXPECT_EQ(aicpuModel.AddAsyncTask(task), AICPU_SCHEDULE_OK);
-    EXPECT_EQ(aicpuModel.asyncTaskThreads_.size() ,1);
-    usleep(10000);
-    aicpuModel.StopAsyncThread();
-    EXPECT_EQ(aicpuModel.asyncTaskThreads_.size() ,0);
-}
 
-TEST_F(AICPUModelExecuteTEST, DoReleaseMem_fail_SingleHcclWait)
-{
-    AicpuModel aicpuModel;
-    aicpuModel.isValid = true;
-    MOCKER(SingleHcclWait).stubs().will(returnValue(1));
-    AsyncTaskInfo task = {};
-    aicpuModel.DoReleaseMem(task);
-    EXPECT_EQ(aicpuModel.asyncTaskRunning_, false);
-}
 
-TEST_F(AICPUModelExecuteTEST, DoReleaseMem_fail_SendMsg)
-{
-    AicpuModel aicpuModel;
-    aicpuModel.isValid = true;
-    MOCKER(SingleHcclWait).stubs().will(returnValue(0));
-    MOCKER_CPP(&AicpuMsgSend::SendAICPUSubEvent).stubs().will(returnValue(1));
-    AsyncTaskInfo task = {};
-    aicpuModel.DoReleaseMem(task);
-    EXPECT_EQ(aicpuModel.asyncTaskRunning_, false);
-}
 
 TEST_F(AICPUModelExecuteTEST, ProcessDataException_fail_SendMsg)
 {
     AicpuModel aicpuModel;
     MOCKER_CPP(&AicpuMsgSend::SendAICPUSubEvent).stubs().will(returnValue(1));
-    AsyncTaskInfo task = {};
     int ret = aicpuModel.ProcessDataException(0, 0);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
@@ -2544,33 +2134,4 @@ TEST_F(AICPUModelExecuteTEST, StoreDequedMbufFailed)
     EXPECT_EQ(aicpuModel.StoreDequedMbuf(0U, 0U, 0U, nullptr, 1U), StoreResult::FAIL_STORE);
 }
 
-TEST_F(AICPUModelExecuteTEST, InitHcclForSyncEvent_SUCCESS)
-{
-    ModelCfgInfo cfg = {};
-    const char* hcomName = "hcom";
-    cfg.hcclCommNameAddr = PtrToValue(hcomName);
-    cfg.hcclTimeOut = -1;
-    AicpuModelManager manager;
-    MOCKER(StubHcclCpuCommInit).stubs().will(returnValue(HCCL_SUCCESS));
-    // first init
-    EXPECT_EQ(manager.InitHcclForSyncEvent(&cfg), AICPU_SCHEDULE_OK);
-    // other init
-    EXPECT_EQ(manager.InitHcclForSyncEvent(&cfg), AICPU_SCHEDULE_OK);
-}
 
-TEST_F(AICPUModelExecuteTEST, InitHcclForSyncEvent_FAIL)
-{
-    ModelCfgInfo cfg = {};
-    const char* hcomName = "hcom";
-    cfg.hcclCommNameAddr = PtrToValue(hcomName);
-    AicpuModelManager manager;
-    MOCKER(strncpy_s)
-        .stubs()
-        .will(returnValue(1))
-        .then(returnValue(0));
-    // fail for strncpy_s
-    EXPECT_EQ(manager.InitHcclForSyncEvent(&cfg), AICPU_SCHEDULE_ERROR_INNER_ERROR);
-    // fail for StubHcclCpuCommInit
-    MOCKER(StubHcclCpuCommInit).stubs().will(returnValue(HCCL_E_PARA));
-    EXPECT_EQ(manager.InitHcclForSyncEvent(&cfg), AICPU_SCHEDULE_ERROR_CALL_HCCL);
-}

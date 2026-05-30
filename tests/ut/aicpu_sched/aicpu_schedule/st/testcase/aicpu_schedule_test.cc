@@ -3528,10 +3528,6 @@ TEST_F(AICPUScheduleTEST, ModelLoad_failed4) {
     
     MOCKER_CPP(&AicpuModel::AttachReportStatusQueue)
         .stubs()
-        .will(returnValue(0));
-
-    MOCKER_CPP(&AicpuModel::LoadCfg)
-        .stubs()
         .will(returnValue(-1));
 
     MOCKER_CPP(&AicpuModel::ModelDestroy)

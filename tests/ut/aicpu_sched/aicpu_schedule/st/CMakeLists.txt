@@ -139,7 +139,6 @@ set(LOCAL_SRC_FILES
     ${SRC_PATH}/core/aicpusd_cust_so_manager.cpp
     ${SRC_PATH}/core/aicpusd_model_err_process.cpp
     ${SRC_PATH}/common/aicpusd_context.cpp
-    ${SRC_PATH}/common/aicpusd_hccl_api.cpp
     ${SRC_PATH}/common/aicpusd_util.cpp
     ${SRC_PATH}/core/dfx/aicpusd_cust_dump_process.cpp
     ${SRC_PATH}/core/platform_info/aicpusd_send_platform_Info_to_custom.cpp
@@ -186,13 +185,6 @@ set(operator_kernel_src_file
     ${SRC_PATH}/core/operator_kernel/operator_kernel_common.cpp
     ${SRC_PATH}/core/operator_kernel/operator_kernel_register.cpp
     ${SRC_PATH}/core/operator_kernel/operator_kernel.cpp
-    # communication
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_batch_process.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_get_update_req.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_lookup_req.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_lookup_resp.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_remote_comm.cpp
-    ${SRC_PATH}/core/operator_kernel/communication/operator_kernel_set_update_resp.cpp
     # control_flow
     ${SRC_PATH}/core/operator_kernel/control_flow/operator_kernel_active_entry_stream.cpp
     ${SRC_PATH}/core/operator_kernel/control_flow/operator_kernel_active_model.cpp
@@ -229,7 +221,6 @@ set(operator_kernel_src_file
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_model_prepare_non_zero_copy_input.cpp
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_model_prepare_output.cpp
     ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_prepare_dynamic_input_output.cpp
-    ${SRC_PATH}/core/operator_kernel/preprocess/operator_kernel_prepare_mem.cpp
 )
 
 set(hwts_kernel_src_file
