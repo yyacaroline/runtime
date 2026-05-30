@@ -143,7 +143,9 @@ int32_t ExceptionDumper::ExceptionDumperInit(DumpType dumpType, const DumpConfig
 
 bool ExceptionDumper::NeedDumpException(const rtExceptionInfo &exception) const
 {
-    if (exception.retcode == ACL_ERROR_RT_AICORE_OVER_FLOW || exception.retcode == ACL_ERROR_RT_AIVEC_OVER_FLOW) {
+    if (exception.retcode == ACL_ERROR_RT_AICORE_OVER_FLOW ||
+        exception.retcode == ACL_ERROR_RT_AIVEC_OVER_FLOW ||
+        exception.retcode == ACL_ERROR_RT_DEVICE_MEM_ERROR) {
         IDE_LOGW("Ignore exception dump request, retcode: %u.", exception.retcode);
         return false;
     }
