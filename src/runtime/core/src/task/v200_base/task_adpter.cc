@@ -9,6 +9,7 @@
  */
 
 #include "base.hpp"
+#include "stars_david.hpp"
 #include "task_info.hpp"
 
 namespace cce {
@@ -16,7 +17,7 @@ namespace runtime {
 
 uint32_t GetSendSqeNum(TaskInfo * const taskInfo)
 {
-    return taskInfo->sqeNum;
+    return GetSendDavidSqeNum(taskInfo);
 }
 
 }  // namespace runtime

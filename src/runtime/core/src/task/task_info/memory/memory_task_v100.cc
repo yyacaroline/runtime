@@ -771,15 +771,6 @@ static bool MemoryTaskRegister()
 }
 
 static bool g_memoryTaskRegister = MemoryTaskRegister();
-void SetWriteValueSqeNum(TaskInfo* taskInfo)
-{
-    UNUSED(taskInfo);
-}
-
-void SetWaitValueSqeNum(TaskInfo* taskInfo)
-{
-    UNUSED(taskInfo);
-}
 
 }  // namespace runtime
 }  // namespace cce

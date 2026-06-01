@@ -67,7 +67,8 @@ uint32_t GetSendDavidSqeNum(const TaskInfo* const taskInfo)
         return TASK_SQE_NUM_TWO;
     } else if (type == TS_TASK_TYPE_FUSION_KERNEL) {
         return GetSendSqeNumForFusionKernelTask(taskInfo);
-    } else if (type == TS_TASK_TYPE_IPC_WAIT) {
+    } else if ((type == TS_TASK_TYPE_IPC_WAIT) || (type == TS_TASK_TYPE_MEM_WAIT_VALUE) ||
+        (type == TS_TASK_TYPE_CAPTURE_WAIT)) {
         return MEM_WAIT_V2_SQE_NUM;
     } else {
         return TASK_SQE_NUM_ONE;

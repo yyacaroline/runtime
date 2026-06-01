@@ -65,8 +65,6 @@ void MemWaitTaskUnInit(TaskInfo *taskInfo);
 uint32_t GetSendSqeNumForMemWaitTask(const TaskInfo * const taskInfo);
 rtError_t GetWaitValueTaskParams(const TaskInfo* const taskInfo, rtTaskParams* const params);
 rtError_t UpdateWaitValueTaskParams(TaskInfo* const taskInfo, rtTaskParams* const params);
-void SetWriteValueSqeNum(TaskInfo* taskInfo);
-void SetWaitValueSqeNum(TaskInfo* taskInfo);
 
 // common
 rtError_t GetCaptureRecordTaskParams(const TaskInfo* const taskInfo, rtTaskParams* const params);

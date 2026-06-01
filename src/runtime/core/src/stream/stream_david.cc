@@ -1560,7 +1560,6 @@ rtError_t DavidStream::HandleTaskUpdate(TaskInfo* workTask, CaptureModel* model,
         sqeBufferBackup + sizeof(rtStarsSqe_t) * workTask->pos, sendSqeNum * sizeof(rtStarsSqe_t),
         sqeAddr, sendSqeNum * sizeof(rtStarsSqe_t), ret, device_->Id_(), streamId_, workTask->id, workTask->type, workTask->typeName);    
 
-    Complete(workTask, device_->Id_());
     RT_LOG(
         RT_LOG_INFO, "update task finish, stream_id=%d, task_id=%hu, task_type=%d(%s).",
         streamId_, workTask->id, workTask->type, workTask->typeName);

@@ -12,6 +12,7 @@
 #include "stream.hpp"
 #include "runtime.hpp"
 #include "context.hpp"
+#include "task_info.hpp"
 #include "task_manager.h"
 #include "error_code.h"
 #include "task_execute_time.h"
@@ -1770,7 +1771,7 @@ rtError_t UpdateWriteValueTaskParams(TaskInfo* const taskInfo, rtTaskParams* con
     taskInfo->u.memWriteValueTask.awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
     taskInfo->type = TS_TASK_TYPE_MEM_WRITE_VALUE;
     taskInfo->typeName = "MEM_WRITE_VALUE";
-    SetWriteValueSqeNum(taskInfo);
+    taskInfo->sqeNum = 1U;
 
     Stream* stm = taskInfo->stream;
     Device* dev = stm->Device_();
@@ -1789,11 +1790,11 @@ rtError_t UpdateWaitValueTaskParams(TaskInfo* const taskInfo, rtTaskParams* cons
     // 需要先赋值类型，此类型会影响Init中的内存申请方式
     taskInfo->type = TS_TASK_TYPE_MEM_WAIT_VALUE;
     taskInfo->typeName = "MEM_WAIT_VALUE";
-    SetWaitValueSqeNum(taskInfo);
     rtError_t error = MemWaitValueTaskInit(taskInfo, params->valueWaitTaskParams.devAddr,
         params->valueWaitTaskParams.value, params->valueWaitTaskParams.flag);
     ERROR_RETURN_MSG_INNER(error, "mem wait value init failed, retCode=%#x.", error);
     taskInfo->u.memWaitValueTask.awSize = RT_STARS_WRITE_VALUE_SIZE_TYPE_64BIT;
+    taskInfo->sqeNum = GetSendSqeNum(taskInfo);
 
     Stream* stm = taskInfo->stream;
     Device* dev = stm->Device_();
