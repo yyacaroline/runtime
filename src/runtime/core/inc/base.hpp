@@ -104,6 +104,8 @@ namespace runtime {
         RT_LOG(RT_LOG_ERROR, format, ##__VA_ARGS__);
 #define RT_LOG_OUTER_MSG(error_code, format, ...) \
         RT_LOG(RT_LOG_ERROR, format, ##__VA_ARGS__);
+#define RT_LOG_CALL_MSG_NO_RT_LOG(module_type, format, ...) \
+        RT_LOG(RT_LOG_ERROR, format, ##__VA_ARGS__);
 #define RT_LOG_OUTER_MSG_IMPL(error_code, ...)
 #define RT_LOG_OUTER_MSG_WITH_FUNC(error_code, ...)
 #define RT_LOG_OUTER_MSG_INVALID_PARAM(parm, ...)
@@ -116,6 +118,7 @@ namespace runtime {
 #define RT_LOG_INNER_MSG(level, format, ...)
 #define RT_LOG_CALL_MSG(model_type, format, ...)
 #define RT_LOG_OUTER_MSG(error_code, format, ...)
+#define RT_LOG_CALL_MSG_NO_RT_LOG(module_type, format, ...)
 #define RT_LOG_OUTER_MSG_IMPL(error_code, ...)
 #define RT_LOG_OUTER_MSG_WITH_FUNC(error_code, ...)
 #define RT_LOG_OUTER_MSG_INVALID_PARAM(parm, ...)
@@ -185,6 +188,12 @@ static constexpr const char_t *RT_MODULE_TYPE_TO_ERR_MSG[ERR_MODULE_MAX] = {
 #define RT_LOG_CALL_MSG(module_type, format, ...) \
     do { \
         RT_LOG(RT_LOG_ERROR, format, ##__VA_ARGS__);               \
+        REPORT_CALL_ERROR(RT_MODULE_TYPE_TO_ERR_MSG[(module_type)], format, ##__VA_ARGS__);      \
+    } while (false)
+
+// report other module error message by module type and no rt log
+#define RT_LOG_CALL_MSG_NO_RT_LOG(module_type, format, ...) \
+    do { \
         REPORT_CALL_ERROR(RT_MODULE_TYPE_TO_ERR_MSG[(module_type)], format, ##__VA_ARGS__);      \
     } while (false)
 
