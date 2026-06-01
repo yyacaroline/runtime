@@ -1008,7 +1008,8 @@ rtError_t RawDevice::InitQosCfg()
 
 rtError_t RawDevice::InitSwapBufferInfo()
 {
-    if (!CheckFeatureSupport(TS_FEATURE_MEM_WAIT_PROF) || !IsDavidPlatform()) {
+    if (!CheckFeatureSupport(TS_FEATURE_MEM_WAIT_PROF) || !IsDavidPlatform() ||
+        IsSupportFeature(RtOptionalFeatureType::RT_FEATURE_DEVICE_TSCH_PACAGE_COMPATABLE)) {
         return RT_ERROR_NONE;
     }
 
