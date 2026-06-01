@@ -2282,14 +2282,6 @@ struct dsmi_eid_pair_info {
     unsigned int resv : 31;
 };
 
-struct dsmi_device_attr {
-    int phy_dev_id;
-    unsigned int eid_num;
-    struct dsmi_eid_pair_info eid_pair[DSMI_MAX_EID_PAIR_NUM];
-    enum dsmi_urma_eid_type type;
-    unsigned int reserve;
-};
-
 /* CC: confidential computing, crypto: cryptology */
 enum dsmi_cc_mode_type {
     DSMI_CC_MODE_OFF = 0,
@@ -3721,20 +3713,6 @@ DLLEXPORT int dsmi_set_detect_info(unsigned int device_id, DSMI_DETECT_MAIN_CMD 
  */
 DLLEXPORT int dsmi_get_detect_info(unsigned int device_id, DSMI_DETECT_MAIN_CMD main_cmd,
     unsigned int sub_cmd, void *buf, unsigned int *buf_size);
-
-/**
-* @ingroup driver
-* @brief Replace a faulty device with the backup device.
-* @attention NULL
-* @param [in] src_dev_attr  Attribute of the faulty device
-* @param [in] dst_dev_attr  Attribute of the backup device
-* @param [in] timeout  Setting of timeout duration, [1S, 120S]
-* @param [in] flag  Reserve para
-* @return  0 for success, others for fail
-* @note Support:,Ascend950,Ascend910_55
-*/
-DLLEXPORT int dsmi_device_replace(struct dsmi_device_attr *src_dev_attr, struct dsmi_device_attr *dst_dev_attr,
-    unsigned int timeout, unsigned long long flag);
 
 /**
 * @ingroup driver
