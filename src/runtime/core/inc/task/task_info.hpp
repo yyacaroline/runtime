@@ -205,6 +205,11 @@ inline void SetAicoreArgs(TaskInfo *taskInfo, const void * const dataArgs, const
     aicTaskInfo->comm.argHandle = dataArgHandle;
 }
 
+inline bool IsPureSimtTask(const AicTaskInfo &aicTaskInfo)
+{
+    return (aicTaskInfo.simtParamOffset != 0U);
+}
+
 inline void SetAicpuArgs(TaskInfo *taskInfo, const void * const dataArgs, const uint32_t dataArgsSize,
     void *const dataArgHandle)
 {

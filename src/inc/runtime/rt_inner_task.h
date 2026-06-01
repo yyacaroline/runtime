@@ -17,6 +17,12 @@
 extern "C" {
 #endif
 
+typedef struct rtDim3 {
+    uint32_t x;
+    uint32_t y;
+    uint32_t z;
+} rtDim3;
+
 typedef enum {
     RT_TASK_DEFAULT,
     RT_TASK_KERNEL,

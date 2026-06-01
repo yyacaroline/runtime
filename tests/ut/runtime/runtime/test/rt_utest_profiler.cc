@@ -41,6 +41,13 @@
 using namespace testing;
 using namespace cce::runtime;
 
+namespace cce {
+namespace runtime {
+extern void FillKernelLaunchExtInfo(struct MsprofRuntimeTrack &runtimeTrack, const TaskInfo *const taskInfo);
+extern void ChangeTrackDataTaskType(struct MsprofRuntimeTrack &runtimeTrack, const TaskInfo *const taskInfo);
+}  // namespace runtime
+}  // namespace cce
+
 Api *g_apiPtrOld = NULL;
 
 #define ENV_VAR_NAME "CCE_PROF_SWITCH"
@@ -3172,3 +3179,191 @@ TEST_F(ProfilerTest, ProfileLogDecoratorModelApiTest)
     rtInstance->SetChipType(oriChipType);
     GlobalContainer::SetRtChipType(oriChipType);
 }
+
+// 测试 FillKernelLaunchExtInfo 函数 - 非 AICore 任务
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_NonAICoreTask)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_MEMCPY;
+    MsprofRuntimeTrack runtimeTrack = {};
+    runtimeTrack.taskType = taskInfo.type;
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+
+    // 非 AICore 任务，taskType 保持不变
+    EXPECT_EQ(runtimeTrack.taskType, TS_TASK_TYPE_MEMCPY);
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - AICore 任务但 kernel 为 null
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_AICoreKernelNull)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.dim = 512U;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 256U;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 0U;
+    taskInfo.u.aicTaskInfo.kernel = nullptr;
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    // kernel 为 null 时仍填充 numBlocks 和 argsSize，ratio = 0
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.numBlocks, 512U);
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.argsSize, 256U);
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.ratio, 0U);
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - 非 SIMT AICore 任务
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_NonSimtTask)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.dim = 1024U;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 256U;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 0U;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    kernel.SetMixType(NO_MIX);
+    kernel.SetTaskRation(0U);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.numBlocks, 1024U);
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.argsSize, 256U);
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.ratio, 0U);
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - SIMT AICore 任务
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_SimtTask)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 512U;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 64U;
+    
+    rtDim3 gridDim = {16U, 8U, 1U};
+    rtDim3 blockDim = {256U, 1U, 1U};
+    taskInfo.u.aicTaskInfo.gridDim = gridDim;
+    taskInfo.u.aicTaskInfo.blockDim = blockDim;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.gridDim.x, 16U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.gridDim.y, 8U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.gridDim.z, 1U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.blockDim.x, 256U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.blockDim.y, 1U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.blockDim.z, 1U);
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.argsSize, 448U); // 512 - 64
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - argsSize 截断
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_ArgsSizeTruncate)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 100000U; // 大于 UINT16_MAX
+    taskInfo.u.aicTaskInfo.simtParamOffset = 0U;
+    taskInfo.u.aicTaskInfo.comm.dim = 10U;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    kernel.SetMixType(NO_MIX);
+    kernel.SetTaskRation(0U);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    
+    // argsSize = 100000 - 100 = 99900，截断为 UINT16_MAX (65535)
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.argsSize, UINT16_MAX);
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - gridDim 截断
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_GridDimTruncate)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 256U;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 1U;
+    
+    rtDim3 gridDim = {70000U, 8U, 1U}; // x 超出 uint16_t
+    rtDim3 blockDim = {256U, 1U, 1U};
+    taskInfo.u.aicTaskInfo.gridDim = gridDim;
+    taskInfo.u.aicTaskInfo.blockDim = blockDim;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    
+    // gridDim.x 截断为低16位
+    EXPECT_EQ(runtimeTrack.extInfo.simtKernelInfo.gridDim.x, static_cast<uint16_t>(70000U));
+}
+
+// 测试 FillKernelLaunchExtInfo 函数 - MIX 任务 ratio 截断
+TEST_F(ProfilerTest, FillKernelLaunchExtInfo_MixTaskRatioTruncate)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.comm.dim = 100U;
+    taskInfo.u.aicTaskInfo.comm.argsSize = 256U;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 0U;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    kernel.SetMixType(MIX_AIC);
+    kernel.SetTaskRation(100U); // 超出 3位范围
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    FillKernelLaunchExtInfo(runtimeTrack, &taskInfo);
+    
+    // ratio 截断为 3位 (100 & 0x7 = 4)
+    EXPECT_EQ(runtimeTrack.extInfo.kernelInfo.ratio, static_cast<uint8_t>(100U & 0x7U));
+}
+
+// 测试 ChangeTrackDataTaskType 函数 - SIMT 任务
+TEST_F(ProfilerTest, ChangeTrackDataTaskType_SimtTask)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 100U;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    runtimeTrack.taskType = taskInfo.type;
+    ChangeTrackDataTaskType(runtimeTrack, &taskInfo);
+    
+    EXPECT_EQ(runtimeTrack.taskType, PROF_TASK_TYPE_KERNEL_SIMT);
+}
+
+// 测试 ChangeTrackDataTaskType 函数 - MIX_AIC 任务
+TEST_F(ProfilerTest, ChangeTrackDataTaskType_MixAicTask)
+{
+    TaskInfo taskInfo = {};
+    taskInfo.type = TS_TASK_TYPE_KERNEL_AICORE;
+    taskInfo.u.aicTaskInfo.simtParamOffset = 0U;
+    
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICORE);
+    Kernel kernel("", 0ULL, &stubProg, RT_KERNEL_ATTR_TYPE_AICORE, 0);
+    kernel.SetMixType(MIX_AIC);
+    taskInfo.u.aicTaskInfo.kernel = &kernel;
+    
+    MsprofRuntimeTrack runtimeTrack = {};
+    runtimeTrack.taskType = taskInfo.type;
+    ChangeTrackDataTaskType(runtimeTrack, &taskInfo);
+    
+    EXPECT_EQ(runtimeTrack.taskType, TS_TASK_TYPE_KERNEL_MIX_AIC);
+}
+

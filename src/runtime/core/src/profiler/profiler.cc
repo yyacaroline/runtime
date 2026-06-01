@@ -155,19 +155,69 @@ void Profiler::ReportStreamSynctaskFinish(const uint16_t profileType) const
     RT_LOG(RT_LOG_DEBUG, "profileType=%hu", profileType);
 }
 
-static void ChangeTrackDataTaskType(struct MsprofRuntimeTrack &runtimeTrack, const TaskInfo *const taskInfo)
+void ChangeTrackDataTaskType(struct MsprofRuntimeTrack &runtimeTrack, const TaskInfo *const taskInfo)
 {
-    if (taskInfo->type == TS_TASK_TYPE_KERNEL_AICORE || taskInfo->type == TS_TASK_TYPE_KERNEL_AIVEC) {
-        const auto &aicTaskInfo = taskInfo->u.aicTaskInfo;
+    const auto &aicTaskInfo = taskInfo->u.aicTaskInfo;
+    const uint8_t mixType = (aicTaskInfo.kernel != nullptr) ? aicTaskInfo.kernel->GetMixType() : 0U;
+    const bool isPureSimtTask = IsPureSimtTask(aicTaskInfo);
+    if (isPureSimtTask) {
+        runtimeTrack.taskType = PROF_TASK_TYPE_KERNEL_SIMT;
+    } else if (mixType == MIX_AIC || mixType == MIX_AIC_AIV_MAIN_AIC) {
+        runtimeTrack.taskType = TS_TASK_TYPE_KERNEL_MIX_AIC;
+    } else if (mixType == MIX_AIV || mixType == MIX_AIC_AIV_MAIN_AIV) {
+        runtimeTrack.taskType = TS_TASK_TYPE_KERNEL_MIX_AIV;
+    } else {
+        // no op
+    }
+    RT_LOG(RT_LOG_DEBUG, "ReportTaskTrack, runtimeTrack.taskType=%llu, mixType=%u, isPureSimtTask=%d",
+           runtimeTrack.taskType, mixType, isPureSimtTask);
+}
+
+void FillKernelLaunchExtInfo(struct MsprofRuntimeTrack &runtimeTrack, const TaskInfo *const taskInfo)
+{
+    const tsTaskType_t taskType = taskInfo->type;
+    if ((taskType != TS_TASK_TYPE_KERNEL_AICORE) && (taskType != TS_TASK_TYPE_KERNEL_AIVEC)) {
+        return;
+    }
+    ChangeTrackDataTaskType(runtimeTrack, taskInfo);
+    const auto &aicTaskInfo = taskInfo->u.aicTaskInfo;
+    const uint32_t argsSize = aicTaskInfo.comm.argsSize - aicTaskInfo.simtParamOffset;
+    const uint16_t argsSizeU16 = (argsSize > UINT16_MAX) ? UINT16_MAX : static_cast<uint16_t>(argsSize);
+    if (IsPureSimtTask(aicTaskInfo)) {
+        const rtDim3 &gridDim = aicTaskInfo.gridDim;
+        const rtDim3 &blockDim = aicTaskInfo.blockDim;
+        runtimeTrack.extInfo.simtKernelInfo.gridDim.x = static_cast<uint16_t>(gridDim.x);
+        runtimeTrack.extInfo.simtKernelInfo.gridDim.y = static_cast<uint16_t>(gridDim.y);
+        runtimeTrack.extInfo.simtKernelInfo.gridDim.z = static_cast<uint16_t>(gridDim.z);
+        runtimeTrack.extInfo.simtKernelInfo.blockDim.x = static_cast<uint16_t>(blockDim.x);
+        runtimeTrack.extInfo.simtKernelInfo.blockDim.y = static_cast<uint16_t>(blockDim.y);
+        runtimeTrack.extInfo.simtKernelInfo.blockDim.z = static_cast<uint16_t>(blockDim.z);
+        runtimeTrack.extInfo.simtKernelInfo.argsSize = argsSizeU16;
+        runtimeTrack.extInfo.simtKernelInfo.schedMode = aicTaskInfo.schemMode;
+        runtimeTrack.extInfo.simtKernelInfo.rsv = 0U;
+        runtimeTrack.extInfo.simtKernelInfo.reserved = 0U;
+        RT_LOG(RT_LOG_DEBUG, "Fill SIMT ext info, gridDim=[%u,%u,%u], blockDim=[%u,%u,%u], argsSize=%hu, "
+               "original argsSize=%u, schedMode=%u",
+               gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z, argsSizeU16, argsSize,
+               runtimeTrack.extInfo.simtKernelInfo.schedMode);
+    } else {
         const uint8_t mixType = (aicTaskInfo.kernel != nullptr) ? aicTaskInfo.kernel->GetMixType() : 0U;
-        if (mixType == MIX_AIC || mixType == MIX_AIC_AIV_MAIN_AIC) {
-            runtimeTrack.taskType = TS_TASK_TYPE_KERNEL_MIX_AIC;
-        } else if (mixType == MIX_AIV || mixType == MIX_AIC_AIV_MAIN_AIV) {
-            runtimeTrack.taskType = TS_TASK_TYPE_KERNEL_MIX_AIV;
-        } else {
-            ;
+        runtimeTrack.extInfo.kernelInfo.numBlocks = aicTaskInfo.comm.dim;
+        runtimeTrack.extInfo.kernelInfo.argsSize = argsSizeU16;
+        uint8_t ratio = 0U;
+        if (mixType != NO_MIX) {
+            const uint32_t taskRation = aicTaskInfo.kernel->GetTaskRation();
+            ratio = static_cast<uint8_t>(taskRation & 0x7U);
         }
-        RT_LOG(RT_LOG_DEBUG, "ReportTaskTrack, runtimeTrack.taskType=%llu, mixType=%u", runtimeTrack.taskType, mixType);
+        runtimeTrack.extInfo.kernelInfo.schedMode = aicTaskInfo.schemMode;
+        runtimeTrack.extInfo.kernelInfo.rsv = 0U;
+        runtimeTrack.extInfo.kernelInfo.ratio = ratio;
+        (void)memset_s(runtimeTrack.extInfo.kernelInfo.reserved, sizeof(runtimeTrack.extInfo.kernelInfo.reserved),
+                       0, sizeof(runtimeTrack.extInfo.kernelInfo.reserved));
+        RT_LOG(RT_LOG_DEBUG, "Fill non-SIMT ext info, numBlocks=%u, argsSize=%hu, "
+               "original argsSize=%u, ratio=%u, schedMode=%u",
+               runtimeTrack.extInfo.kernelInfo.numBlocks, argsSizeU16, argsSize, ratio,
+               runtimeTrack.extInfo.kernelInfo.schedMode);
     }
 }
 
@@ -199,7 +249,7 @@ void Profiler::ModifyTrackData(TaskInfo *const taskInfo, const uint32_t devId, R
         trackData->compactInfo.data.runtimeTrack.taskId = GetProfTaskId(taskInfo); 
     } 
     trackData->compactInfo.data.runtimeTrack.taskType = taskInfo->type; 
-    ChangeTrackDataTaskType(trackData->compactInfo.data.runtimeTrack, taskInfo); 
+    FillKernelLaunchExtInfo(trackData->compactInfo.data.runtimeTrack, taskInfo); 
     trackData->compactInfo.data.runtimeTrack.kernelName = GetKernelNameId(*taskInfo); 
 
     // for mutil enable profiling 
@@ -425,7 +475,7 @@ void Profiler::ReportTrackData(const Stream *const s, const uint16_t taskId) con
     trackData.compactInfo.data.runtimeTrack.streamId = static_cast<uint32_t>(s->GetExposedStreamId());
     trackData.compactInfo.data.runtimeTrack.taskId = GetProfTaskId(task);
     trackData.compactInfo.data.runtimeTrack.taskType = task->type;
-    ChangeTrackDataTaskType(trackData.compactInfo.data.runtimeTrack, task);
+    FillKernelLaunchExtInfo(trackData.compactInfo.data.runtimeTrack, task);
     trackData.compactInfo.data.runtimeTrack.kernelName = GetKernelNameId(*task);
     (void)ReportCompactInfo(&trackData);
     return;

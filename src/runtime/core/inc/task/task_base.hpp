@@ -220,6 +220,11 @@ typedef enum tagTsTaskType {
     TS_TASK_TYPE_RESERVED
 } tsTaskType_t;
 
+enum ProfTaskType {
+    PROF_TASK_TYPE_BEGIN = 600,
+    PROF_TASK_TYPE_KERNEL_SIMT = PROF_TASK_TYPE_BEGIN,
+};
+
 enum PhCmdType {
     CMD_STREAM_CLEAR = 0,
     CMD_NOTIFY_RESET = 1,

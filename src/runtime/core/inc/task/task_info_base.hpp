@@ -20,6 +20,8 @@
 #include "starsv2_base.hpp"
 #include "kernel.h"
 #include "runtime_handle_guard.h"
+#include "runtime/rt_inner_task.h"
+
 #define RTS_LITE_PCIE_BAR_COPY_SIZE (1024U)
 #define UB_DIRECT_WQE_MIN_LEN (64)
 #define UB_DIRECT_WQE_MAX_LEN (128)
@@ -136,6 +138,9 @@ struct AicTaskInfo {
     uint32_t blockDimOffset;
     uint32_t dynamicShareMemSize;
     uint32_t simtDcuSmSize;
+    uint32_t simtParamOffset;
+    rtDim3 gridDim;
+    rtDim3 blockDim;
     uint64_t timeout; // uint in us
     LaunchParam launchParam;
 };

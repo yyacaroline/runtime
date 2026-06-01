@@ -346,12 +346,40 @@ struct MsprofAicTimeStampInfo {
     uint64_t curPc;   // currrent pc for source line
 };
 
+struct MsprofKernelInfo {
+    uint16_t numBlocks;
+    uint16_t argsSize;
+    uint8_t ratio : 3;
+    uint8_t schedMode : 2;
+    uint8_t rsv : 3;
+    uint8_t reserved[11];
+};
+
+struct MsprofDim3 {
+    uint16_t x;
+    uint16_t y;
+    uint16_t z;
+};
+
+struct MsprofSimtKernelInfo {
+    struct MsprofDim3 gridDim;
+    struct MsprofDim3 blockDim;
+    uint16_t argsSize;
+    uint8_t schedMode : 2;
+    uint8_t rsv : 6;
+    uint8_t reserved; 
+};
+
 struct MsprofRuntimeTrack {  // for MsprofReportCompactInfo buffer data
     uint16_t deviceId;
     uint16_t streamId;
     uint32_t taskId;
     uint64_t taskType;       // task message hash id
     uint64_t kernelName;     // kernelname hash id
+    union {
+        struct MsprofKernelInfo kernelInfo;
+        struct MsprofSimtKernelInfo simtKernelInfo;
+    } extInfo;
 };
 
 struct MsprofCaptureStreamInfo {  // for MsprofReportCompactInfo buffer data
