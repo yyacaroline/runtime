@@ -79,7 +79,7 @@ rtError_t CtrlSQ::CreateDavidCtrlMsg(RtCtrlMsgType msgType, const RtCtrlMsgParam
 {
     TaskInfo *taskInfo = nullptr;
     rtError_t error = CheckTaskCanSend(stream_);
-    ERROR_RETURN_MSG_INNER(error, "stream_id=%d check failed, retCode=%#x.", stream_->Id_(),
+    ERROR_RETURN_MSG_INNER(error, "Failed to check stream %d, retCode=%#x.", stream_->Id_(),
         static_cast<uint32_t>(error));
     // 根据type找到对应的setupFunc
     const uint32_t idx = static_cast<uint32_t>(msgType);

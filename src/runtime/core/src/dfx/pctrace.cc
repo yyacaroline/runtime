@@ -46,7 +46,7 @@ rtError_t PCTrace::WritePCTraceFile()
     // get pctrace file length from base addr
     const uint64_t pctraceFileAddr = tspctrace_.pctraceAddr;
     COND_RETURN_ERROR_MSG_INNER(pctraceFileAddr == 0U, RT_ERROR_PCTRACE_FILE,
-        "Write pc trace file failed, pctrace address is NULL.");
+        "Failed to write pc trace file, pctrace address is NULL.");
 
     RT_LOG(RT_LOG_INFO, "write pc trace file start, first flush!");
     (void)device_->Driver_()->DevMemFlushCache(pctraceFileAddr, sizeof(uint64_t));

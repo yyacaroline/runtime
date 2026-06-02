@@ -1051,7 +1051,7 @@ rtError_t RawDevice::Start()
 
     if (IsStarsPlatform()) {
         error = AllocStackPhyBase();
-        ERROR_GOTO_MSG_INNER(error, ERROR_FREE, "alloc stack phy failed, retCode=%#x.", static_cast<uint32_t>(error));
+        ERROR_GOTO_MSG_INNER(error, ERROR_FREE, "Failed to allocate stack phy, retCode=%#x.", static_cast<uint32_t>(error));
         error = AllocCustomerStackPhyBase();
         ERROR_GOTO(
             error, ERROR_FREE, "alloc customer stack phy failed, retCode=%#x.", static_cast<uint32_t>(error));

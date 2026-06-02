@@ -890,7 +890,7 @@ rtError_t DeviceErrorProc::ProcessAicpuErrorInfo(const DeviceErrorInfo * const i
         msg = (it->second).c_str();
     }
     RT_LOG_CALL_MSG(ERR_MODULE_AICPU,
-        "An exception occurred during AICPU execution, stream_id:%u, task_id:%u, errcode:%" PRIu64 ", msg:%s",
+        "An exception occurred during AI CPU execution, stream_id:%u, task_id:%u, errcode:%" PRIu64 ", msg:%s.",
         info->u.aicpuErrorInfo.stream_id,
         info->u.aicpuErrorInfo.task_id,
         errcode, msg.c_str());

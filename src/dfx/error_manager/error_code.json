@@ -476,8 +476,8 @@
       "ErrMessage": "%s execution failed because %s is not supported.",
       "Arglist": "func, type",
       "suggestion": {
-        "Possible Cause": "1. The current CANN software version is not supported. 2. The current driver software version does not match. 3. The current chip version is not supported.",
-        "Solution": "1. Upgrade the CANN software version. 2. Upgrade the driver software version."
+        "Possible Cause": "N/A",
+        "Solution": "N/A"
       }
     },
     {

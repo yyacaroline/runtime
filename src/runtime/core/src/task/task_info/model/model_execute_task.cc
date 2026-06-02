@@ -195,7 +195,7 @@ rtError_t AllocFuncCallMemForModelExecuteTask(TaskInfo * const taskInfo, rtStars
     const uint64_t headSqArrMax = headSqArr.size();
     const uint64_t streamSvmArrMax = streamSvmAddrArr.size();
     COND_RETURN_ERROR_MSG_INNER((headSqArrMax == 0ULL), RT_ERROR_MODEL_EXECUTOR,
-        "The head stream of the model does not have the corresponding SQ id, headSqArrMax=%" PRIu64 ".", headSqArrMax);
+        "The head stream of the model does not have the corresponding SQ ID, headSqArrMax=%" PRIu64 ".", headSqArrMax);
 
     const uint64_t funCallMemSize =
         sizeof(RtStarsModelExeFuncCall) + (headSqArrMax + streamSvmArrMax) * sizeof(uint64_t);
