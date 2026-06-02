@@ -81,6 +81,14 @@ RTS_API rtError_t rtMetadataRegister(void *hdl, const char_t *metadata);
  * @brief magic number of elf binary for aicube
  */
 #define RT_DEV_BINARY_MAGIC_ELF_AICUBE 0x41494343U
+
+typedef struct tagRtDevBinary {
+    uint32_t magic;    // magic number
+    uint32_t version;  // version of binary
+    const void *data;  // binary data
+    uint64_t length;   // binary length
+} rtDevBinary_t;
+
 /**
  * @ingroup rt_kernel_flags
  * @brief kernel op bit flags
@@ -528,6 +536,16 @@ RTS_API rtError_t rtGetL2CacheOffset(uint32_t deviceId, uint64_t *offset);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtFusionLaunch(void * const fusionInfo, rtStream_t const stm, rtFusionArgsEx_t *argsInfo);
+
+/**
+ * @ingroup rt_kernel
+ * @brief register device binary with all kernel
+ * @param [in] bin   device binary description
+ * @param [out] hdl   device binary handle
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtRegisterAllKernel(const rtDevBinary_t *bin, void **hdl);
 
 /**
  * @ingroup rt_kernel
