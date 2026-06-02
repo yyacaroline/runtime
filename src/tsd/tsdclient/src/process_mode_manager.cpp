@@ -74,7 +74,7 @@ const std::map<std::string, std::vector<tsd::ChipType_t>> PKG_CHIP_SUPPORT_MAP =
 const int64_t SUPPORT_MAX_DEVICE_PER_HOST = 8;
 const std::string MUTEX_FILE_PREFIX = "sink_file_mutex_";
 using TimePoint = std::chrono::high_resolution_clock::time_point;
-std::string extractSubString(const std::string& input, const std::string& begin, const std::string& end)
+std::string ExtractSubString(const std::string& input, const std::string& begin, const std::string& end)
 {
     size_t pos = input.find(begin);
     if (pos == std::string::npos) {
@@ -92,13 +92,13 @@ std::string ConstructVerifyPkgErrorReason(const std::string& loadPackageErrorMsg
 {
     std::string reason;
     if (loadPackageErrorMsg.find("does not match") != std::string::npos) {
-        const std::string certType = extractSubString(loadPackageErrorMsg, "certType [", "]");
-        const std::string verifyFlag = extractSubString(loadPackageErrorMsg, "verifyFlag [", "]");
+        const std::string certType = ExtractSubString(loadPackageErrorMsg, "certType [", "]");
+        const std::string verifyFlag = ExtractSubString(loadPackageErrorMsg, "verifyFlag [", "]");
         reason = "The current signature verification mode is [" + verifyFlag +
                  "], which does not match the actual digital signature [" + certType +
                  "] of the software package. Change the signature verification mode";
     } else if (loadPackageErrorMsg.find("verifyFlag is not [Close]") != std::string::npos) {
-        const std::string verifyFlag = extractSubString(loadPackageErrorMsg, "verifyFlag [", "]");
+        const std::string verifyFlag = ExtractSubString(loadPackageErrorMsg, "verifyFlag [", "]");
         reason = "The signature verification mode has been enabled. However, the soft package does not "
                  "have a signature. Disable signature verification or use a software package whose "
                  "digital signature matches the current signature verification mode [" +
