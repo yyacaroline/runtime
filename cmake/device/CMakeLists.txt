@@ -48,9 +48,8 @@ add_dependencies(mmpa c_sec)
 add_dependencies(static_mmpa c_sec)
 add_dependencies(platform c_sec)
 
-get_filename_component(PROTOBUF_ABS_PATH "${PROTOBUF_STATIC_FINAL_PATH}" REALPATH)
 install(FILES
-    ${PROTOBUF_ABS_PATH}
+    $<TARGET_FILE:ascend_protobuf_static>
     DESTINATION ${DEVICE_LIBRARY_PATH} COMPONENT npu-runtime
 )
 
@@ -91,6 +90,4 @@ install(FILES
   OPTIONAL
 )
 
-if(TOPLEVEL_PROJECT)
-  set_cann_subprj_package()
-endif()
+set_cann_subprj_package()
