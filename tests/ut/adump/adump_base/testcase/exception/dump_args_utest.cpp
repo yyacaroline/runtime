@@ -485,7 +485,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args)
                            0x000000010000000D,
                            sizeof(input0),
                            0,
-                           -2,
+                           static_cast<uint64_t>(static_cast<int64_t>(-2)),
                            sizeof(oldNormalPtr),
                            sizeof(oldNormalPtr),
                            0x0100000000000002,
@@ -537,7 +537,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args)
     EXPECT_EQ(ret, ADUMP_FAILED);
 
     sizeInfoAddr[1] = 0x000000010000000D;
-    sizeInfoAddr[4] = -2;
+    sizeInfoAddr[4] = static_cast<uint64_t>(static_cast<int64_t>(-2));
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.argAddr = args;
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.sizeInfo.atomicIndex = atomicIndex;
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.argsize = sizeof(args);
@@ -666,7 +666,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args_Quick_Recover)
                            0x000000010000000D,
                            sizeof(input0),
                            0,
-                           -2,
+                           static_cast<uint64_t>(static_cast<int64_t>(-2)),
                            sizeof(oldNormalPtr),
                            sizeof(oldNormalPtr),
                            0x0100000000000002,
@@ -744,7 +744,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args_OPP_Path)
                            0x000000010000000D,
                            sizeof(input0),
                            0,
-                           -2,
+                           static_cast<uint64_t>(static_cast<int64_t>(-2)),
                            sizeof(oldNormalPtr),
                            sizeof(oldNormalPtr),
                            0x0100000000000002,
@@ -795,7 +795,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args_OPP_Path)
     EXPECT_EQ(ret, ADUMP_FAILED);
 
     sizeInfoAddr[1] = 0x000000010000000D;
-    sizeInfoAddr[4] = -2;
+    sizeInfoAddr[4] = static_cast<uint64_t>(static_cast<int64_t>(-2));
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.argAddr = args;
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.sizeInfo.atomicIndex = atomicIndex;
     exceptionInfo.expandInfo.u.aicoreInfo.exceptionArgs.argsize = sizeof(args);
@@ -925,7 +925,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Ffts_Args)
                            0x000000010000000D,
                            sizeof(input0),
                            0,
-                           -2,
+                           static_cast<uint64_t>(static_cast<int64_t>(-2)),
                            sizeof(oldNormalPtr),
                            sizeof(oldNormalPtr),
                            0x0100000000000002,
@@ -2365,7 +2365,7 @@ TEST_F(DumpArgsUtest, Test_Dump_Args_Multi_Thread)
                         0x000000010000000D,
                         sizeof(input0),
                         0,
-                        -2,
+                        static_cast<uint64_t>(static_cast<int64_t>(-2)),
                         sizeof(oldNormalPtr),
                         sizeof(oldNormalPtr),
                         0x0100000000000002,

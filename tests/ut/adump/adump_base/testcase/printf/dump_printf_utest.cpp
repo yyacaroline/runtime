@@ -130,7 +130,7 @@ void AddBlockInfo1(unsigned char *data)
     double num11[] = {2.331}; // not support
     // 1, -2, −infinity, 0.333984375, nan, -0, 3.140625, infinity
     uint16_t num12[] = {16256, 49152, 65408, 16043, 65409, 32768, 16457, 32640};
-    int8_t num13[] = {0, 3, 138, 20, 62, 67, 97, 200};
+    uint8_t num13[] = {0, 3, 138, 20, 62, 67, 97, 200};
     bool boolNums[8];
     for (uint8_t i = 0U; i < 8U; ++i) {
         boolNums[i] = (i % 2U == 0U);

@@ -381,7 +381,7 @@ TEST_F(DUMP_CORE_UTEST, TEST_CORE_DUMP_OLD)
                            0x000000010000000D,
                            sizeof(input0),
                            0,
-                           -2,
+                           static_cast<uint64_t>(static_cast<int64_t>(-2)),
                            sizeof(oldNormalPtr),
                            sizeof(oldNormalPtr),
                            0x0100000000000002,
