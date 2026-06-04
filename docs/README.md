@@ -41,6 +41,11 @@
 <td style="word-wrap: break-word; overflow-wrap: break-word;">接口字典，开发过程中随时查阅函数定义。函数签名 + 参数说明 + 返回值</td>
 <td style="word-wrap: break-word; overflow-wrap: break-word;"><a href="03_api_ref/01_概述.md">头文件说明</a> · <a href="03_api_ref/api_ref.md">API 参考</a></td>
 </tr>
+<tr>
+<td style="word-wrap: break-word; overflow-wrap: break-word;"><b>🏗️ 架构指南</b></td>
+<td style="word-wrap: break-word; overflow-wrap: break-word;">面向贡献者的架构文档。Runtime整体架构、模块设计、核心组件解析</td>
+<td style="word-wrap: break-word; overflow-wrap: break-word;"><a href="design/README.md">架构指南</a></td>
+</tr>
 </tbody>
 </table>
 
