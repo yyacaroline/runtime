@@ -18,7 +18,7 @@ namespace ELF{
 namespace {
 constexpr Elf64_Half EM_HIIPU = 0x1029;
 constexpr Elf64_Word EV_VERSION = 0x01;
-constexpr Elf64_Word ADD_ALIGN = 16;
+constexpr Elf64_Off ADD_ALIGN = 16;
 const std::string STRTAB_SECTION_NAME = ".shstrtab";
 }
 
@@ -91,17 +91,17 @@ void Section::SaveData(std::ofstream &ofs)
     ofs.write(data_.c_str(), data_.size());
 }
 
-Elf64_Word Section::GetSize() const
+Elf64_Xword Section::GetSize() const
 {
     return header_.sh_size;
 }
 
-void Section::SetAddrAlign(Elf64_Word addrAlign)
+void Section::SetAddrAlign(Elf64_Xword addrAlign)
 {
     header_.sh_addralign = addrAlign;
 }
 
-Elf64_Word Section::GetAddrAlign() const
+Elf64_Xword Section::GetAddrAlign() const
 {
     return header_.sh_addralign;
 }
@@ -218,7 +218,7 @@ void DumpELF::SetSectionHeaderStringTable()
 void DumpELF::LayoutSections()
 {
     for (const auto &section : sections_) {
-        Elf64_Word sectionAlign = section->GetAddrAlign();
+        Elf64_Xword sectionAlign = section->GetAddrAlign();
         if ((sectionAlign > 1) && (currentFilePos_ % sectionAlign != 0)) {
             currentFilePos_ += sectionAlign - (currentFilePos_ % sectionAlign);
         }
@@ -229,7 +229,9 @@ void DumpELF::LayoutSections()
 
 void DumpELF::LayoutSectionTable()
 {
-    currentFilePos_ += ADD_ALIGN - (currentFilePos_ % ADD_ALIGN);
+    if (currentFilePos_ % ADD_ALIGN != 0) {
+        currentFilePos_ += ADD_ALIGN - (currentFilePos_ % ADD_ALIGN);
+    }
     header_.e_shoff = currentFilePos_;
 }
 

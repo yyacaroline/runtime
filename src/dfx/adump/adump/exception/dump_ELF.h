@@ -47,9 +47,9 @@ public:
     void SetInfo(Elf64_Word info);
     void SetIndex(uint32_t index);
     uint32_t GetIndex() const;
-    Elf64_Word GetSize() const;
-    void SetAddrAlign(Elf64_Word addrAlign);
-    Elf64_Word GetAddrAlign() const;
+    Elf64_Xword GetSize() const;
+    void SetAddrAlign(Elf64_Xword addrAlign);
+    Elf64_Xword GetAddrAlign() const;
     void Save(std::ofstream &ofs, std::streampos headerPosition);
 
 private:
@@ -85,7 +85,7 @@ private:
     std::vector<SectionPtr> sections_;
     std::stringstream sectionNameStream_;
     std::map<std::string, Elf64_Word> sectionNameTable_;
-    Elf64_Word currentFilePos_{0};
+    Elf64_Off currentFilePos_{0};
 };
 
 } // namespace ELF
