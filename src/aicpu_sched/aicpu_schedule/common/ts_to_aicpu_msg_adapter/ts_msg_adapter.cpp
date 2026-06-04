@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "ts_msg_adapter.h"
+#include "aicpusd_message_queue.h"
 
 namespace AicpuSchedule {
 TsMsgAdapter::TsMsgAdapter(

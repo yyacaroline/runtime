@@ -42,9 +42,7 @@ public:
      */
     int32_t Start(const std::vector<uint32_t> &deviceVec,
                   const pid_t hostPid, const std::string &pidSign,
-                  const uint32_t profilMode, const uint32_t vfId, const aicpu::AicpuRunMode runMode,
-                  const AicpuSchedMode schedMode);
-
+                  const uint32_t profilMode, const uint32_t vfId, const aicpu::AicpuRunMode runMode);
     /**
      * stop compute process.
      */

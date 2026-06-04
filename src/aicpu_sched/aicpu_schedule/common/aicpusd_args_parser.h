@@ -28,7 +28,6 @@ namespace {
     const std::string PARAM_AICPULOGLEVEL = "--aicpuLogLevel=";
     const std::string PARAM_VFID = "--vfId=";
     const std::string PARAM_DEVICE_MODE = "--deviceMode=";
-    const std::string PARAM_AICPU_SCHED_MODE = "--aicpuSchedMode=";
     const std::string PARAM_GRP_NAME_NUM = "--groupNameNum=";
     const std::string PARAM_GRP_NAME_LIST = "--groupNameList=";
     const std::string PARAM_HOST_PROC_NAME = "--hostProcName=";
@@ -47,7 +46,7 @@ namespace {
     public:
         ArgsParser() : deviceId_(0U), hostPid_(0U), pidSign_(""), profilingMode_(0U), vfId_(0U),
                        logLevel_(ERROR_LOG), eventLevel_(EVENT_LOG), ccecpulogLevel_(-1), aicpulogLevel_(-1),
-                       deviceMode_(0U), aicpuSchedMode_(SCHED_MODE_INTERRUPT), grpNameNum_(0U), aicpuProcNum_(0U),
+                       deviceMode_(0U),  grpNameNum_(0U), aicpuProcNum_(0U),
                        grpNameList_({}), hostProcName_({}), qsGrpNameList_({}), withDeviceId_(false), withHostPid_(false),
                        withPidSign_(false), withGrpNameNum_(false), withGrpNameList_(false),
                        argsParseFuncMap_({{PARAM_DEVICEID, &ArgsParser::ParseDeviceId},
@@ -59,7 +58,6 @@ namespace {
                                           {PARAM_AICPULOGLEVEL, &ArgsParser::ParseAicpuLogLevel},
                                           {PARAM_VFID, &ArgsParser::ParseVfId},
                                           {PARAM_DEVICE_MODE, &ArgsParser::ParseDeviceMode},
-                                          {PARAM_AICPU_SCHED_MODE, &ArgsParser::ParseAicpuSchedMode},
                                           {PARAM_GRP_NAME_NUM, &ArgsParser::ParseGrpNameNum},
                                           {PARAM_GRP_NAME_LIST, &ArgsParser::ParseGrpNameList},
                                           {PARAM_HOST_PROC_NAME, &ArgsParser::ParseHostProcName},
@@ -125,11 +123,6 @@ namespace {
             return deviceMode_;
         }
 
-        inline AicpuSchedMode GetAicpuSchedMode() const
-        {
-            return aicpuSchedMode_;
-        }
-
         inline uint32_t GetGrpNameNum() const
         {
             return grpNameNum_;
@@ -167,7 +160,6 @@ namespace {
         bool ParseAicpuLogLevel(const std::string &para);
         bool ParseVfId(const std::string &para);
         bool ParseDeviceMode(const std::string &para);
-        bool ParseAicpuSchedMode(const std::string &para);
         bool ParseGrpNameNum(const std::string &para);
         bool ParseGrpNameList(const std::string &para);
         bool ParseHostProcName(const std::string &para);
@@ -190,7 +182,6 @@ namespace {
         int32_t ccecpulogLevel_;
         int32_t aicpulogLevel_;
         uint32_t deviceMode_;
-        AicpuSchedMode aicpuSchedMode_;
         uint32_t grpNameNum_;
         uint32_t aicpuProcNum_;
         std::vector<std::string> grpNameList_;

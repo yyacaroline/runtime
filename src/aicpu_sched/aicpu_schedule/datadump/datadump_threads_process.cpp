@@ -57,8 +57,7 @@ int32_t ComputeProcess::Start(const std::vector<uint32_t> &deviceVec,
                               const std::string &pidSign,
                               const uint32_t profilMode,
                               const uint32_t vfId,
-                              const aicpu::AicpuRunMode runMode,
-                              const AicpuSchedMode schedMode)
+                              const aicpu::AicpuRunMode runMode)
 {
     aicpusd_info("Aicpu scheduler start, hostpid[%d], profilingMode[%u], runMode[%u], vfId[%u].",
                  hostPid, profilMode, runMode, vfId);
@@ -76,7 +75,7 @@ int32_t ComputeProcess::Start(const std::vector<uint32_t> &deviceVec,
 
     aicpusd_info("ComputeProcess::Start: profilingMode[%u]", profilMode);
 
-    auto ret = AicpuSchedule::ThreadPool::Instance().CreateWorker(schedMode);
+    auto ret = AicpuSchedule::ThreadPool::Instance().CreateWorker(SCHED_MODE_INTERRUPT);
     if (ret != AICPU_SCHEDULE_OK) {
         aicpusd_err("Drv create aicpu work tasks failed, ret[%d].", ret);
         return ret;

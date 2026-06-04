@@ -297,18 +297,8 @@ void CloseQslibHandle()
         return;
     }
 }
-
-AicpuSchedMode GetAicpuSchedMode(const uint32_t deviceId, const uint32_t vfId, const AicpuSchedMode schedMode)
-{
-    if (vfId > 0 || deviceId >= VDEVICE_MIN_CPU_NUM) {
-        aicpusd_run_info("Aicpu start with interrupt mode in virtual machine");
-        return SCHED_MODE_INTERRUPT;
-    }
-
-    return schedMode;
-}
-}
-}
+}  // namespace
+}  // namespace AicpuSchedule
 
 /**
  * main of compute process.
@@ -343,14 +333,12 @@ int32_t ComputeProcessMain(int32_t argc, char* argv[])
         // Make sure AicpusdLastword are created first，to ensure the last exit
         AicpuSchedule::AicpusdLastword::GetInstance();
         AicpuSchedule::AicpuProfiler::ProfilerAgentInit();
-        const AicpuSchedMode aicpuSchedMode =  AicpuSchedule::GetAicpuSchedMode(deviceId, vfId,
-                                                                                startParams.GetAicpuSchedMode());
-        AicpuSchedule::AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U, aicpuSchedMode);
+        AicpuSchedule::AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U);
         std::vector<uint32_t> deviceVec(1, deviceId);
         
         int32_t ret = AicpuSchedule::AicpuScheduleInterface::GetInstance().InitAICPUScheduler(
             deviceVec, pid, startParams.GetPidSign(), startParams.GetProfilingMode(),
-            vfId, true, aicpuSchedMode, startParams.GetHostProcName());
+            vfId, true, startParams.GetHostProcName());
         if (ret != AicpuSchedule::AICPU_SCHEDULE_OK) {
             aicpusd_err("Aicpu scheduler start failed, ret=%d", ret);
             AicpuSchedule::ReportErrorMsg(ret, deviceId, static_cast<uint32_t>(pid), vfId);

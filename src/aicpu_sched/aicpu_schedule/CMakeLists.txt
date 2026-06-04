@@ -144,6 +144,7 @@ set(commom_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_meminfo_process.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/dfx/aicpusd_lastword.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_so_manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_msq_operator_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_message_queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/aicpusd_monitor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/stub/host_cpu_scheduler.cpp
@@ -190,6 +191,7 @@ set(commom_src_file
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_mpi_mgr.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_model_err_process.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/dfx/aicpusd_lastword.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_msq_operator_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/aicpusd_message_queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_context.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/aicpusd_util.cpp

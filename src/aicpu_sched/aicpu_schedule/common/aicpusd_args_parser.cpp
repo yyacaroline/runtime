@@ -197,21 +197,6 @@ namespace AicpuSchedule {
         return true;
     }
 
-    bool ArgsParser::ParseAicpuSchedMode(const std::string &para)
-    {
-        int32_t val = 0;
-        if (!AicpuUtil::TransStrToInt(para, val)) {
-            return false;
-        }
-
-        if ((val < 0) || (val >= static_cast<int32_t>(SCHED_MODE_INVALID))) {
-            return false;
-        }
-
-        aicpuSchedMode_ = static_cast<AicpuSchedMode>(val);
-        return true;
-    }
-
     bool ArgsParser::ParseAicpuProcNum(const std::string &para) 
     {
         uint32_t val = 0;
@@ -274,8 +259,8 @@ namespace AicpuSchedule {
         oss << "deviceId=" <<  deviceId_ << ", hostPid=" << hostPid_ << ", pidSign=" << pidSign_
             << ", profilingMode=" << profilingMode_ << ", vfId=" << vfId_ << ", logLevel=" << logLevel_
             << ", ccecpulogLevel=" << ccecpulogLevel_ << ", aicpulogLevel=" << aicpulogLevel_
-            << ", deviceMode=" << deviceMode_ << ", aicpuSchedMode=" << aicpuSchedMode_
-            << ", hostProcName=" << hostProcName_ << ", grpNameNum=" << grpNameNum_ << ", aicpuProcNum=" << aicpuProcNum_
+            << ", deviceMode=" << deviceMode_ << ", hostProcName=" << hostProcName_
+            << ", grpNameNum=" << grpNameNum_ << ", aicpuProcNum=" << aicpuProcNum_
             << ", grpNameList=[";
 
         for (const std::string &iter : grpNameList_) {

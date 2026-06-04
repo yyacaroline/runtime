@@ -10,22 +10,37 @@
 
 #include "gtest/gtest.h"
 #include "mockcpp/mockcpp.hpp"
+#include <cstring>
+#include <dlfcn.h>
 #include <limits>
 #include "ascend_hal.h"
 #include "type_def.h"
 #include "aicpusd_status.h"
 #define private public
 #include "aicpusd_message_queue.h"
+#include "aicpusd_msq_operator_manager.h"
+#include "aicpusd_msq_operator_stub.h"
 #undef private
 
 using namespace AicpuSchedule;
 
+namespace {
+using AicpuScheduleUtStub::DlopenMsqOperatorStub;
+using AicpuScheduleUtStub::DlsymMsqOperatorStub;
+}
+
 class AicpusdMessageQueueTest : public testing::Test {
 protected:
-    virtual void SetUp() {}
+    virtual void SetUp()
+    {
+        MOCKER(dlopen).stubs().will(invoke(DlopenMsqOperatorStub));
+        MOCKER(dlsym).stubs().will(invoke(DlsymMsqOperatorStub));
+        MOCKER(dlclose).stubs().will(returnValue(0));
+    }
 
     virtual void TearDown()
     {
+        MsqOperatorManager::Finalize();
         GlobalMockObject::verify();
     }
 };
@@ -210,6 +225,11 @@ TEST_F(AicpusdMessageQueueTest, ReadMsq4DataFail)
 TEST_F(AicpusdMessageQueueTest, ReadMsq0DataSuccess)
 {
     MessageQueue inst;
+    const uint32_t deviceId = 1;
+    const std::vector<uint32_t> aicpuPhyIds = {1,2,3,4};
+    MOCKER(halResAddrMap).stubs().will(invoke(halResAddrMapFake));
+    EXPECT_EQ(inst.InitMessageQueue(deviceId, aicpuPhyIds), AICPU_SCHEDULE_OK);
+    EXPECT_EQ(inst.InitMessageQueueForThread(0), AICPU_SCHEDULE_OK);
     MsqDatas datas = {};
     const uint32_t msgSize = 4U;
     inst.ReadMsqT0Data(msgSize, datas);
@@ -219,6 +239,11 @@ TEST_F(AicpusdMessageQueueTest, ReadMsq0DataSuccess)
 TEST_F(AicpusdMessageQueueTest, ReadMsq4DataSuccess)
 {
     MessageQueue inst;
+    const uint32_t deviceId = 1;
+    const std::vector<uint32_t> aicpuPhyIds = {1,2,3,4};
+    MOCKER(halResAddrMap).stubs().will(invoke(halResAddrMapFake));
+    EXPECT_EQ(inst.InitMessageQueue(deviceId, aicpuPhyIds), AICPU_SCHEDULE_OK);
+    EXPECT_EQ(inst.InitMessageQueueForThread(0), AICPU_SCHEDULE_OK);
     MsqDatas datas = {};
     const uint32_t msgSize = 4U;
     inst.ReadMsqT1Data(msgSize, datas);
@@ -231,8 +256,8 @@ TEST_F(AicpusdMessageQueueTest, WaitMsqInfoOnceFail)
     const uint32_t deviceId = 1;
     const std::vector<uint32_t> aicpuPhyIds = {1,2,3,4};
     MOCKER(halResAddrMap).stubs().will(invoke(halResAddrMapFake));
-    const int32_t ret = inst.InitMessageQueue(deviceId, aicpuPhyIds);
-    EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
+    EXPECT_EQ(inst.InitMessageQueue(deviceId, aicpuPhyIds), AICPU_SCHEDULE_OK);
+    EXPECT_EQ(inst.InitMessageQueueForThread(0), AICPU_SCHEDULE_OK);
 
     MsqDatas datas = {};
     const bool ret1 = MessageQueue::WaitMsqInfoOnce(datas);
@@ -264,6 +289,7 @@ TEST_F(AicpusdMessageQueueTest, SendResponseSuccess)
     const std::vector<uint32_t> aicpuPhyIds = {1,2,3,4};
     MOCKER(halResAddrMap).stubs().will(invoke(halResAddrMapFake));
     const int32_t ret = inst.InitMessageQueue(deviceId, aicpuPhyIds);
+    EXPECT_EQ(inst.InitMessageQueueForThread(0), AICPU_SCHEDULE_OK);
     inst.SendResponse(1, 1);
     MessageQueue::SendMsqT1Response();
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);

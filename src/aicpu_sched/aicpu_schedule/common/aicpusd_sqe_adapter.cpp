@@ -9,6 +9,7 @@
  */
 #include "aicpusd_sqe_adapter.h"
 #include "aicpusd_msg_send.h"
+#include "aicpusd_message_queue.h"
 
 namespace AicpuSchedule {
 AicpuSqeAdapter::AicpuSqeAdapter(const TsAicpuSqe &sqe, const int16_t version)
@@ -940,6 +941,9 @@ int32_t AicpuSqeAdapter::ResponseToTs(
         "Response to ts use"
         "tsDevSendMsgAsync failed, ret[%d]",
         ret);
+    if (FeatureCtrl::GetAicpuSchedMode() == SCHED_MODE_MSGQ) {
+        MessageQueue::SendResponse(0U, 0U);
+    }
     aicpusd_info("Finished to response use TsAicpuSqe.");
     return AICPU_SCHEDULE_OK;
 }
@@ -958,6 +962,9 @@ int32_t AicpuSqeAdapter::ResponseToTs(
         "Response to ts use"
         "tsDevSendMsgAsync failed, ret[%d]",
         ret);
+    if (FeatureCtrl::GetAicpuSchedMode() == SCHED_MODE_MSGQ) {
+        MessageQueue::SendResponse(0U, 0U);
+    }
     aicpusd_info("Finished to response use TsAicpuMsgInfo.");
     return AICPU_SCHEDULE_OK;
 }
@@ -966,6 +973,10 @@ int32_t AicpuSqeAdapter::ResponseToTs(
     hwts_response_t &hwtsResp, uint32_t devId, EVENT_ID eventId, uint32_t subeventId) const
 {
     aicpusd_info("Begin to response use hwtsResp.");
+    if (FeatureCtrl::GetAicpuSchedMode() == SCHED_MODE_MSGQ) {
+        MessageQueue::SendResponse(hwtsResp.result, hwtsResp.status);
+        aicpusd_info("Finished to response use hwtsResp, result[%u], status[%u].", hwtsResp.result, hwtsResp.status);
+    }
     const drvError_t ret = halEschedAckEvent(devId,
         eventId,
         subeventId,

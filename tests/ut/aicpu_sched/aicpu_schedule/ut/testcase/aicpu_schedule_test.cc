@@ -9,6 +9,7 @@
  */
 
 #include <dlfcn.h>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <map>
@@ -66,12 +67,16 @@
 #include "aicpusd_message_queue.h"
 #include "aicpusd_send_platform_Info_to_custom.h"
 #include "aicpusd_model_err_process.h"
+#include "aicpusd_msq_operator_stub.h"
 #undef private
 using namespace AicpuSchedule;
 using namespace aicpu;
 
 
 namespace {
+using AicpuScheduleUtStub::DlopenMsqOperatorStub;
+using AicpuScheduleUtStub::DlsymMsqOperatorStub;
+
 static struct event_info g_event = {
     .comm = {
         .event_id = EVENT_TEST,
@@ -732,6 +737,21 @@ drvError_t drvGetPlatformInfo_stub(uint32_t *info)
     return DRV_ERROR_NONE;
 }
 
+namespace {
+uint32_t g_msqCqeStub[4] = {0U};
+
+drvError_t HalResAddrMapMsqStub(unsigned int, struct res_addr_info *, unsigned long *va, unsigned int *len)
+{
+    if (va != nullptr) {
+        *va = reinterpret_cast<unsigned long>(g_msqCqeStub);
+    }
+    if (len != nullptr) {
+        *len = sizeof(g_msqCqeStub);
+    }
+    return DRV_ERROR_NONE;
+}
+}  // namespace
+
 TEST_F(AICPUScheduleTEST, MULTI_EXECUTETEST) {
     printf("=======================MULTI_EXECUTETEST=====================\n");
     g_load_try = 0;
@@ -753,6 +773,18 @@ TEST_F(AICPUScheduleTEST, MULTI_EXECUTETEST) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
 
     setenv("ASCEND_GLOBAL_LOG_LEVEL", "3", 1);
     setenv("ASCEND_GLOBAL_EVENT_ENABLE", "1", 1);
@@ -793,6 +825,7 @@ TEST_F(AICPUScheduleTEST, LOADPROCESS_ERROR) {
 }
 
 TEST_F(AICPUScheduleTEST, DoOnceTest1) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     MOCKER(halEschedWaitEvent)
         .stubs()
         .will(returnValue(DRV_ERROR_SCHED_PARA_ERR));
@@ -801,6 +834,7 @@ TEST_F(AICPUScheduleTEST, DoOnceTest1) {
 }
 
 TEST_F(AICPUScheduleTEST, DoOnceTest2) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     MOCKER(halEschedWaitEvent)
         .stubs()
         .will(returnValue(DRV_ERROR_SCHED_PROCESS_EXIT));
@@ -809,6 +843,7 @@ TEST_F(AICPUScheduleTEST, DoOnceTest2) {
 }
 
 TEST_F(AICPUScheduleTEST, DoOnceTest3) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     MOCKER(halEschedWaitEvent)
         .stubs()
         .will(returnValue(DRV_ERROR_SCHED_WAIT_FAILED));
@@ -817,6 +852,7 @@ TEST_F(AICPUScheduleTEST, DoOnceTest3) {
 }
 
 TEST_F(AICPUScheduleTEST, DoOnceTest4) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     MOCKER_CPP(&AicpuSchedule::g_aicpuProfiler.GetHiperfSoStatus)
         .stubs()
         .will(returnValue(true));
@@ -825,6 +861,7 @@ TEST_F(AICPUScheduleTEST, DoOnceTest4) {
 }
 
 TEST_F(AICPUScheduleTEST, DoOnceTestFailedAicpuIllegalCPU) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     MOCKER(halEschedWaitEvent)
         .stubs()
         .will(returnValue(DRV_ERROR_SCHED_RUN_IN_ILLEGAL_CPU));
@@ -1399,6 +1436,18 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_JsonEmpty) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
 
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
@@ -1408,7 +1457,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_JsonEmpty) {
         .will(returnValue(0));
     MOCKER(tsDevSendMsgAsync).stubs().will(returnValue(-1));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                       1, true, SCHED_MODE_INTERRUPT);
+                                                                       1, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
@@ -1416,7 +1465,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_JsonEmpty) {
         .stubs()
         .will(returnValue(0));
     ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                   1, true, SCHED_MODE_INTERRUPT);
+                                                                   1, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -1425,6 +1474,18 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_SUCCESS) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
 
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
@@ -1433,7 +1494,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_SUCCESS) {
         .stubs()
         .will(returnValue(0));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                       0, true, SCHED_MODE_INTERRUPT);
+                                                                       0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
@@ -1441,7 +1502,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_SUCCESS) {
         .stubs()
         .will(returnValue(0));
     ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                   0, true, SCHED_MODE_INTERRUPT);
+                                                                   0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -2860,6 +2921,21 @@ TEST_F(AICPUScheduleTEST, TdtServerTestSuccessWithoutDcpu_01) {
     MOCKER(&tdt::TDTServerInit)
         .stubs()
         .will(returnValue(0));
+    MOCKER_CPP(&ThreadPool::CreateWorker)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     AicpuSchedule::AicpuDrvManager::GetInstance().dcpuNum_ = 1;
     AicpuSchedule::AicpuDrvManager::GetInstance().aicpuNumPerDev_ = 1;
     ComputeProcess::GetInstance().runMode_ = aicpu::AicpuRunMode::PROCESS_PCIE_MODE;
@@ -2872,7 +2948,7 @@ TEST_F(AICPUScheduleTEST, TdtServerTestSuccessWithoutDcpu_01) {
         .stubs()
         .will(returnValue(0));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                       0, true, SCHED_MODE_INTERRUPT);
+                                                                       0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
     setenv("DATAMASTER_RUN_MODE", "1", 1);
     ret = ComputeProcess::GetInstance().StartTdtServer();
@@ -2946,11 +3022,22 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStartTestOK) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3234,11 +3321,22 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStart_MemorySvmDevice) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3252,11 +3350,22 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStart_InitTaskMonitorContext_ERR) {
     MOCKER(InitTaskMonitorContext)
         .stubs()
         .will(returnValue(1));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_NE(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3268,8 +3377,7 @@ TEST_F(AICPUScheduleTEST, StartMsqSuccess) {
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&MessageQueue::InitMessageQueue).stubs().will(returnValue(AICPU_SCHEDULE_OK));
-    const AicpuSchedMode schedMode = SCHED_MODE_MSGQ;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3281,8 +3389,7 @@ TEST_F(AICPUScheduleTEST, StartMsqSuccessFail) {
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&MessageQueue::InitMessageQueue).stubs().will(returnValue(AICPU_SCHEDULE_ERROR_FROM_DRV));
-    const AicpuSchedMode schedMode = SCHED_MODE_MSGQ;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_FROM_DRV);
 }
 
@@ -3316,6 +3423,9 @@ TEST_F(AICPUScheduleTEST, TransferErrCodeToErrMsg_01) {
     MOCKER(system)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
 
     char* argv[] = {processName, paramDeviceIdOk, paramPidOk, paramPidSignOk, paramModeOk, paramLogLevelOk, paramGrpNameOk, paramGrpNumOk};
     int32_t argc = 8;
@@ -3343,6 +3453,9 @@ TEST_F(AICPUScheduleTEST, TransferErrCodeToErrMsg_02) {
     MOCKER(system)
         .stubs()
         .will(returnValue(-1));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
 
     char* argv[] = {processName, paramDeviceIdOk, paramPidOk, paramPidSignOk, paramModeOk, paramLogLevelOk, paramGrpNameOk, paramGrpNumOk};
     int32_t argc = 8;
@@ -3368,6 +3481,9 @@ TEST_F(AICPUScheduleTEST, TransferErrCodeToErrMsg_03) {
     MOCKER(system)
         .stubs()
         .will(returnValue(-1));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
 
     char* argv[] = {processName, paramDeviceIdOk, paramPidOk, paramPidSignOk, paramModeOk, paramLogLevelOk, paramGrpNameOk, paramGrpNumOk, paramDeviceModel};
     int32_t argc = 9;
@@ -3393,6 +3509,9 @@ TEST_F(AICPUScheduleTEST, TransferErrCodeToErrMsg_04) {
     MOCKER(system)
         .stubs()
         .will(returnValue(-1));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
 
     char* argv[] = {processName, paramDeviceIdOk, paramPidOk, paramPidSignOk, paramModeOk, paramLogLevelOk, paramGrpNameOk, paramGrpNumOk, paramDeviceModel};
     int32_t argc = 9;
@@ -3418,6 +3537,9 @@ TEST_F(AICPUScheduleTEST, TransferErrCodeToErrMsg_05) {
     MOCKER(system)
         .stubs()
         .will(returnValue(-1));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
 
     char* argv[] = {processName, paramDeviceIdOk, paramPidOk, paramPidSignOk, paramModeOk, paramLogLevelOk, paramGrpNameOk, paramGrpNumOk, paramDeviceModel};
     int32_t argc = 9;
@@ -5674,14 +5796,25 @@ TEST_F(AICPUScheduleTEST, Start_002) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&ComputeProcess::StartTdtServer)
         .stubs()
         .will(returnValue(0));
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -5689,11 +5822,22 @@ TEST_F(AICPUScheduleTEST, Start_003) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
     ComputeProcess::GetInstance().Stop();
 }
@@ -5702,12 +5846,23 @@ TEST_F(AICPUScheduleTEST, Start_004) {
     MOCKER_CPP(&ThreadPool::CreateWorker)
         .stubs()
         .will(returnValue(0));
+    MOCKER(dlopen)
+        .stubs()
+        .will(invoke(DlopenMsqOperatorStub));
+    MOCKER(dlsym)
+        .stubs()
+        .will(invoke(DlsymMsqOperatorStub));
+    MOCKER(dlclose)
+        .stubs()
+        .will(returnValue(0));
+    MOCKER(halResAddrMap)
+        .stubs()
+        .will(invoke(HalResAddrMapMsqStub));
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&ComputeProcess::StartTdtServer).stubs().will(returnValue(1));
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, 1);
 }
 

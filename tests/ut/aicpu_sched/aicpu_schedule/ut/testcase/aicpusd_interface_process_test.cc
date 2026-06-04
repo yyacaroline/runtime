@@ -337,7 +337,7 @@ TEST_F(AICPUScheduleInterfaceTEST, InitAICPUScheduler_failed1)
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, hostPid, pidSign, PROFILING_CLOSE,
-                                                                       0, isOnline, SCHED_MODE_INTERRUPT);
+                                                                       0, isOnline);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_DRV_ERR);
 }
 
@@ -352,7 +352,7 @@ TEST_F(AICPUScheduleInterfaceTEST, InitAICPUScheduler_failed2)
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, hostPid, pidSign, PROFILING_CLOSE,
-                                                                       0, isOnline, SCHED_MODE_INTERRUPT);
+                                                                       0, isOnline);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_INIT_CP_FAILED);
 }
 

@@ -16,6 +16,7 @@
 #include "aicpusd_status.h"
 #include "aicpusd_drv_manager.h"
 #include "aicpusd_feature_ctrl.h"
+#include "aicpusd_msq_operator_manager.h"
 
 
 namespace AicpuSchedule {
@@ -52,10 +53,11 @@ MessageQueue &MessageQueue::GetInstance()
 
 int32_t MessageQueue::InitMessageQueue(const uint32_t deviceId, const std::vector<uint32_t> &aicpuPhyIds)
 {
+    int32_t ret = AICPU_SCHEDULE_OK;
     deviceId_ = deviceId;
     aicpuPhyIds_ = aicpuPhyIds;
 
-    int32_t ret = InitMsqImpl();
+    ret = InitMsqImpl();
     if (ret != AICPU_SCHEDULE_OK) {
         aicpusd_err("Init message queue impl instance failed");
         return ret;
@@ -75,6 +77,12 @@ int32_t MessageQueue::InitMessageQueue(const uint32_t deviceId, const std::vecto
 
 int32_t MessageQueue::InitMsqImpl() const
 {
+    int32_t ret = MsqOperatorManager::Init();
+    if (ret != AICPU_SCHEDULE_OK) {
+        aicpusd_err("Init msq operator manager failed");
+        return ret;
+    }
+
     impl_ = FeatureCtrl::IsUseMsqV2() ? std::make_shared<MsqImplV2>() : std::make_shared<MsqImplV1>();
     if (impl_ == nullptr) {
         aicpusd_err("Create msq impl failed by nullptr");
@@ -268,6 +276,9 @@ int32_t MessageQueue::InitCqeAddr(const size_t threadIndex) const
 
 void MessageQueue::SendResponse(const uint32_t errCode, const uint32_t status)
 {
+    if (sendMsqRspFunc_ == nullptr) {
+        return;
+    }
     MessageQueue::sendMsqRspFunc_();
     SetCQE(errCode, status);
 }
@@ -310,6 +321,7 @@ bool MessageQueue::WaitMsqInfoOnce(MsqDatas &datas)
 
 void MessageQueue::WaitForEvent()
 {
+    MsqOperatorManager::CallWait();
     return;
 }
 
@@ -320,92 +332,86 @@ bool MessageQueue::IsUseMsqT0(const size_t threadIndex)
 
 int32_t MsqImplV1::ResetMsqT0Status() const
 {
+    MsqOperatorManager::CallV1ResetT0Status();
     return AICPU_SCHEDULE_OK;
 }
 
 int32_t MsqImplV1::ResetMsqT1Status() const
 {
+    MsqOperatorManager::CallV1ResetT1Status();
     return AICPU_SCHEDULE_OK;
 }
 
 MsqStatus MsqImplV1::ReadMsqT0Status() const
 {
-    // MSQ0_STATUS_EL0
-    MsqStatus status = {};
-    return status;
+    return MsqOperatorManager::CallV1ReadT0Status();
 }
 
 MsqStatus MsqImplV1::ReadMsqT1Status() const
 {
-    // MSQ4_STATUS_EL0
-    MsqStatus status = {};
-    return status;
+    return MsqOperatorManager::CallV1ReadT1Status();
 }
 
 void MsqImplV1::ReadMsqT0Data(const uint32_t msgSize, MsqDatas &datas) const
 {
-    // MSQ0_DATA_EL0
-    const MsqDatas tmpDatas = {};
-    datas = tmpDatas;
     if (msgSize == static_cast<uint32_t>(MsqDataSize::MSQ_DATA_SIZE_0)) {
         aicpusd_err("Message size is 0");
         return;
     }
-    return;
+
+    MsqOperatorManager::CallV1ReadT0Data(msgSize, &datas);
 }
 
 void MsqImplV1::ReadMsqT1Data(const uint32_t msgSize, MsqDatas &datas) const
 {
-    // MSQ4_DATA_EL0
-    const MsqDatas tmpDatas = {};
-    datas = tmpDatas;
     if (msgSize == static_cast<uint32_t>(MsqDataSize::MSQ_DATA_SIZE_0)) {
         aicpusd_err("Message size is 0");
         return;
     }
-    return;
+
+    MsqOperatorManager::CallV1ReadT1Data(msgSize, &datas);
 }
 
 void __attribute__((optimize("O0"))) MsqImplV1::SendMsqT0Response() const
 {
     // O2 compilation optimization will optimize away the msq write operation, so O0 optimization must be used.
-    return;
+    MsqOperatorManager::CallV1SendT0Response();
 }
 
 void __attribute__((optimize("O0"))) MsqImplV1::SendMsqT1Response() const
 {
-    return;
+    MsqOperatorManager::CallV1SendT1Response();
 }
 
 int32_t MsqImplV2::ResetMsqT0Status() const
 {
+    MsqOperatorManager::CallV2ResetT0Status();
     return AICPU_SCHEDULE_OK;
 }
 
 int32_t MsqImplV2::ResetMsqT1Status() const
 {
+    MsqOperatorManager::CallV2ResetT1Status();
     return AICPU_SCHEDULE_OK;
 }
 
 MsqStatus MsqImplV2::ReadMsqT1Status() const
 {
-    MsqStatus status = {};
-    return status;
+    return MsqOperatorManager::CallV2ReadT1Status();
 }
 
 void MsqImplV2::ReadMsqT1Data(const uint32_t msgSize, MsqDatas &datas) const
 {
-    const MsqDatas tmpDatas = {};
-    datas = tmpDatas;
     if (msgSize == static_cast<uint32_t>(MsqDataSize::MSQ_DATA_SIZE_0)) {
         aicpusd_err("Message size is 0");
         return;
     }
-    return;
+
+    MsqOperatorManager::CallV2ReadT1Data(msgSize, &datas);
 }
 
 void __attribute__((optimize("O0"))) MsqImplV2::SendMsqT1Response() const
 {
-    return;
+    MsqOperatorManager::CallV2SendT1Response();
 }
 } // namespace AicpuSchedule

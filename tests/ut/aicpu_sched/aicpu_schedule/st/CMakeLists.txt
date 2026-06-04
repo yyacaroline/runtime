@@ -145,6 +145,7 @@ set(LOCAL_SRC_FILES
     ${SRC_PATH}/stub/proc_mgr/proc_mgr_sys_operator_agent.cpp
     ${SRC_PATH}/mc2_maintenance/aicpusd_mc2_maintenance_thread.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${AICPU_SCHED_PATH}/aicpu_sharder/aicpu_pulse.cc
     ${AICPU_SCHED_PATH}/aicpu_sharder/aicpu_sharder.cc
     ${AICPU_SCHED_PATH}/aicpu_sharder/aicpu_context.cc
@@ -269,6 +270,7 @@ add_executable(aicpu_aicpuschedule_stest_host_cpu
     ${SRC_PATH}/stub/aicpusd_cust_dump_process_stub.cpp
     ${SRC_PATH}/stub/aicpusd_mc2_maintenance_thread_stub.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${SRC_PATH}/common/aicpusd_feature_ctrl_open_source.cpp
     ${SRC_PATH}/common/feature_ctrl_common.cpp
     ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule/stub/slog_stub.cpp
@@ -315,6 +317,7 @@ add_executable(aicpu_thread_datadump_stest
     ${SRC_PATH}/stub/stub_transfer_dump.cpp
     ${SRC_PATH}/stub/stub_thread_datadump.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule/stub/slog_stub.cpp
     ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule/stub/stub_driver.cpp
     testcase/c_stub.c

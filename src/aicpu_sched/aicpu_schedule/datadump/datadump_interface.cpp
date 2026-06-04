@@ -66,8 +66,7 @@ int32_t InitAICPUDatadump(const uint32_t deviceId, const pid_t hostPid)
                                                                                    pidSign.sign,
                                                                                    PROFILING_CLOSE,
                                                                                    0U,
-                                                                                   false,
-                                                                                   SCHED_MODE_INTERRUPT);
+                                                                                   false);
 }
 
 int32_t StopAICPUDatadump(uint32_t deviceId, pid_t hostPid)

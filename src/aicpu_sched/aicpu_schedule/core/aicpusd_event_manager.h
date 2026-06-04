@@ -48,9 +48,9 @@ namespace AicpuSchedule {
          */
         __attribute__((visibility("default"))) void InitEventMgr(const bool noThreadFlag,
                                                                  const bool runningFlag,
-                                                                 const uint32_t grpId,
-                                                                 const AicpuSchedMode aicpuSchedMode);
+                                                                 const uint32_t grpId);
 
+         __attribute__((visibility("default"))) void InitEventFunc(const AicpuSchedMode aicpuSchedMode);
         /**
          * @ingroup AicpuEventManager
          * @param [in] threadIndex : thread index assign by aicpu index, but when running time they are different.

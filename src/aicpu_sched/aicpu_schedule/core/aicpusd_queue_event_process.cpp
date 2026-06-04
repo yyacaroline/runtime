@@ -12,6 +12,8 @@
 
 #include "aicpusd_hal_interface_ref.h"
 #include "aicpusd_monitor.h"
+#include "aicpusd_feature_ctrl.h"
+#include "aicpusd_message_queue.h"
 #include "aicpusd_status.h"
 #include "securec.h"
 #include "type_def.h"
@@ -485,6 +487,9 @@ namespace AicpuSchedule {
         response.msg_len = static_cast<uint32_t>(len);
         response.msg = const_cast<char_t *>(msg);
         const int32_t drvRet = halEschedSubmitEvent(AicpuDrvManager::GetInstance().GetDeviceId(), &response);
+        if (FeatureCtrl::GetAicpuSchedMode() == SCHED_MODE_MSGQ) {
+            MessageQueue::SendResponse(0U, 0U);
+        }
         if (drvRet != DRV_ERROR_NONE) {
             aicpusd_err("Failed to response event to acl event_id[%u], subevent_id[%u].", event.comm.event_id,
                 event.comm.subevent_id);

@@ -93,9 +93,9 @@ int32_t ComputeProcess::Start(const std::vector<uint32_t> &deviceVec,
                               const std::string &pidSign,
                               const uint32_t profilMode,
                               const uint32_t vfId,
-                              const aicpu::AicpuRunMode runMode,
-                              const AicpuSchedMode schedMode)
+                              const aicpu::AicpuRunMode runMode)
 {
+    const AicpuSchedMode schedMode = FeatureCtrl::GetAicpuSchedMode();
     aicpusd_info("Aicpu scheduler start, hostpid[%d], profilingMode[%u], runMode[%u], vfId[%u], schedMode[%u]",
                  hostPid, profilMode, runMode, vfId, schedMode);
     if (deviceVec.empty()) {

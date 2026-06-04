@@ -45,6 +45,8 @@ protected:
 
     virtual void TearDown()
     {
+        SubModuleInterface::GetInstance().startFlag_ = false;
+        SubModuleInterface::GetInstance().tsdEventKey_ = {};
         GlobalMockObject::verify();
         std::cout << "AicpusdSubModuleInterfaceTest TearDown" << std::endl;
     }
@@ -71,6 +73,7 @@ TEST_F(AicpusdSubModuleInterfaceTest, StartAicpuSchedulerModuleFail01)
 
     MOCKER_CPP(&AicpuSchedule::SubModuleInterface::ParseArgsFromFile).stubs().will(returnValue(true));
     MOCKER_CPP(&AicpuSchedule::AicpuScheduleInterface::InitAICPUScheduler).stubs().will(returnValue(1));
+    MOCKER_CPP(&AicpuSchedule::AicpuScheduleInterface::StopAICPUScheduler).stubs().will(returnValue(0));
     EXPECT_EQ(StartAicpuSchedulerModule(&eventInfo), -1);
 }
 

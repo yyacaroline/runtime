@@ -524,58 +524,57 @@ TEST_F(AiCPUThreadDatadumpUt, InitAICPUSchedulerTest_Ut_SUCCESS) {
     std::vector<uint32_t> deviceVec;
     int ret = 0;
     AicpuScheduleInterface::GetInstance().initFlag_ = true;
-    AicpuSchedMode schedMode;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_DRV_ERR);
 
     deviceVec.push_back(0);
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 1, true, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 1, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_INIT_CP_FAILED);
 
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
     MOCKER_CPP(&AicpuDrvManager::CheckBindHostPid)
         .stubs()
         .will(returnValue(-1));
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     MOCKER_CPP(&AicpuDrvManager::InitDrvSchedModule)
         .stubs()
         .will(returnValue(1));
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_DRV_ERR); 
 
     MOCKER_CPP(&AicpuScheduleInterface::BindHostPid)
         .stubs()
         .will(returnValue(1));
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, 1); 
 
     MOCKER_CPP(&GetAicpuDeployContext)
         .stubs()
         .will(returnValue(1));
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, 1);
 
     MOCKER_CPP(&AicpuDrvManager::InitDrvMgr)
         .stubs()
         .will(returnValue(1));
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, false);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_DRV_ERR);
  
     AicpuScheduleInterface::GetInstance().initFlag_ = true;
-    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true, SCHED_MODE_INTERRUPT);
+    ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0, 0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 

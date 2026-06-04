@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <atomic>
+#include "aicpusd_info.h"
 
 namespace AicpuSchedule {
 // min number of vDeviceId
@@ -103,6 +104,11 @@ public:
         isSetTsMsgVersion_ = false;
     }
 
+    static inline AicpuSchedMode GetAicpuSchedMode()
+    {
+        return aicpuSchedMode_;
+    }
+
 private:
     FeatureCtrl() = default;
     ~FeatureCtrl() = default;
@@ -111,7 +117,7 @@ private:
     FeatureCtrl& operator=(FeatureCtrl const&) = delete;
     FeatureCtrl(FeatureCtrl&&) = delete;
     FeatureCtrl& operator=(FeatureCtrl&&) = delete;
-
+    static void InitMsqEnableStatus(const uint32_t deviceId);
     static bool aicpuFeatureBindPidByHal_;
     static bool aicpuFeatureDoubleDieProduct_;
     static bool aicpuFeatureCheckEventSender_;
@@ -124,6 +130,7 @@ private:
     static uint16_t tsMsgVersion_;
     static std::atomic<bool> isSetTsMsgVersion_;
     static bool aicpuFeatureUseMsqV2_;
+    static AicpuSchedMode aicpuSchedMode_;
 };
 
 } // namespace AicpuSchedule

@@ -150,7 +150,7 @@ int32_t InitAICPUScheduler(const uint32_t deviceId, const pid_t hostPid, const P
 
     // Make sure AicpusdLastword are created first，to ensure the last exit
     AicpuSchedule::AicpusdLastword::GetInstance();
-    AicpuSchedule::AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U, SCHED_MODE_INTERRUPT);
+    AicpuSchedule::AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U);
     const std::vector<uint32_t> deviceVec{deviceId};
     auto deployContext = AicpuSchedule::DeployContext::DEVICE;
     const int32_t status = AicpuSchedule::GetAicpuDeployContext(deployContext);
@@ -174,8 +174,7 @@ int32_t InitAICPUScheduler(const uint32_t deviceId, const pid_t hostPid, const P
                                                                                    pidSign.sign,
                                                                                    profilingMode,
                                                                                    0U,
-                                                                                   false,
-                                                                                   SCHED_MODE_INTERRUPT);
+                                                                                   false);
 }
 
 /**

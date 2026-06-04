@@ -39,6 +39,7 @@
 #include "aicpusd_period_statistic.h"
 #include "aicpusd_model_statistic.h"
 #include "aicpusd_feature_ctrl.h"
+#include "aicpusd_msq_operator_manager.h"
 #include "hwts_kernel_register.h"
 #include "operator_kernel_register.h"
 
@@ -265,7 +266,6 @@ namespace AicpuSchedule {
                                                        const uint32_t profilingMode,
                                                        const uint32_t vfId,
                                                        const bool isOnline,
-                                                       const AicpuSchedMode schedMode,
                                                        const std::string &hostProcName)
     {
         if (deviceVec.empty()) {
@@ -320,9 +320,11 @@ namespace AicpuSchedule {
             aicpusd_err("aicpu monitor init failed, ret[%d]", ret);
             return AICPU_SCHEDULE_ERROR_INIT_FAILED;
         }
+        const AicpuSchedMode schedMode = FeatureCtrl::GetAicpuSchedMode();
+        AicpuEventManager::GetInstance().InitEventFunc(schedMode);
         (void)AicpuSchedule::AicpuEventProcess::GetInstance(); // Pre init instance
         const auto retCp = ComputeProcess::GetInstance().Start(deviceVec, hostPid, pidSign, profilingMode,
-                                                               vfId, runMode_, schedMode);
+                                                               vfId, runMode_);
         if (retCp != AICPU_SCHEDULE_OK) {
             aicpusd_err("Compute process start failed, ret[%d].", retCp);
             ComputeProcess::GetInstance().Stop();
@@ -574,6 +576,7 @@ namespace AicpuSchedule {
             waitThreadStop) {
             AicpuSchedule::ThreadPool::Instance().WaitForStop();
         }
+        MsqOperatorManager::Finalize();
         g_aicpuProfiler.Uninit();
         aicpusd_run_info("Successfully stopped AICPU scheduler, hostPid[%d]", hostPid);
         return AICPU_SCHEDULE_OK;

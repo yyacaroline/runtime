@@ -86,7 +86,6 @@ namespace AicpuSchedule {
                                                                           const uint32_t profilingMode,
                                                                           const uint32_t vfId,
                                                                           const bool isOnline,
-                                                                          const AicpuSchedMode schedMode,
                                                                           const std::string &hostProcName = "");
 
         /**

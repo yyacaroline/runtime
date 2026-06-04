@@ -61,6 +61,7 @@ set(AICPU_SCHED_TARGET
   aicpu_aicpuschedule_utest_host_cpu
   aicpu_thread_datadump_utest
   aicpu_aicpuschedule_utest_open
+  aicpu_aicpuschedule_utest_lhisi
   aicpu_sharder_utest
   aicpu_kernel_utest
 

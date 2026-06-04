@@ -9,8 +9,10 @@
  */
 #include "aicpusd_feature_ctrl.h"
 
+#include <string>
 #include <cstring>
 #include "aicpusd_hal_interface_ref.h"
+#include "aicpusd_info.h"
 #include "aicpusd_status.h"
 #include "aicpusd_common.h"
 #define AICPU_PLAT_GET_CHIP(type)           (((type) >> 8U) & 0xffU)
@@ -37,6 +39,7 @@ void FeatureCtrl::Init(const int64_t hardwareVersion, const uint32_t deviceId)
         aicpuFeatureBindPidByHal_ = true;
     }
 
+    InitMsqEnableStatus(deviceId);
     if ((chipType == CHIP_ASCEND_910B) && (&halGetSocVersion != nullptr)) {
         char_t socVersion[SOC_VERSION_LEN] = {};
         const auto drvRet = halGetSocVersion(deviceId, &socVersion[0U], SOC_VERSION_LEN);
@@ -51,6 +54,33 @@ void FeatureCtrl::Init(const int64_t hardwareVersion, const uint32_t deviceId)
     if (chipType == CHIP_ASCEND_910B) {
         aicpuFeatureCheckEventSender_ = true;
     }
+}
+
+void FeatureCtrl::InitMsqEnableStatus(const uint32_t deviceId)
+{
+    int64_t cpuSchedMode = 0;
+    aicpuSchedMode_ = SCHED_MODE_INTERRUPT;
+    const drvError_t ret = halGetDeviceInfo(deviceId, MODULE_TYPE_AICPU, INFO_TYPE_WORK_MODE, &cpuSchedMode);
+    if (ret == DRV_ERROR_NOT_SUPPORT) {
+        aicpusd_info("The aicpu schedule mode is not supported, ret[%d], device id[%d]", ret, deviceId);
+        return;
+    } else if (ret != DRV_ERROR_NONE) {
+        aicpusd_run_warn("Get aicpu schedule mode not success, ret[%d], device id[%d]", ret, deviceId);
+    }
+    switch(cpuSchedMode) {
+        case HAL_NORMAL_MODE:
+            aicpuSchedMode_ = SCHED_MODE_INTERRUPT;
+            break;
+        case HAL_HIGH_PERFORMANCE_MODE:
+            aicpuSchedMode_ = SCHED_MODE_MSGQ;
+            break;
+        default:
+            aicpuSchedMode_ = SCHED_MODE_INTERRUPT;
+            aicpusd_run_warn("The aicpu schedule mode is not correct, will set to default mode, mode[%d]",
+                             cpuSchedMode);
+    }
+    const std::string modeStr = (aicpuSchedMode_ == SCHED_MODE_MSGQ) ? "message queue" : "interrupt";
+    aicpusd_run_info("The aicpu schedule mode is %s", modeStr.c_str());
 }
 
 bool FeatureCtrl::IsAosCore()
@@ -129,4 +159,3 @@ bool FeatureCtrl::ShouldSetModuleNullData()
 }
 
 } // namespace AicpuSchedule
-

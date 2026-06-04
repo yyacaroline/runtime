@@ -42,11 +42,10 @@ int32_t SubModuleInterface::StartAicpuSchedulerModule(const struct TsdSubEventIn
 
     // init aicpu
     AicpuProfiler::ProfilerAgentInit();
-    AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U, AicpuSchedMode::SCHED_MODE_INTERRUPT);
+    AicpuEventManager::GetInstance().InitEventMgr(false, true, 0U);
     const std::vector<uint32_t> deviceVec(1, tsdEventKey_.deviceId);
     const int32_t ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, tsdEventKey_.hostPid,
-        startParas.GetPidSign(), startParas.GetProfilingMode(), tsdEventKey_.vfId, true,
-        SCHED_MODE_INTERRUPT);
+        startParas.GetPidSign(), startParas.GetProfilingMode(), tsdEventKey_.vfId, true);
     if (ret != AICPU_SCHEDULE_OK) {
         aicpusd_err("Aicpu schedule start failed, ret[%d].", ret);
         ReportErrMsgToTsd(ret);

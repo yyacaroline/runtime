@@ -224,6 +224,10 @@ TEST_F(AICPUSDWorkerTEST, CreateWorkerAicpuIsZero) {
 }
 
 TEST_F(AICPUSDWorkerTEST, WorkTest) {
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
+    AicpuEventManager::GetInstance().SetRunningFlag(false);
+    MOCKER_CPP(&AicpuEventManager::LoopProcess)
+        .stubs();
     MOCKER_CPP(&ThreadPool::SetAffinity)
         .stubs()
         .will(returnValue(0));
@@ -256,6 +260,8 @@ TEST_F(AICPUSDWorkerTEST, WorkTest_Fail) {
 }
 
 TEST_F(AICPUSDWorkerTEST, WorkTestMsqSuccess) {
+    AicpuEventManager::GetInstance().SetRunningFlag(false);
+    MOCKER_CPP(&AicpuEventManager::LoopProcess).stubs();
     MOCKER_CPP(&ThreadPool::SetAffinity).stubs().will(returnValue(0));
     MOCKER(system).stubs().will(returnValue(0));
     MOCKER(sem_post).stubs().will(returnValue(0));
@@ -269,6 +275,8 @@ TEST_F(AICPUSDWorkerTEST, WorkTestMsqSuccess) {
 }
 
 TEST_F(AICPUSDWorkerTEST, WorkTestMsqFail) {
+    AicpuEventManager::GetInstance().SetRunningFlag(false);
+    MOCKER_CPP(&AicpuEventManager::LoopProcess).stubs();
     MOCKER_CPP(&ThreadPool::SetAffinity).stubs().will(returnValue(0));
     MOCKER(system).stubs().will(returnValue(0));
     MOCKER(sem_post).stubs().will(returnValue(0));

@@ -133,8 +133,7 @@ TEST_F(AICPUScheduleStubLhisiTEST, ComputeProcessTest)
   std::string pidSign;
   ProfilingMode profilingMode;
   aicpu::AicpuRunMode runMode;
-  const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode, schedMode);
+  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode);
   const AICPUSharderTaskInfo taskInfo = {};
   const aicpu::Closure task = [](){};
   std::queue<aicpu::Closure> taskQueue;
@@ -192,8 +191,7 @@ TEST_F(AICPUScheduleStubLhisiTEST, ProfilingMode)
   AicpuSchedule::ComputeProcess::GetInstance().UpdateProfilingMode(profilingMode);
   AicpuSchedule::ComputeProcess::GetInstance().UpdateProfilingModelMode(true);
   AicpuSchedule::ComputeProcess::GetInstance().Stop();
-  const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode, schedMode);
+  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode);
   EXPECT_EQ(ret, 0);
 }
 

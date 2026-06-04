@@ -983,6 +983,7 @@ TEST_F(AICPUScheduleTEST, DoOnceTest1) {
     MOCKER(halEschedWaitEvent)
         .stubs()
         .will(returnValue(DRV_ERROR_SCHED_PARA_ERR));
+    AicpuEventManager::GetInstance().InitEventFunc(SCHED_MODE_INTERRUPT);
     AicpuEventManager::GetInstance().DoOnce(0, 0);
     EXPECT_EQ(AicpuEventManager::GetInstance().runningFlag_, false);
 }
@@ -1179,7 +1180,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_JsonEmpty) {
         .will(returnValue(0));
     MOCKER(tsDevSendMsgAsync).stubs().will(returnValue(-1));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                       1, true, SCHED_MODE_INTERRUPT);
+                                                                       1, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
@@ -1187,7 +1188,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_JsonEmpty) {
         .stubs()
         .will(returnValue(0));
     ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                   1, true, SCHED_MODE_INTERRUPT);
+                                                                   1, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -1242,7 +1243,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_SUCCESS) {
         .stubs()
         .will(returnValue(0));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                       0, true, SCHED_MODE_INTERRUPT);
+                                                                       0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 
     AicpuScheduleInterface::GetInstance().initFlag_ = false;
@@ -1250,7 +1251,7 @@ TEST_F(AICPUScheduleTEST, InitAICPUSchedulerTest_SUCCESS) {
         .stubs()
         .will(returnValue(0));
     ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, 0, ch, (ProfilingMode)0,
-                                                                   0, true, SCHED_MODE_INTERRUPT);
+                                                                   0, true);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -2624,8 +2625,7 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStartTestOK) {
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -2673,8 +2673,7 @@ TEST_F(AICPUScheduleTEST, getTopic_01) {
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
     SharderWork shard = nullptr;
     EXPECT_EQ(SharderNonBlock::GetInstance().GetCPUNum(), 1);
@@ -3059,8 +3058,7 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStart_MemorySvmDevice) {
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3077,8 +3075,7 @@ TEST_F(AICPUScheduleTEST, ComputeProcessStart_InitTaskMonitorContext_ERR) {
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(0);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_NE(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3090,8 +3087,7 @@ TEST_F(AICPUScheduleTEST, StartMsqSuccess) {
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&MessageQueue::InitMessageQueue).stubs().will(returnValue(AICPU_SCHEDULE_OK));
-    const AicpuSchedMode schedMode = SCHED_MODE_MSGQ;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
 
@@ -3103,8 +3099,7 @@ TEST_F(AICPUScheduleTEST, StartMsqSuccessFail) {
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&MessageQueue::InitMessageQueue).stubs().will(returnValue(AICPU_SCHEDULE_ERROR_FROM_DRV));
-    const AicpuSchedMode schedMode = SCHED_MODE_MSGQ;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_FROM_DRV);
 }
 
@@ -6600,8 +6595,7 @@ TEST_F(AICPUScheduleTEST, Start_002) {
     MOCKER_CPP(&ComputeProcess::StartTdtServer)
         .stubs()
         .will(returnValue(0));
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 0, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
 }
  
@@ -6646,8 +6640,7 @@ TEST_F(AICPUScheduleTEST, Start_003) {
     std::string ch = "000000000000000000000000000000000000000000000000";
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, AICPU_SCHEDULE_OK);
     ComputeProcess::GetInstance().Stop();
 }
@@ -6660,8 +6653,7 @@ TEST_F(AICPUScheduleTEST, Start_004) {
     std::vector<uint32_t> deviceVec;
     deviceVec.push_back(1);
     MOCKER_CPP(&ComputeProcess::StartTdtServer).stubs().will(returnValue(1));
-    const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE, schedMode);
+    int ret = ComputeProcess::GetInstance().Start(deviceVec, 100, ch, PROFILING_OPEN, 1, aicpu::PROCESS_PCIE_MODE);
     EXPECT_EQ(ret, 1);
 }
 

@@ -128,8 +128,7 @@ namespace AicpuSchedule {
      */
     void AicpuEventManager::InitEventMgr(const bool noThreadFlag,
                                          const bool runningFlag,
-                                         const uint32_t grpId,
-                                         const AicpuSchedMode aicpuSchedMode)
+                                         const uint32_t grpId)
     {
         noThreadFlag_ = noThreadFlag;
         runningFlag_ = runningFlag;
@@ -142,15 +141,16 @@ namespace AicpuSchedule {
             }
         }
         InitLastwordCallback();
+    }
 
+    void AicpuEventManager::InitEventFunc(const AicpuSchedMode aicpuSchedMode)
+    {
         eventGetFunc_ = (aicpuSchedMode == AicpuSchedMode::SCHED_MODE_MSGQ) ?
                         &AicpuEventManager::DoOnceMsq :
                         &AicpuEventManager::DoOnceEsched;
         eventRspFunc_ = (aicpuSchedMode == AicpuSchedMode::SCHED_MODE_MSGQ) ?
                         &AicpuEventManager::ResponseMsq :
                         &AicpuEventManager::ResponseEsched;
-        eventGetFunc_ = &AicpuEventManager::DoOnceEsched;
-        eventRspFunc_ = &AicpuEventManager::ResponseEsched;
     }
 
     void AicpuEventManager::InitLastwordCallback()
@@ -1169,7 +1169,7 @@ namespace AicpuSchedule {
         eventInfo.comm.event_id = static_cast<EVENT_ID>(mb.topicId);
         eventInfo.comm.subevent_id = mb.subtopicId;
         eventInfo.comm.pid = mb.pid;
-        eventInfo.comm.host_pid = -1;
+        eventInfo.comm.host_pid = AicpuDrvManager::GetInstance().GetHostPid();
         eventInfo.comm.grp_id = mb.gid;
         eventInfo.comm.submit_timestamp = timeStamp;
         eventInfo.comm.sched_timestamp = timeStamp;

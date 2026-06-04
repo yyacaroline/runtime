@@ -2401,7 +2401,7 @@ TEST_F(AICPUScheduleInterfaceTEST, InitAICPUScheduler_failed1)
     AicpuScheduleInterface::GetInstance().UpdateOrInsertStartFlag(0U, false);
     MOCKER_CPP(&AicpuDrvManager::InitDrvSchedModule).stubs().will(returnValue(10));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, hostPid, pidSign, PROFILING_CLOSE,
-                                                                       0, isOnline, SCHED_MODE_INTERRUPT);
+                                                                       0, isOnline);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_DRV_ERR);
 }
 
@@ -2419,7 +2419,7 @@ TEST_F(AICPUScheduleInterfaceTEST, InitAICPUScheduler_failed2)
         .stubs()
         .will(returnValue(0));
     int ret = AicpuScheduleInterface::GetInstance().InitAICPUScheduler(deviceVec, hostPid, pidSign, PROFILING_CLOSE,
-                                                                       0, isOnline, SCHED_MODE_INTERRUPT);
+                                                                       0, isOnline);
     EXPECT_EQ(ret, AICPU_SCHEDULE_ERROR_INIT_CP_FAILED);
 }
 

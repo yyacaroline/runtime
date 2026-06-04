@@ -42,8 +42,7 @@ int32_t ComputeProcess::Start(const std::vector<uint32_t> &deviceVec,
                               const std::string &pidSign,
                               const uint32_t profilingMode,
                               const uint32_t vfId,
-                              const aicpu::AicpuRunMode runMode,
-                              const AicpuSchedMode schedMode)
+                              const aicpu::AicpuRunMode runMode)
 {
     return 0;
 }

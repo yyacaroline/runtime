@@ -97,7 +97,6 @@ namespace AicpuSchedule {
                                                        const uint32_t profilingMode,
                                                        const uint32_t vfId,
                                                        const bool isOnline,
-                                                       const AicpuSchedMode schedMode,
                                                        const std::string &hostProcName)
     {
         const std::unique_lock<std::mutex> lockForInit(mutexForInit_);
@@ -145,7 +144,7 @@ namespace AicpuSchedule {
             return AICPU_SCHEDULE_ERROR_DRV_ERR;
         }
         const auto retCp =
-            ComputeProcess::GetInstance().Start(deviceVec, hostPid, pidSign, profilingMode, vfId, runMode_, schedMode);
+            ComputeProcess::GetInstance().Start(deviceVec, hostPid, pidSign, profilingMode, vfId, runMode_);
         if (retCp != AICPU_SCHEDULE_OK) {
             aicpusd_err("Compute process start failed, ret[%d].", retCp);
             ComputeProcess::GetInstance().Stop();

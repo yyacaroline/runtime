@@ -250,6 +250,7 @@ set(LOCAL_SRC_FILES
     ${SRC_PATH}/core/aicpusd_cust_so_manager.cpp
     ${SRC_PATH}/core/aicpusd_model_err_process.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${SRC_PATH}/common/aicpusd_context.cpp
     ${SRC_PATH}/common/aicpusd_util.cpp
     ${SRC_PATH}/core/dfx/aicpusd_cust_dump_process.cpp
@@ -296,6 +297,7 @@ set(LOCAL_SRC_FILES
     testcase/aicpusd_task_queue_test.cc
     testcase/aicpusd_threads_process_test.cc
     testcase/aicpusd_message_queue_test.cc
+    testcase/aicpusd_msq_operator_manager_test.cc
     main_ut.cc
     ${PROTO_SRCS}
     ${statistic_src_file}
@@ -364,6 +366,7 @@ add_executable(aicpu_aicpuschedule_utest_host_cpu
     ${SRC_PATH}/stub/aicpusd_cust_dump_process_stub.cpp
     ${SRC_PATH}/stub/aicpusd_mc2_maintenance_thread_stub.cpp
     ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule/stub/slog_stub.cpp
     ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule/stub/driver_host_stub.cpp
     testcase/aicpu_sharder_stub_test.cc
@@ -409,6 +412,8 @@ add_executable(aicpu_thread_datadump_utest
     ${SRC_PATH}/datadump/datadump_threads_process.cpp
     ${SRC_PATH}/core/aicpusd_drv_manager.cpp
     ${SRC_PATH}/core/aicpusd_msg_send.cpp
+    ${SRC_PATH}/core/aicpusd_message_queue.cpp
+    ${SRC_PATH}/core/aicpusd_msq_operator_manager.cpp
     ${SRC_PATH}/common/aicpusd_context.cpp
     ${SRC_PATH}/common/aicpusd_util.cpp
     ${SRC_PATH}/common/aicpusd_feature_ctrl_open_source.cpp
@@ -453,5 +458,26 @@ target_include_directories(aicpu_aicpuschedule_utest_open PRIVATE
 )
 
 target_link_libraries(aicpu_aicpuschedule_utest_open PRIVATE
+    ${COMMON_C_LINK}
+)
+
+add_executable(aicpu_aicpuschedule_utest_lhisi
+    ${SRC_PATH}/stub/lhisi.cpp
+    testcase/aicpusd_cust_so_manager_stub.cc
+    testcase/aicpusd_lhisi_coverage_test.cc
+    main_ut.cc
+)
+
+target_include_directories(aicpu_aicpuschedule_utest_lhisi PRIVATE
+    ${COMMON_C_INCLUDES}
+    ${SRC_PATH}/stub
+    ${RUNTIME_DIR}/tests/ut/aicpu_sched/aicpu_schedule
+)
+
+target_compile_definitions(aicpu_aicpuschedule_utest_lhisi PRIVATE
+    ${COMMON_DEF}
+)
+
+target_link_libraries(aicpu_aicpuschedule_utest_lhisi PRIVATE
     ${COMMON_C_LINK}
 )

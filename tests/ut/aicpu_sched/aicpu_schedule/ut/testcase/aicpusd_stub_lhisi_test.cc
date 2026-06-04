@@ -133,8 +133,7 @@ TEST_F(AICPUScheduleStubLhisiTEST, ComputeProcessTest)
   std::string pidSign;
   ProfilingMode profilingMode;
   aicpu::AicpuRunMode runMode;
-  const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode, schedMode);
+  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode);
   const AICPUSharderTaskInfo taskInfo = {};
   const aicpu::Closure task = [](){};
   std::queue<aicpu::Closure> taskQueue;
@@ -196,8 +195,7 @@ TEST_F(AICPUScheduleStubLhisiTEST, ProfilingMode)
   AicpuSchedule::ComputeProcess::GetInstance().UpdateProfilingMode(profilingMode);
   AicpuSchedule::ComputeProcess::GetInstance().UpdateProfilingModelMode(true);
   AicpuSchedule::ComputeProcess::GetInstance().Stop();
-  const AicpuSchedMode schedMode = SCHED_MODE_INTERRUPT;
-  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode, schedMode);
+  auto ret = AicpuSchedule::ComputeProcess::GetInstance().Start(deviceVec, 0, pidSign, profilingMode, 0, runMode);
   EXPECT_EQ(ret, 0);
 }
 
@@ -429,6 +427,20 @@ TEST_F(AICPUScheduleStubLhisiTEST, halGetDeviceVfList)
   unsigned int vf_num = 2;
   int ret = halGetDeviceVfList(devId, &vf_list, list_len, &vf_num);
   EXPECT_EQ(ret, DRV_ERROR_NONE);
+}
+
+TEST_F(AICPUScheduleStubLhisiTEST, halStubMiscApis)
+{
+  Mbuf *mbuf = nullptr;
+  uint64_t len = 0;
+  Mbuf *chainMbuf = nullptr;
+  unsigned int num = 0;
+  EXPECT_EQ(halMbufSetDataLen(mbuf, len), DRV_ERROR_NONE);
+  EXPECT_EQ(halMbufAllocEx(0U, 0U, 0UL, 0, &mbuf), DRV_ERROR_NONE);
+  EXPECT_EQ(halQueueInit(0U), DRV_ERROR_NONE);
+  EXPECT_EQ(halMbufChainGetMbuf(mbuf, 0U, &chainMbuf), DRV_ERROR_NONE);
+  EXPECT_EQ(halMbufChainGetMbufNum(mbuf, &num), DRV_ERROR_NONE);
+  EXPECT_EQ(halMbufChainAppend(mbuf, chainMbuf), DRV_ERROR_NONE);
 }
 
 extern int32_t SetSubProcScheduleMode(const uint32_t deviceId, const uint32_t waitType,
