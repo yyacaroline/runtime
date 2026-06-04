@@ -1072,7 +1072,8 @@ aclError aclrtReserveMemAddressImpl(void **virPtr,
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(virPtr);
 
     ACL_REQUIRES_POSITIVE_REPORT(size);
-    ACL_CHECK_INVALID_VALUE_WITH_EXPECT((flags == 0ULL) || (flags == 1ULL), flags, "0 or 1");
+    // flags参数取1，为了早期接口兼容性保留
+    ACL_CHECK_INVALID_VALUE_WITH_EXPECT((flags == 0ULL) || (flags == 1ULL), flags, "0");
 
     const rtError_t rtErr = rtReserveMemAddress(virPtr, size, alignment, expectPtr, flags);
     if (rtErr != RT_ERROR_NONE) {
@@ -2151,7 +2152,8 @@ aclError aclrtReserveMemAddressNoUCMemoryImpl(void **virPtr, size_t size, size_t
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(virPtr);
 
     ACL_REQUIRES_POSITIVE_REPORT(size);
-    ACL_CHECK_INVALID_VALUE_WITH_EXPECT((flags == 0ULL) || (flags == 1ULL), flags, "0 or 1");
+    // flags参数取1，为了早期接口兼容性保留
+    ACL_CHECK_INVALID_VALUE_WITH_EXPECT((flags == 0ULL) || (flags == 1ULL), flags, "0");
 
     flags = flags | FLAG_START_DYNAMIC_ALLOC_MEM; // bit 9置1
     const rtError_t rtErr = rtReserveMemAddress(virPtr, size, alignment, expectPtr, flags);
