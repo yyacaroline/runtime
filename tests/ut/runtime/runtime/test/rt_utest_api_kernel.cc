@@ -856,6 +856,52 @@ TEST_F(ApiKernelTest, TestRtFunctionGetParamInfo_Success_RealDecorator)
     EXPECT_EQ(paramSize, 128);
 }
 
+TEST_F(ApiKernelTest, TestRtFunctionGetParamInfo_ParamIndexOutOfRange)
+{
+    ElfProgram program(RT_KERNEL_ATTR_TYPE_AICORE);
+    uint64_t tilingKey = 0;
+    Kernel kernel("testKernel", tilingKey, &program, RT_KERNEL_ATTR_TYPE_AICORE, 2048, 1024, 0, 0, 0);
+    kernel.SetHasParamSummary(true);
+    kernel.SetParamCount(3);
+    
+    std::shared_ptr<ElfParamInfo[]> paramInfos(new ElfParamInfo[3]);
+    paramInfos[0].info.offset = 0;
+    paramInfos[0].info.size = 64;
+    paramInfos[1].info.offset = 64;
+    paramInfos[1].info.size = 128;
+    paramInfos[2].info.offset = 192;
+    paramInfos[2].info.size = 256;
+    kernel.SetParamInfos(paramInfos);
+    
+    size_t paramOffset = 0;
+    size_t paramSize = 0;
+    rtError_t error = rtFunctionGetParamInfo(static_cast<const void *>(&kernel), 3, &paramOffset, &paramSize);
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+}
+
+TEST_F(ApiKernelTest, TestRtFunctionGetParamInfo_ParamIndexMuchOutOfRange)
+{
+    ElfProgram program(RT_KERNEL_ATTR_TYPE_AICORE);
+    uint64_t tilingKey = 0;
+    Kernel kernel("testKernel", tilingKey, &program, RT_KERNEL_ATTR_TYPE_AICORE, 2048, 1024, 0, 0, 0);
+    kernel.SetHasParamSummary(true);
+    kernel.SetParamCount(3);
+    
+    std::shared_ptr<ElfParamInfo[]> paramInfos(new ElfParamInfo[3]);
+    paramInfos[0].info.offset = 0;
+    paramInfos[0].info.size = 64;
+    paramInfos[1].info.offset = 64;
+    paramInfos[1].info.size = 128;
+    paramInfos[2].info.offset = 192;
+    paramInfos[2].info.size = 256;
+    kernel.SetParamInfos(paramInfos);
+    
+    size_t paramOffset = 0;
+    size_t paramSize = 0;
+    rtError_t error = rtFunctionGetParamInfo(static_cast<const void *>(&kernel), 100, &paramOffset, &paramSize);
+    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+}
+
 TEST_F(ApiKernelTest, TestRtFunctionGetAvailDynUbufPerBlock_NonSimtSuccess)
 {
     ElfProgram program(RT_KERNEL_ATTR_TYPE_AICORE);

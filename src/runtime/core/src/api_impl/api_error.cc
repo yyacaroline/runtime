@@ -6285,7 +6285,11 @@ rtError_t ApiErrorDecorator::FunctionGetParamInfo(const Kernel *funcHandle, size
         "AICPU kernels are not supported.");
     COND_RETURN_AND_MSG_OUTER(!funcHandle->HasParamSummary(), RT_ERROR_INVALID_VALUE, ErrorCode::EE1001,
         "kernel does not have param info.");
-    
+    if (paramIndex >= funcHandle->GetParamCount()) {
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1003, paramIndex, "paramIndex",
+                "[0, " + std::to_string(funcHandle->GetParamCount()) + ")");
+        return RT_ERROR_INVALID_VALUE;
+    }
     return impl_->FunctionGetParamInfo(funcHandle, paramIndex, paramOffset, paramSize);
 }
 
