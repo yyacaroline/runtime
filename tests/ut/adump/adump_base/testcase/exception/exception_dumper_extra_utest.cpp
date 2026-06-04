@@ -440,22 +440,23 @@ TEST_F(ExceptionDumperExtraUtest, UnregisterExceptionDumpCallback_NotFound)
     EXPECT_EQ(ret, ADUMP_SUCCESS);
 }
 
-TEST_F(ExceptionDumperExtraUtest, NeedDumpException_OverflowRetcode)
+TEST_F(ExceptionDumperExtraUtest, NeedDumpException_IgnoredRetcode)
 {
     ExceptionDumper dumper;
-    rtExceptionInfo exception = {};
-    exception.retcode = ACL_ERROR_RT_AICORE_OVER_FLOW;
-    bool needDump = dumper.NeedDumpException(exception);
-    EXPECT_FALSE(needDump);
-}
+    const uint32_t ignoredRetcodes[] = {
+        ACL_ERROR_RT_AICORE_OVER_FLOW,
+        ACL_ERROR_RT_AIVEC_OVER_FLOW,
+        ACL_ERROR_RT_DEVICE_MEM_ERROR,
+        ACL_ERROR_RT_SUSPECT_DEVICE_MEM_ERROR,
+        ACL_ERROR_RT_LINK_ERROR
+    };
 
-TEST_F(ExceptionDumperExtraUtest, NeedDumpException_AivecOverflow)
-{
-    ExceptionDumper dumper;
-    rtExceptionInfo exception = {};
-    exception.retcode = ACL_ERROR_RT_AIVEC_OVER_FLOW;
-    bool needDump = dumper.NeedDumpException(exception);
-    EXPECT_FALSE(needDump);
+    for (const uint32_t retcode : ignoredRetcodes) {
+        rtExceptionInfo exception = {};
+        exception.retcode = retcode;
+        bool needDump = dumper.NeedDumpException(exception);
+        EXPECT_FALSE(needDump) << "retcode: " << retcode;
+    }
 }
 
 TEST_F(ExceptionDumperExtraUtest, NeedDumpException_NormalException)

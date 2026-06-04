@@ -77,7 +77,6 @@ int32_t ExceptionDumper::DumpArgsExceptionFastRecovery(const rtExceptionInfo &ex
 
 int32_t ExceptionDumper::DumpDetailException(const rtExceptionInfo &exception, const std::string &dumpPath)
 {
-    IDE_CTRL_VALUE_WARN(NeedDumpException(exception), return ADUMP_FAILED, "Exception is not need to dump.");
     if (coredumpEnableComplete_) {
         std::lock_guard<std::mutex> lock(mutex_);
         DumpCore core(dumpPath, exception.deviceid);

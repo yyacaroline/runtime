@@ -145,7 +145,10 @@ bool ExceptionDumper::NeedDumpException(const rtExceptionInfo &exception) const
 {
     if (exception.retcode == ACL_ERROR_RT_AICORE_OVER_FLOW ||
         exception.retcode == ACL_ERROR_RT_AIVEC_OVER_FLOW ||
-        exception.retcode == ACL_ERROR_RT_DEVICE_MEM_ERROR) {
+        // Hardware faults do not need dump.
+        exception.retcode == ACL_ERROR_RT_DEVICE_MEM_ERROR ||
+        exception.retcode == ACL_ERROR_RT_SUSPECT_DEVICE_MEM_ERROR ||
+        exception.retcode == ACL_ERROR_RT_LINK_ERROR) {
         IDE_LOGW("Ignore exception dump request, retcode: %u.", exception.retcode);
         return false;
     }
@@ -161,6 +164,7 @@ bool ExceptionDumper::NeedDumpException(const rtExceptionInfo &exception) const
 int32_t ExceptionDumper::DumpException(const rtExceptionInfo &exception)
 {
     IDE_CTRL_VALUE_FAILED(!destructionFlag_, return ADUMP_FAILED, "ExceptionDumper has been destructed.");
+    IDE_CTRL_VALUE_WARN(NeedDumpException(exception), return ADUMP_FAILED, "Exception is not need to dump.");
     std::string dumpPath = CreateDeviceDumpPath(exception.deviceid);
     if (dumpPath.empty()) {
         return ADUMP_FAILED;
@@ -300,7 +304,6 @@ bool ExceptionDumper::FindExceptionOperator(const rtExceptionInfo &exception, Du
 
 int32_t ExceptionDumper::DumpNormalException(const rtExceptionInfo &exception, const std::string &dumpPath)
 {
-    IDE_CTRL_VALUE_WARN(NeedDumpException(exception), return ADUMP_FAILED, "Exception is not need to dump.");
     // L1 Exception Dump
     DumpOperator excOp;
     bool find = FindExceptionOperator(exception, excOp);
@@ -328,7 +331,6 @@ int32_t ExceptionDumper::DumpNormalException(const rtExceptionInfo &exception, c
 
 int32_t ExceptionDumper::DumpArgsExceptionDefault(const rtExceptionInfo &exception, const std::string &dumpPath)
 {
-    IDE_CTRL_VALUE_WARN(NeedDumpException(exception), return ADUMP_FAILED, "Exception is not need to dump.");
     DumpArgs args;
     if (args.LoadArgsExceptionInfo(exception) != ADUMP_SUCCESS) {
         return ADUMP_FAILED;
