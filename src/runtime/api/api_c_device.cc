@@ -630,7 +630,7 @@ rtError_t rtSetDeviceFailureMode(uint64_t failureMode)
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_DEVICE_FAILURE_MODE_SET)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();

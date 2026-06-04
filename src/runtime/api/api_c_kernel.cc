@@ -76,6 +76,7 @@ rtError_t rtsLaunchKernelWithHostArgs(rtFuncHandle funcHandle, uint32_t numBlock
     const rtError_t ret = apiInstance->LaunchKernelV2(kernel, numBlocks, &argsWithType,
         exeStream, cfg);
     COND_RETURN_WITH_NOLOG(ret == RT_ERROR_KERNEL_INVALID, ACL_ERROR_RT_INVALID_HANDLE);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -100,6 +101,7 @@ rtError_t rtsLaunchCpuKernel(const rtFuncHandle funcHandle, uint32_t numBlocks, 
     const rtError_t ret = apiInstance->LaunchKernelV2(kernel, numBlocks, &argsWithType,
         exeStream, cfg);
     COND_RETURN_WITH_NOLOG(ret == RT_ERROR_KERNEL_INVALID, ACL_ERROR_RT_INVALID_HANDLE);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
 
     return ACL_RT_SUCCESS;
@@ -121,6 +123,7 @@ rtError_t rtsLaunchKernelWithConfig(rtFuncHandle funcHandle, uint32_t numBlocks,
     const rtError_t ret = apiInstance->LaunchKernelV2(RtPtrToPtr<Kernel *>(funcHandle), numBlocks, &argsWithType,
         exeStream, cfg);
     COND_RETURN_WITH_NOLOG(ret == RT_ERROR_KERNEL_INVALID, ACL_ERROR_RT_INVALID_HANDLE);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -160,6 +163,7 @@ rtError_t rtsLaunchKernelWithDevArgs(rtFuncHandle funcHandle, uint32_t numBlocks
     const rtError_t ret = apiInstance->LaunchKernelV2(RtPtrToPtr<Kernel *>(funcHandle), numBlocks, &argsWithType,
         exeStream, cfg);
     COND_RETURN_WITH_NOLOG(ret == RT_ERROR_KERNEL_INVALID, ACL_ERROR_RT_INVALID_HANDLE);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -184,6 +188,7 @@ rtError_t rtLaunchDvppTask(const void *sqe, uint32_t sqeLen, rtStream_t stm, rtD
     const rtError_t error = apiInstance->LaunchDvppTask(sqe, sqeLen, exeStream, cfg);
 
     TIMESTAMP_END(rtLaunchDvppTask);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -468,7 +473,7 @@ rtError_t rtsGetHardwareSyncAddr(void **addr)
     const static bool isSupportSyncAddr = IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(),
  	    RtOptionalFeatureType::RT_FEATURE_KERNEL_INTER_CORE_SYNC_ADDR);
     if (!isSupportSyncAddr) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 

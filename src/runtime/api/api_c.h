@@ -17,6 +17,7 @@
 
 constexpr uint32_t RUNTIME_PUBLIC_VERSION = 1001U;
 
+// 仅用在rt接口里作为兜底打屏，其他场景禁用
 #define REPORT_FUNC_ERROR_REASON(ERRCODE) \
     do { \
         const std::string errorStr = RT_GET_ERRDESC(ERRCODE); \
@@ -26,25 +27,11 @@ constexpr uint32_t RUNTIME_PUBLIC_VERSION = 1001U;
         RT_LOG_FLUSH(); \
     } while (false)
 
+// 仅用在rt接口里作为兜底打屏，其他场景禁用
 #define ERROR_RETURN_WITH_EXT_ERRCODE(ERRCODE) \
     do { \
         if (unlikely((ERRCODE) != RT_ERROR_NONE)) { \
             REPORT_FUNC_ERROR_REASON(ERRCODE); \
-            return GetRtExtErrCodeAndSetGlobalErr((ERRCODE)); \
-        } \
-    } while (false)
-
-#define COND_RETURN_WITH_EXT_ERRCODE(COND, ERRCODE, format, ...) \
-    do { \
-        if (unlikely(COND)) { \
-            if ((ERRCODE) == RT_ERROR_INVALID_VALUE){ \
-                RT_LOG_OUTER_MSG(RT_INVALID_ARGUMENT_ERROR, format, ##__VA_ARGS__); \
-            } else { \
-                RT_LOG_INNER_MSG(RT_LOG_ERROR, format, ##__VA_ARGS__); \
-            } \
-            const std::string errorStr = RT_GET_ERRDESC(ERRCODE); \
-            RT_LOG(RT_LOG_ERROR, "%s", errorStr.c_str()); \
-            RT_LOG_FLUSH(); \
             return GetRtExtErrCodeAndSetGlobalErr((ERRCODE)); \
         } \
     } while (false)

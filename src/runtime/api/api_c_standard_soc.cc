@@ -135,7 +135,7 @@ rtError_t rtFftsPlusTaskLaunch(rtFftsPlusTaskInfo_t *fftsPlusTaskInfo, rtStream_
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_TASK_FFTS_PLUS)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -156,7 +156,7 @@ rtError_t rtFftsPlusTaskLaunchWithFlag(rtFftsPlusTaskInfo_t *fftsPlusTaskInfo, r
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_TASK_FFTS_PLUS)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -181,7 +181,7 @@ rtError_t rtRDMASend(uint32_t sqIndex, uint32_t wqeIndex, rtStream_t stm)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     const rtChipType_t chipType = rtInstance->GetChipType();
     if (!IS_SUPPORT_CHIP_FEATURE(chipType, RtOptionalFeatureType::RT_FEATURE_TASK_RDMA)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     const rtError_t error = apiInstance->RDMASend(sqIndex, wqeIndex, exeStream);
@@ -200,7 +200,7 @@ rtError_t rtRDMADBSend(uint32_t dbIndex, uint64_t dbInfo, rtStream_t stm)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rt);
     const rtChipType_t chipType = rt->GetChipType();
     if (!IS_SUPPORT_CHIP_FEATURE(chipType, RtOptionalFeatureType::RT_FEATURE_TASK_RDMA)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     const rtError_t error = apiInstance->RdmaDbSend(dbIndex, dbInfo, exeStream);
@@ -286,6 +286,7 @@ rtError_t rtIpcOpenNotify(rtNotify_t *notify, const char_t *name)
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     const rtError_t error = apiInstance->IpcOpenNotify(RtPtrToPtr<Notify **>(notify), name);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     Notify *realNotify = RtPtrToPtr<Notify *>(*notify);
     *notify = ExportEmbeddedHandle<rtNotify_t>(realNotify);
@@ -546,7 +547,7 @@ rtError_t rtReduceAsyncV2(void *dst, uint64_t destMax, const void *src, uint64_t
     COND_RETURN_ERROR_MSG_INNER(error != RT_ERROR_NONE, error, "GetDevProperties failed, chip type=%d.", rtInstance->GetChipType());
     if (properties.reduceOverflow != ReduceOverflowType::REDUCE_OVERFLOW_TS_VERSION_REDUCE_V2_ID &&
         properties.reduceOverflow != ReduceOverflowType::REDUCE_OVERFLOW_TS_VERSION_REDUCV2_SUPPORT_DC) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
@@ -949,7 +950,7 @@ rtError_t rtStartADCProfiler(void **addr, uint32_t length)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
 
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_PROFILING_ADC)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 
@@ -964,7 +965,6 @@ rtError_t rtStartADCProfiler(void **addr, uint32_t length)
     error = rtMalloc(addr, static_cast<uint64_t>(length), memType, MODULEID_RUNTIME);
     if (error != RT_ERROR_NONE) {
         RT_LOG_INNER_MSG(RT_LOG_ERROR, "Failed to malloc memory, error=%d, length=%u.", error, length);
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_MEMORY_ALLOCATION);
         return GetRtExtErrCodeAndSetGlobalErr((RT_ERROR_MEMORY_ALLOCATION));
     }
 
@@ -987,7 +987,7 @@ rtError_t rtStopADCProfiler(void *addr)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
 
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_PROFILING_ADC)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 
@@ -1039,7 +1039,7 @@ rtError_t rtSetIpcNotifyPid(const char_t *name, int32_t pid[], int32_t num)
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_IPC_NOTIFY)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -1065,7 +1065,7 @@ rtError_t rtNpuGetFloatStatus(void * outputAddrPtr, uint64_t outputSize, uint32_
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_DEVICE_FLOAT_STATUS)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -1084,7 +1084,7 @@ rtError_t rtNpuClearFloatStatus(uint32_t checkMode, rtStream_t stm)
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_DEVICE_FLOAT_STATUS)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -1123,7 +1123,7 @@ rtError_t rtSetIpcNotifySuperPodPid(const char *name, uint32_t sdid, int32_t pid
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_IPC_NOTIFY)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api *apiInstance = Api::Instance();
@@ -1243,6 +1243,7 @@ rtError_t rtsPersistentTaskClean(rtStream_t stm)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
     const rtError_t error = apiInstance->StreamTaskClean(exeStream);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -1656,6 +1657,7 @@ rtError_t rtsNotifySetImportPid(rtNotify_t notify, int32_t pid[], int num)
     RT_VALIDATE_AND_UNWRAP_OBJECT(notify, Notify, notifyPtr);
     PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(notifyPtr, RT_ERROR_INVALID_VALUE);
     const rtError_t error = apiInstance->SetIpcNotifyPid(notifyPtr->GetIpcName().c_str(), pid, num);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }

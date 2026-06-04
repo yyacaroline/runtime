@@ -73,7 +73,6 @@ rtError_t rtsMemcpy2D(rtMemcpy2DParams_t *params, rtMemcpyConfig_t *config)
     PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(params, RT_ERROR_INVALID_VALUE);
     if (config != nullptr) {
         RT_LOG_OUTER_MSG_INVALID_PARAM(config, "nullptr");
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_INVALID_VALUE);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
 
@@ -120,7 +119,6 @@ rtError_t rtsMemcpy2DAsync(rtMemcpy2DParams_t *params, rtMemcpyConfig_t *config,
     PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(params, RT_ERROR_INVALID_VALUE);
     if (config != nullptr) {
         RT_LOG_OUTER_MSG_INVALID_PARAM(config, "nullptr");
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_INVALID_VALUE);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
     Api * const apiInstance = Api::Instance();
@@ -267,6 +265,7 @@ rtError_t rtHostGetDevicePointer(void *pHost, void **pDevice, uint32_t flag)
     TIMESTAMP_BEGIN(rtHostGetDevicePointer);
     const rtError_t error = apiInstance->HostGetDevicePointer(pHost, pDevice, flag);
     TIMESTAMP_END(rtHostGetDevicePointer);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -280,6 +279,7 @@ rtError_t rtsHostUnregister(void *ptr)
     TIMESTAMP_BEGIN(rtsHostUnregister);
     const rtError_t error = apiInstance->HostUnregister(ptr);
     TIMESTAMP_END(rtsHostUnregister);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -364,6 +364,7 @@ rtError_t rtsSetMemcpyDesc(rtMemcpyDesc_t desc, rtMemcpyKind kind, void *srcAddr
     TIMESTAMP_BEGIN(rtsSetMemcpyDesc);
     rtError_t error = api->SetMemcpyDesc(desc, srcAddr, dstAddr, count, kind, config);
     TIMESTAMP_END(rtsSetMemcpyDesc);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -385,6 +386,7 @@ rtError_t rtsMemcpyAsyncWithDesc(rtMemcpyDesc_t desc, rtMemcpyKind kind, rtMemcp
     TIMESTAMP_BEGIN(rtsMemcpyAsyncWithDesc);
     const rtError_t error = api->MemcpyAsyncWithDesc(desc, exeStream, kind, config);
     TIMESTAMP_BEGIN(rtsMemcpyAsyncWithDesc);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }

@@ -269,7 +269,7 @@ rtError_t rtKernelConfigDump(uint32_t kind, uint32_t dumpSizePerBlock, uint32_t 
     UNUSED(blockDim);
     UNUSED(dumpBaseAddr);
     UNUSED(stm);
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -314,6 +314,7 @@ rtError_t rtKernelLaunch(const void *stubFunc, uint32_t numBlocks, void *args, u
     const rtError_t ret = apiInstance->KernelLaunch(stubFunc, numBlocks, &argsInfo, exeStream, nullptr);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -341,6 +342,7 @@ rtError_t rtKernelLaunchWithHandle(void *hdl, const uint64_t tilingKey, uint32_t
     const rtError_t ret = apiInstance->KernelLaunchWithHandle(
         hdl, tilingKey, numBlocks, argsInfo, streamPtr, nullptr);
     TIMESTAMP_END(rtKernelLaunchWithHandle);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -367,6 +369,7 @@ rtError_t rtKernelLaunchWithHandleV2(void *hdl, const uint64_t tilingKey, uint32
     const rtError_t ret = apiInstance->KernelLaunchWithHandle(
         hdl, tilingKey, numBlocks, argsInfo, exeStream, cfgInfo);
     TIMESTAMP_END(rtKernelLaunchWithHandleV2);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -395,6 +398,7 @@ rtError_t rtKernelLaunchWithFlag(const void *stubFunc, uint32_t numBlocks, rtArg
     const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, &cfgInfo);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;
+    COND_RETURN_WITH_NOLOG(err == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(err);
     return ACL_RT_SUCCESS;
 }
@@ -426,6 +430,7 @@ rtError_t rtKernelLaunchWithFlagV2(const void *stubFunc, uint32_t numBlocks, rtA
     const rtError_t err = apiInstance->KernelLaunch(stubFunc, numBlocks, argsInfo, exeStream, &mergedCfg);
     TIMESTAMP_END(rtKernelLaunchWithFlagV2);
     launchArg.argCount = 0U;
+    COND_RETURN_WITH_NOLOG(err == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(err);
     return ACL_RT_SUCCESS;
 }
@@ -492,7 +497,6 @@ rtError_t rtAicpuKernelLaunchExWithArgs(const uint32_t kernelType, const char_t 
         (kernelType != KERNEL_TYPE_AICPU_CUSTOM) &&
         (kernelType != KERNEL_TYPE_AICPU_KFC)) {
         RT_LOG_OUTER_MSG_INVALID_PARAM(kernelType, "KERNEL_TYPE_FWK, KERNEL_TYPE_AICPU, KERNEL_TYPE_AICPU_CUSTOM, or KERNEL_TYPE_AICPU_KFC");
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_INVALID_VALUE);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
 
@@ -678,6 +682,7 @@ rtError_t rtEventDestroySync(rtEvent_t evt)
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->EventDestroySync(eventPtr);
     TIMESTAMP_END(rtEventDestroySync);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -690,6 +695,7 @@ rtError_t rtGetEventID(rtEvent_t evt, uint32_t *evtId)
 
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->GetEventID(eventPtr, evtId);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -737,6 +743,7 @@ rtError_t rtEventSynchronize(rtEvent_t evt)
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->EventSynchronize(eventPtr);
     TIMESTAMP_END(rtEventSynchronize);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -750,6 +757,7 @@ rtError_t rtEventSynchronizeWithTimeout(rtEvent_t evt, const int32_t timeout)
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->EventSynchronize(eventPtr, timeout);
     TIMESTAMP_END(rtEventSynchronizeWithTimeout);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -774,6 +782,7 @@ rtError_t rtEventQueryStatus(rtEvent_t evt, rtEventStatus_t *status)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->EventQueryStatus(eventPtr, status);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -798,6 +807,7 @@ rtError_t rtEventElapsedTime(float32_t *timeInterval, rtEvent_t startEvent, rtEv
     RT_VALIDATE_AND_UNWRAP_OBJECT(startEvent, Event, startEventPtr);
     RT_VALIDATE_AND_UNWRAP_OBJECT(endEvent, Event, endEventPtr);
     const rtError_t error = apiInstance->EventElapsedTime(timeInterval, startEventPtr, endEventPtr);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -809,6 +819,7 @@ rtError_t rtEventGetTimeStamp(uint64_t *timeStamp, rtEvent_t evt)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(evt, Event, eventPtr);
     const rtError_t error = apiInstance->EventGetTimeStamp(timeStamp, eventPtr);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -1315,7 +1326,7 @@ rtError_t rtSetProfDirEx(const char_t *profDir, const char_t *address, const cha
     UNUSED(profDir);
     UNUSED(address);
     UNUSED(jobCtx);
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -1325,7 +1336,7 @@ rtError_t rtProfilerInit(const char_t *profDir, const char_t *address, const cha
     UNUSED(profDir);
     UNUSED(address);
     UNUSED(jobCtx);
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -1333,7 +1344,7 @@ VISIBILITY_DEFAULT
 rtError_t rtProfilerConfig(uint16_t profConfig)
 {
     UNUSED(profConfig);
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -1460,7 +1471,6 @@ rtError_t rtProfSetProSwitch(void *data, uint32_t len)
  
     if (len != sizeof(rtProfCommandHandle_t)) {
         RT_LOG_OUTER_MSG_INVALID_PARAM(len, sizeof(rtProfCommandHandle_t));
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_INVALID_VALUE);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_INVALID_VALUE);
     }
     ProfCtrlCallbackManager::Instance().SaveProfSwitchData(static_cast<rtProfCommandHandle_t *>(data), len);
@@ -1535,7 +1545,7 @@ VISIBILITY_DEFAULT
 rtError_t rtSetKernelReportCallback(rtKernelReportCallback callBack)
 {
     UNUSED(callBack);
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -1990,6 +2000,7 @@ rtError_t rtNotifyGetAddrOffset(rtNotify_t notify, uint64_t* devAddrOffset)
         NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
         RT_VALIDATE_AND_UNWRAP_OBJECT(notify, Notify, notifyPtr);
         const rtError_t error = apiInstance->NotifyGetAddrOffset(notifyPtr, devAddrOffset);
+        COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
         ERROR_RETURN_WITH_EXT_ERRCODE(error);
     }
 
@@ -2055,7 +2066,7 @@ rtError_t rtLabelGoto(rtLabel_t lbl, rtStream_t stm)
         ERROR_RETURN_WITH_EXT_ERRCODE(error);
         return ACL_RT_SUCCESS;
     }
-    REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+    RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
     return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
 }
 
@@ -2223,13 +2234,14 @@ rtError_t rtDebugRegister(rtModel_t mdl, uint32_t flag, const void *addr, uint32
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(),
         RtOptionalFeatureType::RT_FEATURE_DFX_FLOAT_OVERFLOW_DEBUG)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(mdl, Model, realModel);
     const rtError_t error = apiInstance->DebugRegister(realModel, flag, addr, streamId, taskId);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -2241,13 +2253,14 @@ rtError_t rtDebugUnRegister(rtModel_t mdl)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(),
         RtOptionalFeatureType::RT_FEATURE_DFX_FLOAT_OVERFLOW_DEBUG)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(mdl, Model, realModel);
     const rtError_t error = apiInstance->DebugUnRegister(realModel);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -2260,13 +2273,14 @@ rtError_t rtDebugRegisterForStream(rtStream_t stm, uint32_t flag, const void *ad
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(),
         RtOptionalFeatureType::RT_FEATURE_DFX_FLOAT_OVERFLOW_DEBUG)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
     const rtError_t error = apiInstance->DebugRegisterForStream(exeStream, flag, addr, streamId, taskId);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -2278,13 +2292,14 @@ rtError_t rtDebugUnRegisterForStream(rtStream_t stm)
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(),
         RtOptionalFeatureType::RT_FEATURE_DFX_FLOAT_OVERFLOW_DEBUG)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
     const rtError_t error = apiInstance->DebugUnRegisterForStream(exeStream);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -2796,6 +2811,7 @@ rtError_t rtQueueSubF2NFEvent(int32_t devId, uint32_t qId, uint32_t groupId)
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     const rtError_t error = apiInstance->QueueSubF2NFEvent(devId, qId, groupId);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -2806,6 +2822,7 @@ rtError_t rtQueueSubscribe(int32_t devId, uint32_t qId, uint32_t groupId, int32_
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
     const rtError_t error = apiInstance->QueueSubscribe(devId, qId, groupId, type);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -3035,7 +3052,7 @@ rtError_t rtBarrierTaskLaunch(rtBarrierTaskInfo_t *taskInfo, rtStream_t stm, uin
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     const rtChipType_t chipType = rtInstance->GetChipType();
     if (!IS_SUPPORT_CHIP_FEATURE(chipType, RtOptionalFeatureType::RT_FEATURE_TASK_ASYNC_CMO)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 
@@ -3433,12 +3450,10 @@ RTS_API rtError_t rtCtxGetSysParamOpt(const rtSysParamOpt configOpt, int64_t * c
 VISIBILITY_DEFAULT
 RTS_API rtError_t rtSetSysParamOpt(const rtSysParamOpt configOpt, const int64_t configVal)
 {
-    COND_RETURN_WITH_EXT_ERRCODE((configOpt >= SYS_OPT_RESERVED) || (configOpt < 0), RT_ERROR_INVALID_VALUE, 
-        "Invalid system configOpt, current configOpt=%d, valid range is [0, %d).",
-        configOpt, SYS_OPT_RESERVED);
-    COND_RETURN_WITH_EXT_ERRCODE((configVal >= SYS_OPT_MAX) || (configVal < 0), RT_ERROR_INVALID_VALUE,
-        "Invalid configVal, current configVal=%" PRId64 ", valid range is [0, %d).",
-        configVal, SYS_OPT_MAX);
+    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((configOpt >= SYS_OPT_RESERVED) || (configOpt < 0), 
+        RT_ERROR_INVALID_VALUE, configOpt, "[SYS_OPT_DETERMINISTIC, SYS_OPT_RESERVED)");
+    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((configVal >= SYS_OPT_MAX) || (configVal < 0), 
+        RT_ERROR_INVALID_VALUE, configVal, "[SYS_OPT_DISABLE, SYS_OPT_MAX)");
     sysParamOpt_[configOpt].store(configVal);
     return ACL_RT_SUCCESS;
 }
@@ -3446,11 +3461,9 @@ RTS_API rtError_t rtSetSysParamOpt(const rtSysParamOpt configOpt, const int64_t 
 VISIBILITY_DEFAULT
 RTS_API rtError_t rtGetSysParamOpt(const rtSysParamOpt configOpt, int64_t * const configVal)
 {
-    COND_RETURN_WITH_EXT_ERRCODE((configOpt >= SYS_OPT_RESERVED) || (configOpt < 0), RT_ERROR_INVALID_VALUE,
-        "Invalid system configOpt, current configOpt=%d, valid range is [0, %d).",
-        configOpt, SYS_OPT_RESERVED);
-    COND_RETURN_WITH_EXT_ERRCODE(configVal == nullptr, RT_ERROR_INVALID_VALUE,
-        "Check param failed, configVal can not be null.");
+    COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((configOpt >= SYS_OPT_RESERVED) || (configOpt < 0), 
+        RT_ERROR_INVALID_VALUE, configOpt, "[SYS_OPT_DETERMINISTIC, SYS_OPT_RESERVED)");
+    PARAM_NULL_RETURN_ERROR_WITH_EXT_ERRCODE(configVal, RT_ERROR_INVALID_VALUE);
     *configVal = sysParamOpt_[configOpt].load();
     return ACL_RT_SUCCESS;
 }
@@ -3481,7 +3494,7 @@ RTS_API rtError_t rtGetDeviceSatStatus(void * const outputAddrPtr, const uint64_
     if (props.deviceSatStatusImpl > DeviceSatStatusImpl::NOT_SUPPORT) {
         ret = apiInstance->GetDeviceSatStatus(outputAddrPtr, outputSize, streamPtr);
     } else {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 
@@ -3508,7 +3521,7 @@ RTS_API rtError_t rtCleanDeviceSatStatus(rtStream_t stm)
     } else if (props.deviceSatStatusImpl == DeviceSatStatusImpl::DEVICE_SAT_STATUS_STREAM_LEVEL) {
         ret = apiInstance->NpuClearFloatStatus(0U, streamPtr);
     } else {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
 
@@ -3821,6 +3834,7 @@ rtError_t rtVectorCoreKernelLaunchWithHandle(void *hdl, const uint64_t tilingKey
     const rtError_t ret = apiInstance->KernelLaunchWithHandle(
         hdl, tilingKey, numBlocks, argsInfo, exeStream, cfgInfo, true);
     TIMESTAMP_END(rtKernelLaunchWithHandle);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     return ACL_RT_SUCCESS;
 }
@@ -3852,6 +3866,7 @@ rtError_t rtVectorCoreKernelLaunch(const void *stubFunc, uint32_t numBlocks, rtA
         argsInfo, exeStream, &mergedCfg, true);
     TIMESTAMP_END(rtKernelLaunch);
     launchArg.argCount = 0U;
+    COND_RETURN_WITH_NOLOG(err == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(err);
     return ACL_RT_SUCCESS;
 }

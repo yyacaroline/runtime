@@ -47,6 +47,7 @@ rtError_t rtMemManagedGetAttr(rtMemManagedRangeAttribute attribute, const void *
     const rtError_t error = apiInstance->MemManagedGetAttr(attribute, ptr, size, data, dataSize);
     TIMESTAMP_END(rtMemManagedGetAttr);
     COND_RETURN_WITH_NOLOG(error == RT_ERROR_DRV_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }
@@ -61,6 +62,7 @@ rtError_t rtMemManagedGetAttrs(rtMemManagedRangeAttribute *attributes, size_t nu
     const rtError_t error = apiInstance->MemManagedGetAttrs(attributes, numAttributes, ptr, size, data, dataSizes);
     TIMESTAMP_END(rtMemManagedGetAttrs);
     COND_RETURN_WITH_NOLOG(error == RT_ERROR_DRV_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
+    COND_RETURN_WITH_NOLOG(error == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
     ERROR_RETURN_WITH_EXT_ERRCODE(error);
     return ACL_RT_SUCCESS;
 }

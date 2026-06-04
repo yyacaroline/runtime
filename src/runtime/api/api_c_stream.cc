@@ -289,7 +289,7 @@ rtError_t rtStreamSetMode(rtStream_t stm, const uint64_t stmMode)
     const Runtime * const rtInstance = Runtime::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(rtInstance);
     if (!IS_SUPPORT_CHIP_FEATURE(rtInstance->GetChipType(), RtOptionalFeatureType::RT_FEATURE_STREAM_DOT_SET_MODE)) {
-        REPORT_FUNC_ERROR_REASON(RT_ERROR_FEATURE_NOT_SUPPORT);
+        RT_LOG_OUTER_MSG_WITH_FUNC(ErrorCode::EE1005);
         return GetRtExtErrCodeAndSetGlobalErr(RT_ERROR_FEATURE_NOT_SUPPORT);
     }
     Api * const apiInstance = Api::Instance();
@@ -547,6 +547,7 @@ RTS_API rtError_t rtStreamCreateByGrp(rtStream_t *stm, int32_t priority, uint32_
     const rtError_t ret = apiInstance->StreamCreate(RtPtrToPtr<Stream **>(stm), priority, flags,
         RtPtrToPtr<DvppGrp *>(grp));
     TIMESTAMP_END(rtStreamCreateByGrp);
+    COND_RETURN_WITH_NOLOG(ret == RT_ERROR_FEATURE_NOT_SUPPORT, ACL_ERROR_RT_FEATURE_NOT_SUPPORT)
     ERROR_RETURN_WITH_EXT_ERRCODE(ret);
     Stream *realStream = RtPtrToPtr<Stream *>(*stm);
     *stm = ExportEmbeddedHandle<rtStream_t>(realStream);
