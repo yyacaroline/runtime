@@ -129,7 +129,7 @@ TEST_F(PROF_TX_UTTEST, RuntimePluginBase)
 
 TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_Success)
 {
-    aclprofTensor tensors[5];
+    ProfTensor tensors[5];
     for (int i = 0; i < 5; i++) {
         tensors[i].type = i;
         tensors[i].format = i + 1;
@@ -140,7 +140,7 @@ TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_Success)
         }
     }
     
-    aclprofTensorInfo tensorInfo;
+    ProfTensorInfo tensorInfo;
     tensorInfo.opNameId = 12345;
     tensorInfo.tensorNum = 5;
     tensorInfo.tensors = tensors;
@@ -157,7 +157,7 @@ TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_Success)
 
 TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_ZeroTensorNum)
 {
-    aclprofTensorInfo tensorInfo;
+    ProfTensorInfo tensorInfo;
     tensorInfo.opNameId = 12345;
     tensorInfo.tensorNum = 0;
     tensorInfo.tensors = nullptr;
@@ -174,7 +174,7 @@ TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_ZeroTensorNum)
 
 TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_SingleTensor)
 {
-    aclprofTensor tensor;
+    ProfTensor tensor;
     tensor.type = 0;
     tensor.format = 1;
     tensor.dataType = 2;
@@ -183,7 +183,7 @@ TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_SingleTensor)
         tensor.shape[j] = j + 1;
     }
     
-    aclprofTensorInfo tensorInfo;
+    ProfTensorInfo tensorInfo;
     tensorInfo.opNameId = 67890;
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
@@ -200,15 +200,15 @@ TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_SingleTensor)
 
 TEST_F(PROF_TX_UTTEST, ReportAdditionalInfo_ReportFailed)
 {
-    aclprofTensor tensor;
+    ProfTensor tensor;
     tensor.type = 0;
     tensor.format = 1;
     tensor.dataType = 2;
     tensor.shapeDim = 2;
     tensor.shape[0] = 10;
     tensor.shape[1] = 20;
-
-    aclprofTensorInfo tensorInfo;
+    
+    ProfTensorInfo tensorInfo;
     tensorInfo.opNameId = 11111;
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
@@ -230,20 +230,20 @@ TEST_F(PROF_TX_UTTEST, ProftxRangePushEx_NullAttr)
 
 TEST_F(PROF_TX_UTTEST, ProftxRangePushEx_BadMessageType)
 {
-    aclprofEventAttributes attr;
+    ProfEventAttributes attr;
     attr.messageType = 0xFF;  // not MESSAGE_TYPE_TENSOR_INFO
     EXPECT_EQ(PROFILING_FAILED, ProfTxPlugin::GetProftxInstance().ProftxRangePushEx(&attr));
 }
 
 TEST_F(PROF_TX_UTTEST, ProftxRangePushEx_Success)
 {
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
     tensor.shape[0] = 1;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
-    aclprofEventAttributes attr;
+    ProfEventAttributes attr;
     attr.messageType = MESSAGE_TYPE_TENSOR_INFO;
     attr.message.tensorInfo = &tensorInfo;
     EXPECT_EQ(PROFILING_SUCCESS, ProfTxPlugin::GetProftxInstance().ProftxRangePushEx(&attr));
@@ -252,13 +252,13 @@ TEST_F(PROF_TX_UTTEST, ProftxRangePushEx_Success)
 TEST_F(PROF_TX_UTTEST, ProftxRangePop_GetAttrFail)
 {
     // After previous PushEx success attr_ is set; force ProfRtsStreamGetAttribute to fail.
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
     tensor.shape[0] = 1;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
-    aclprofEventAttributes attr;
+    ProfEventAttributes attr;
     attr.messageType = MESSAGE_TYPE_TENSOR_INFO;
     attr.message.tensorInfo = &tensorInfo;
     EXPECT_EQ(PROFILING_SUCCESS, ProfTxPlugin::GetProftxInstance().ProftxRangePushEx(&attr));
@@ -270,14 +270,14 @@ TEST_F(PROF_TX_UTTEST, ProftxRangePop_GetAttrFail)
 
 TEST_F(PROF_TX_UTTEST, ProftxRangePop_AdditionalInfoBranch)
 {
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
     tensor.shape[0] = 4;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.opNameId = 1;
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
-    aclprofEventAttributes attr;
+    ProfEventAttributes attr;
     attr.messageType = MESSAGE_TYPE_TENSOR_INFO;
     attr.message.tensorInfo = &tensorInfo;
     EXPECT_EQ(PROFILING_SUCCESS, ProfTxPlugin::GetProftxInstance().ProftxRangePushEx(&attr));
@@ -291,9 +291,9 @@ TEST_F(PROF_TX_UTTEST, ProftxRangePop_AdditionalInfoBranch)
 
 TEST_F(PROF_TX_UTTEST, ReportCacheOpInfo2RT_MallocFail)
 {
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;
     MOCKER(&Utils::ProfMalloc).stubs().will(returnValue((void*)nullptr));
@@ -302,10 +302,10 @@ TEST_F(PROF_TX_UTTEST, ReportCacheOpInfo2RT_MallocFail)
 
 TEST_F(PROF_TX_UTTEST, ReportCacheOpInfo2RT_RtFail)
 {
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
     tensor.shape[0] = 4;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.opNameId = 1;
     tensorInfo.tensorNum = 1;
     tensorInfo.kernelType = 2;
@@ -318,10 +318,10 @@ TEST_F(PROF_TX_UTTEST, ReportCacheOpInfo2RT_RtFail)
 
 TEST_F(PROF_TX_UTTEST, ReportCacheOpInfo2RT_Success)
 {
-    aclprofTensor tensor{};
+    ProfTensor tensor{};
     tensor.shapeDim = 1;
     tensor.shape[0] = 4;
-    aclprofTensorInfo tensorInfo{};
+    ProfTensorInfo tensorInfo{};
     tensorInfo.opNameId = 1;
     tensorInfo.tensorNum = 1;
     tensorInfo.tensors = &tensor;

@@ -65,8 +65,8 @@ public:
     int32_t ProftxSetStampPayload(VOID_PTR stamp, const int32_t type, VOID_PTR value);
     int32_t ProftxRangePushEx(ACLPROF_EVENT_ATTR_PTR attr);
     int32_t ProftxRangePop();
-    int32_t ReportAdditionalInfo(const aclprofTensorInfo* tensorInfo, uint64_t timeStampPush, uint64_t timeStampPop);
-    int32_t ReportCacheOpInfo2RT(const aclprofTensorInfo* tensorInfo);
+    int32_t ReportAdditionalInfo(const ProfTensorInfo* tensorInfo, uint64_t timeStampPush, uint64_t timeStampPop);
+    int32_t ReportCacheOpInfo2RT(const ProfTensorInfo* tensorInfo);
 private:
     ACLPROF_EVENT_ATTR_PTR attr_;
     uint64_t timeStampPush_;
@@ -83,7 +83,7 @@ private:
     ProftxSetCategoryNameFunc proftxSetCategoryName_{nullptr};
     ProftxSetStampCategoryFunc proftxSetStampCategory_{nullptr};
     ProftxSetStampPayloadFunc proftxSetStampPayload_{nullptr};
-    int32_t CopyTensorData(const aclprofTensorInfo* tensorInfo, uint8_t* dest, uint64_t& destOffset, size_t maxCopySize);
+    int32_t CopyTensorData(const ProfTensorInfo* tensorInfo, uint8_t* dest, uint64_t& destOffset, size_t maxCopySize);
 };
 }
 #endif

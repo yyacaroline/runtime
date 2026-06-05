@@ -47,6 +47,10 @@ extern "C" {
 #define ACL_PROF_MAX_OP_NAME_LEN        257
 #define ACL_PROF_MAX_OP_TYPE_LEN        65
 
+#ifndef ACL_PROF_TENSOR_DATA_SHAPE_LEN
+#define ACL_PROF_TENSOR_DATA_SHAPE_LEN 8          // frozen: must never change (changes aclprofTensor size/stride)
+#endif
+
 typedef enum {
     ACL_AICORE_ARITHMETIC_UTILIZATION = 0,
     ACL_AICORE_PIPE_UTILIZATION = 1,
@@ -56,6 +60,7 @@ typedef enum {
     ACL_AICORE_MEMORY_UB = 5,
     ACL_AICORE_L2_CACHE = 6,
     ACL_AICORE_PIPE_EXECUTE_UTILIZATION = 7,
+    ACL_AICORE_MEMORY_ACCESS = 8,
     ACL_AICORE_NONE = 0xFF
 } aclprofAicoreMetrics;
 
@@ -96,11 +101,55 @@ typedef enum {
     ACL_PROF_ARGS_MAX                   = 17
 } aclprofConfigType;
 
+typedef enum {
+    ACL_PROF_MESSAGE_TYPE_TENSOR_INFO = 0
+} aclprofMessageType;
+
 typedef struct aclprofConfig aclprofConfig;
 typedef struct aclprofStopConfig aclprofStopConfig;
 typedef struct aclprofAicoreEvents aclprofAicoreEvents;
 typedef struct aclprofSubscribeConfig aclprofSubscribeConfig;
 typedef struct aclprofStepInfo aclprofStepInfo;
+
+// These three structs may have been self-defined by early users before they became official.
+// Define ACL_PROF_TENSOR_INFO_DEFINED before including this header to suppress the official
+// definitions and keep your own. The layout below is frozen for binary compatibility: existing
+// fields must never be reordered/retyped; evolve only by appending fields at the tail and bumping
+// ACL_PROF_EVENT_ATTR_VERSION (parse defensively by aclprofEventAttributes.size/version).
+#ifndef ACL_PROF_TENSOR_INFO_DEFINED
+#define ACL_PROF_TENSOR_INFO_DEFINED
+
+#define ACL_PROF_EVENT_ATTR_VERSION 1            // bump on every tail-append to aclprofEventAttributes
+
+typedef struct aclprofTensor {
+    uint32_t type;                                        // tensor类型, 0: input, 1: output
+    uint32_t format;                                      // format类型: aclFormat
+    uint32_t dataType;                                    // dataType类型 aclDataType
+    uint32_t shapeDim;                                    // shape dim <= 8
+    uint32_t shape[ACL_PROF_TENSOR_DATA_SHAPE_LEN];      // tensor内存大小
+} aclprofTensor;
+
+typedef struct aclprofTensorInfo {
+    uint64_t opNameId;                                    // 通过uint64_t aclprofStr2Id(const char *message)
+    uint64_t opTypeId;
+    uint32_t resv;
+    uint32_t tensorNum;
+    uint32_t kernelType;
+    uint32_t blockNums;
+    void *stream;                                         // stream信息
+    aclprofTensor *tensors;
+} aclprofTensorInfo;
+
+typedef struct aclprofEventAttributes {
+    uint16_t version;
+    uint16_t size;
+    uint32_t messageType;                                // MESSAGE_TYPE_TENSOR_INFO
+    union Message {
+        aclprofTensorInfo *tensorInfo;
+    } message;
+} aclprofEventAttributes;
+
+#endif // ACL_PROF_TENSOR_INFO_DEFINED
 
 /**
  * @ingroup AscendCL
@@ -532,6 +581,32 @@ MSVP_PROF_API aclError aclprofMark(void *stamp);
 * @retval OtherValues Failure
 */
 MSVP_PROF_API aclError aclprofMarkEx(const char *msg, size_t msgLen, aclrtStream stream);
+
+/**
+* @ingroup AscendCL
+* @brief change op name to id
+* @param [in] message: op name
+* @retval ACL_SUCCESS The function is successfully executed.
+* @retval OtherValues Failure
+*/
+MSVP_PROF_API uint64_t aclprofStr2Id(const char *message);
+
+/**
+* @ingroup AscendCL
+* @brief 
+* @param [in] attr: event attributes, include tensor info
+* @retval ACL_SUCCESS The function is successfully executed.
+* @retval OtherValues Failure
+*/
+MSVP_PROF_API aclError aclprofRangePushEx(aclprofEventAttributes *attr);
+
+/**
+* @ingroup AscendCL
+* @brief 
+* @retval ACL_SUCCESS The function is successfully executed.
+* @retval OtherValues Failure
+*/
+MSVP_PROF_API aclError aclprofRangePop();
 #ifdef __cplusplus
 }
 #endif

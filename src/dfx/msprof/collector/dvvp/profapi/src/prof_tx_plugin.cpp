@@ -193,7 +193,7 @@ int32_t ProfTxPlugin::ProftxRangePop()
     MSPROF_LOGI("Start to execute ProftxRangePop, timeStampPush is %llu, timeStampPop is %llu", timeStampPush, timeStampPop);
     rtStreamAttr stmAttrId = RT_STREAM_ATTR_CACHE_OP_INFO;
     rtStreamAttrValue_t value;
-    const aclprofTensorInfo* tensorInfo = attr_->message.tensorInfo;
+    const ProfTensorInfo* tensorInfo = attr_->message.tensorInfo;
     rtStream_t stream = static_cast<rtStream_t>(tensorInfo->stream);
     int32_t ret = ProfAPI::ProfRuntimePlugin::instance()->ProfRtsStreamGetAttribute(stream, stmAttrId, &value);
     if (ret != RT_ERROR_NONE) {
@@ -207,10 +207,10 @@ int32_t ProfTxPlugin::ProftxRangePop()
     }
 }
 
-int32_t ProfTxPlugin::CopyTensorData(const aclprofTensorInfo* tensorInfo, uint8_t* dest, uint64_t& destOffset, size_t maxCopySize)
+int32_t ProfTxPlugin::CopyTensorData(const ProfTensorInfo* tensorInfo, uint8_t* dest, uint64_t& destOffset, size_t maxCopySize)
 {
     for (size_t i = 0; i < tensorInfo->tensorNum; ++i) {
-        aclprofTensor& tensor = tensorInfo->tensors[i];
+        ProfTensor& tensor = tensorInfo->tensors[i];
         MsrofTensorData msTensor;
         msTensor.tensorType = tensor.type;
         msTensor.format = tensor.format;
@@ -231,7 +231,7 @@ int32_t ProfTxPlugin::CopyTensorData(const aclprofTensorInfo* tensorInfo, uint8_
     return PROFILING_SUCCESS;
 }
 
-int32_t ProfTxPlugin::ReportAdditionalInfo(const aclprofTensorInfo* tensorInfo,
+int32_t ProfTxPlugin::ReportAdditionalInfo(const ProfTensorInfo* tensorInfo,
                                             uint64_t timeStampPush, uint64_t timeStampPop)
 {
     size_t infoSize = sizeof(tensorInfo->opNameId) + sizeof(tensorInfo->tensorNum) +
@@ -278,7 +278,7 @@ int32_t ProfTxPlugin::ReportAdditionalInfo(const aclprofTensorInfo* tensorInfo,
     return ret;
 }
 
-int32_t ProfTxPlugin::ReportCacheOpInfo2RT(const aclprofTensorInfo* tensorInfo)
+int32_t ProfTxPlugin::ReportCacheOpInfo2RT(const ProfTensorInfo* tensorInfo)
 {
     CacheOpInfoBasic cacheOpInfoBasic;
     size_t infoSize = sizeof(CacheOpInfoBasic) + (sizeof(MsrofTensorData) * tensorInfo->tensorNum);

@@ -174,9 +174,9 @@ uint64_t aclprofStr2Id(const char *message)
     return ProfStr2Id(message, strlen(message));
 }
 
-aclError aclprofRangePushEx(ACLPROF_EVENT_ATTR_PTR attr)
+aclError aclprofRangePushEx(aclprofEventAttributes *attr)
 {
-    return ProfAclRangePushEx(attr);
+    return ProfAclRangePushEx(reinterpret_cast<ACLPROF_EVENT_ATTR_PTR>(attr));
 }
 
 aclError aclprofRangePop()

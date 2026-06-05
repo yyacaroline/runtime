@@ -4567,6 +4567,39 @@ TEST_F(MSPROF_API_MSPROFTX_UTEST, aclprofRangeStop) {
     EXPECT_EQ(ACL_ERROR_FEATURE_UNSUPPORTED, aclprofRangeStop(0));
 }
 
+TEST_F(MSPROF_API_MSPROFTX_UTEST, aclprofRangePushEx) {
+    GlobalMockObject::verify();
+    aclprofEventAttributes attr = {};
+    attr.version = 1;
+    attr.size = sizeof(aclprofEventAttributes);
+
+    MOCKER(ProfAclRangePushEx)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
+    EXPECT_EQ(ACL_SUCCESS, aclprofRangePushEx(&attr));
+
+    GlobalMockObject::verify();
+    MOCKER(ProfAclRangePushEx)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(ACL_ERROR_FEATURE_UNSUPPORTED)));
+    EXPECT_EQ(ACL_ERROR_FEATURE_UNSUPPORTED, aclprofRangePushEx(&attr));
+    EXPECT_EQ(ACL_ERROR_FEATURE_UNSUPPORTED, aclprofRangePushEx(nullptr));
+}
+
+TEST_F(MSPROF_API_MSPROFTX_UTEST, aclprofRangePop) {
+    GlobalMockObject::verify();
+    MOCKER(ProfAclRangePop)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(ACL_SUCCESS)));
+    EXPECT_EQ(ACL_SUCCESS, aclprofRangePop());
+
+    GlobalMockObject::verify();
+    MOCKER(ProfAclRangePop)
+        .stubs()
+        .will(returnValue(static_cast<int32_t>(ACL_ERROR_FEATURE_UNSUPPORTED)));
+    EXPECT_EQ(ACL_ERROR_FEATURE_UNSUPPORTED, aclprofRangePop());
+}
+
 TEST_F(MSPROF_API_MSPROFTX_UTEST, RangeStop) {
     GlobalMockObject::verify();
     Msprof::MsprofTx::MsprofTxManager::instance()->isInit_ = true;
