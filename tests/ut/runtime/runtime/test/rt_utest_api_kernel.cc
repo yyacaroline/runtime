@@ -85,6 +85,22 @@ namespace {
             }
         }
     }
+
+    void InitBatchAttr(rtMemcpyBatchAttr &attr)
+    {
+        attr = {};
+        attr.dstLoc.type = RT_MEMORY_LOC_DEVICE;
+        attr.dstLoc.id = 0U;
+        attr.srcLoc.type = RT_MEMORY_LOC_HOST;
+        attr.srcLoc.id = 0U;
+    }
+
+    void InitPtrAttr(rtPtrAttributes_t &attr, rtMemLocationType type)
+    {
+        attr = {};
+        attr.location.type = type;
+        attr.location.id = 0U;
+    }
 }
 
 TEST_F(ApiKernelTest, TestRtsBinaryLoadFromFileSuccess)

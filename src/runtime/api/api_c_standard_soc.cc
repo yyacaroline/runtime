@@ -839,6 +839,10 @@ rtError_t rtMemcpyAsyncWithOffset(void **dst, uint64_t dstMax, uint64_t dstDataO
 {
     COND_RETURN_EXT_ERRCODE_AND_MSG_OUTER_WITH_PARAM((kind != RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE), 
         RT_ERROR_INVALID_VALUE, kind, "RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE");
+    if (cnt == 0U) {
+        RT_LOG(RT_LOG_INFO, "cnt is 0, no need to copy memory async with offset, just return success.");
+        return ACL_RT_SUCCESS;
+    }
     return rtMemcpyD2DAddrAsync(RtPtrToPtr<void *>(dst), dstMax, dstDataOffset,
         RtPtrToPtr<void *>(src), cnt, srcDataOffset, stm);
 }
@@ -846,6 +850,10 @@ rtError_t rtMemcpyAsyncWithOffset(void **dst, uint64_t dstMax, uint64_t dstDataO
 VISIBILITY_DEFAULT
 rtError_t rtMemsetD32(void* dst, uint64_t destMax, uint32_t value, uint64_t count)
 {
+    if (count == 0U) {
+        RT_LOG(RT_LOG_INFO, "count is 0, no need to set memory, just return success.");
+        return ACL_RT_SUCCESS;
+    }
     GLOBAL_STATE_WAIT_IF_LOCKED();
     Api* const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);
@@ -859,6 +867,10 @@ rtError_t rtMemsetD32(void* dst, uint64_t destMax, uint32_t value, uint64_t coun
 VISIBILITY_DEFAULT
 rtError_t rtMemsetD32Async(void* dst, uint64_t destMax, uint32_t value, uint64_t count, rtStream_t stm)
 {
+    if (count == 0U) {
+        RT_LOG(RT_LOG_INFO, "count is 0, no need to set memory async, just return success.");
+        return ACL_RT_SUCCESS;
+    }
     GLOBAL_STATE_WAIT_IF_LOCKED();
     TIMESTAMP_BEGIN(rtMemsetD32Async);
     RT_VALIDATE_AND_UNWRAP_OBJECT(stm, Stream, exeStream);
@@ -913,6 +925,10 @@ VISIBILITY_DEFAULT
 rtError_t rtMemcpyD2DAddrAsync(void *dst, uint64_t dstMax, uint64_t dstOffset, const void *src,
     uint64_t cnt, uint64_t srcOffset, rtStream_t stm)
 {
+    if (cnt == 0U) {
+        RT_LOG(RT_LOG_INFO, "cnt is 0, no need to copy memory async by offset, just return success.");
+        return ACL_RT_SUCCESS;
+    }
     GLOBAL_STATE_WAIT_IF_LOCKED();
     Api * const apiInstance = Api::Instance();
     NULL_RETURN_ERROR_WITH_EXT_ERRCODE(apiInstance);

@@ -731,6 +731,8 @@ TEST_F(AclRtTest, aclrtMemSet_paramInvalid) {
     // 1. devPtr is NULL
     aclError ret = aclrtMemset(NULL, 1, 1, 1);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+    ret = aclrtMemset(NULL, 0, 1, 0);
+    EXPECT_EQ(ret, ACL_SUCCESS);
     // 2. param count > maxCount
     void *ptr = reinterpret_cast<void *>(0x01);
     constexpr size_t VALUE_MEMORY_COUNT = 2;
@@ -754,12 +756,18 @@ TEST_F(AclRtTest, aclrtMemcpy_paramNULL) {
   void *dst = reinterpret_cast<void *>(0X01);
   ret = aclrtMemcpy(dst, 1, NULL, 1, ACL_MEMCPY_HOST_TO_HOST);
   EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+
+  ret = aclrtMemcpy(NULL, 0, NULL, 0, ACL_MEMCPY_HOST_TO_HOST);
+  EXPECT_EQ(ret, ACL_SUCCESS);
 }
 
 TEST_F(AclRtTest, aclrtMemcpy_kindInvalid) {
   void *dst = reinterpret_cast<void *>(0X01);
   void *src = reinterpret_cast<void *>(0X02);
   aclError ret = aclrtMemcpy(dst, 1, src, 1, (aclrtMemcpyKind)0x7FFFFFFFF);
+  EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+
+  ret = aclrtMemcpy(NULL, 0, NULL, 0, (aclrtMemcpyKind)0x7FFFFFFFF);
   EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
 

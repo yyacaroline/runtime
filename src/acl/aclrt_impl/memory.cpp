@@ -117,27 +117,27 @@ inline aclError MemcpyKindTranslate(const aclrtMemcpyKind kind, rtMemcpyKind_t &
     return ACL_SUCCESS;
 }
 
+inline bool IsZeroSizeMemcpy(const size_t count)
+{
+    return count == 0UL;
+}
+
+inline bool IsZeroSizeMemcpy2d(const size_t width, const size_t height)
+{
+    return (width == 0UL) || (height == 0UL);
+}
+
+bool IsAllZeroSizeBatch(const size_t * const sizes, const size_t numBatches)
+{
+    return std::all_of(sizes, sizes + numBatches, [](const size_t size) {
+        return size == 0UL;
+    });
+}
+
 aclError CheckMemcpy2dParam(const void *const dst, const size_t dpitch, const void *const src, const size_t spitch,
     const size_t width, const size_t height, const aclrtMemcpyKind kind, rtMemcpyKind_t &rtKind)
 {
     ACL_LOG_DEBUG("start to execute CheckMemcpy2dParam");
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
-    ACL_REQUIRES_POSITIVE_REPORT(height);
-    ACL_REQUIRES_POSITIVE_REPORT(width);
-
-    if ((width > spitch) || (width > dpitch)) {
-        ACL_LOG_ERROR("[Check][Width]input param width[%zu] must be smaller than spitch[%zu] and dpitch[%zu]",
-            width, spitch, dpitch);
-        const std::string widthVal = std::to_string(width);
-        std::string errMsg = acl::AclErrorLogManager::FormatStr("must be less than spitch and dpitch, spitch=%zu, dpitch=%zu",
-            spitch, dpitch);
-        acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
-            std::vector<const char *>({"func", "value", "param", "reason"}),
-            std::vector<const char *>({__func__, widthVal.c_str(), "width", errMsg.c_str()}));
-        return ACL_ERROR_INVALID_PARAM;
-    }
-
     switch (kind) {
         case ACL_MEMCPY_HOST_TO_DEVICE: {
             rtKind = RT_MEMCPY_HOST_TO_DEVICE;
@@ -163,6 +163,25 @@ aclError CheckMemcpy2dParam(const void *const dst, const size_t dpitch, const vo
                     "kind", "ACL_MEMCPY_HOST_TO_DEVICE or ACL_MEMCPY_DEVICE_TO_HOST or ACL_MEMCPY_DEVICE_TO_DEVICE or ACL_MEMCPY_DEFAULT"}));
             return ACL_ERROR_INVALID_PARAM;
         }
+    }
+
+    if (IsZeroSizeMemcpy2d(width, height)) {
+        return ACL_SUCCESS;
+    }
+
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
+
+    if ((width > spitch) || (width > dpitch)) {
+        ACL_LOG_ERROR("[Check][Width]input param width[%zu] must be smaller than spitch[%zu] and dpitch[%zu]",
+            width, spitch, dpitch);
+        const std::string widthVal = std::to_string(width);
+        std::string errMsg = acl::AclErrorLogManager::FormatStr("must be less than spitch and dpitch, spitch=%zu, dpitch=%zu",
+            spitch, dpitch);
+        acl::AclErrorLogManager::ReportInputError(acl::INVALID_PARAM_REASON_MSG,
+            std::vector<const char *>({"func", "value", "param", "reason"}),
+            std::vector<const char *>({__func__, widthVal.c_str(), "width", errMsg.c_str()}));
+        return ACL_ERROR_INVALID_PARAM;
     }
     return ACL_SUCCESS;
 }
@@ -626,15 +645,18 @@ aclError aclrtMemcpyImpl(void *dst,
                          aclrtMemcpyKind kind)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemcpy);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
-
     rtMemcpyKind_t rtKind = RT_MEMCPY_RESERVED;
     const aclError ret = MemcpyKindTranslate(kind, rtKind);
     if (ret != ACL_SUCCESS) {
         ACL_LOG_ERROR("invalid kind of memcpy, kind = %d", static_cast<int32_t>(kind));
         return ret;
     }
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("count is zero, no memory copy will be performed");
+        return ACL_SUCCESS;
+    }
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
 
     const rtError_t rtErr = rtMemcpy(dst, destMax, src, count, rtKind);
     if (rtErr != RT_ERROR_NONE) {
@@ -650,6 +672,10 @@ aclError aclrtMemsetImpl(void *devPtr, size_t maxCount, int32_t value, size_t co
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemset);
     ACL_LOG_DEBUG("start to execute aclrtMemset, maxSize = %zu, size = %zu, value = %d",
         maxCount, count, value);
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("zero-size memset, no memory set will be performed");
+        return ACL_SUCCESS;
+    }
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(devPtr);
 
     const rtError_t rtErr = rtMemset(devPtr, maxCount, static_cast<uint32_t>(value), count);
@@ -668,14 +694,18 @@ aclError aclrtMemcpyAsyncImpl(void *dst,
                               aclrtStream stream)
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemcpyAsync);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
     rtMemcpyKind_t rtKindVal = RT_MEMCPY_RESERVED;
     const aclError ret = MemcpyKindTranslate(kind, rtKindVal);
     if (ret != ACL_SUCCESS) {
         ACL_LOG_ERROR("invalid kind of memcpy, kind = %d", static_cast<int32_t>(kind));
         return ret;
     }
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("count is zero, no memory copy async will be performed");
+        return ACL_SUCCESS;
+    }
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
 
     ACL_REQUIRES_CALL_RTS_OK(rtMemcpyAsync(dst, destMax, src, count, rtKindVal, static_cast<rtStream_t>(stream)),
                              rtMemcpyAsync);
@@ -692,14 +722,18 @@ aclError aclrtMemcpyAsyncWithConditionImpl(void *dst,
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemcpyAsyncWithCondition);
     ACL_LOG_DEBUG("start to execute aclrtMemcpyAsyncWithCondition, destMaxSize = %zu, srcSize = %zu, kind = %d",
                   destMax, count, static_cast<int32_t>(kind));
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
-    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
-    rtMemcpyKind_t rtKindVal = RT_MEMCPY_RESERVED;
-    const aclError ret = MemcpyKindTranslate(kind, rtKindVal);
+    rtMemcpyKind_t rtKindValue = RT_MEMCPY_RESERVED;
+    const aclError ret = MemcpyKindTranslate(kind, rtKindValue);
     if (ret != ACL_SUCCESS) {
         ACL_LOG_ERROR("invalid kind of memcpy, kind = %d", static_cast<int32_t>(kind));
         return ret;
     }
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("zero-size memcpy, no memory copy async will be performed");
+        return ACL_SUCCESS;
+    }
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(dst);
+    ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(src);
 
     rtMemcpyAttributeValue_t memcpyAttrValue;
     // bit0 standing for not checking matching between address and kind, bit1 standing for checking page-locked addr
@@ -713,7 +747,7 @@ aclError aclrtMemcpyAsyncWithConditionImpl(void *dst,
         .numAttrs = 1U
     };
 
-    ACL_REQUIRES_CALL_RTS_OK(rtMemcpyAsyncEx(dst, destMax, src, count, rtKindVal, static_cast<rtStream_t>(stream),
+    ACL_REQUIRES_CALL_RTS_OK(rtMemcpyAsyncEx(dst, destMax, src, count, rtKindValue, static_cast<rtStream_t>(stream),
                              &memcpyConfig), rtMemcpyAsyncEx);
     return ACL_SUCCESS;
 }
@@ -723,6 +757,10 @@ aclError aclrtMemsetAsyncImpl(void *devPtr, size_t maxCount, int32_t value, size
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemsetAsync);
     ACL_LOG_DEBUG("start to execute aclrtMemsetAsync, maxCount = %zu, value = %d, count = %zu",
         maxCount, value, count);
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("zero-size memset, no memory set async will be performed");
+        return ACL_SUCCESS;
+    }
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(devPtr);
 
     ACL_REQUIRES_CALL_RTS_OK(rtMemsetAsync(devPtr, maxCount, static_cast<uint32_t>(value), count, stream),
@@ -756,6 +794,10 @@ aclError aclrtMemsetD32Impl(void* ptr, size_t memSize, uint32_t value, size_t N)
     ACL_LOG_DEBUG("start to execute aclrtMemsetD32, memSize = %zu, N = %zu, value = 0x%x",
                   memSize, N, value);
 
+    if (IsZeroSizeMemcpy(N)) {
+        ACL_LOG_INFO("zero-size memsetD32, no memory set will be performed");
+        return ACL_SUCCESS;
+    }
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(ptr);
     ACL_REQUIRES_POSITIVE(N);
     
@@ -808,6 +850,10 @@ aclError aclrtMemsetD32AsyncImpl(void* ptr, size_t memSize, uint32_t value,
     ACL_LOG_DEBUG("start to execute aclrtMemsetD32Async, memSize = %zu, N = %zu, value = 0x%x",
                   memSize, N, value);
 
+    if (IsZeroSizeMemcpy(N)) {
+        ACL_LOG_INFO("zero-size memsetD32 async, no memory set will be performed");
+        return ACL_SUCCESS;
+    }
     ACL_REQUIRES_NOT_NULL_WITH_INPUT_REPORT(ptr);
     ACL_REQUIRES_POSITIVE(N);
 
@@ -1498,6 +1544,14 @@ aclError aclrtMemcpyAsyncWithOffsetImpl(void **dst, size_t destMax, size_t dstDa
 {
     ACL_PROFILING_REG(acl::AclProfType::AclrtMemcpyAsyncWithOffset);
     ACL_LOG_INFO("start to execute aclrtMemcpyAsyncWithOffset");
+    if (kind != ACL_MEMCPY_INNER_DEVICE_TO_DEVICE) {
+        ACL_LOG_ERROR("[Check][Kind]invalid kind of memcpy with offset, kind = %d", static_cast<int32_t>(kind));
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    if (IsZeroSizeMemcpy(count)) {
+        ACL_LOG_INFO("zero-size memcpy, no memory copy async with offsetwill be performed");
+        return ACL_SUCCESS;
+    }
     const auto memKind = static_cast<rtMemcpyKind>(static_cast<int32_t>(kind));
     const auto rtErr = rtMemcpyAsyncWithOffset(dst, destMax, dstDataOffset, src, count, srcDataOffset, memKind, stream);
     if (rtErr != RT_ERROR_NONE) {
@@ -1820,6 +1874,13 @@ static aclError MemcpyBatchImpl(void **dsts, size_t *destMaxs, void **srcs, size
         numAttrs);
     if (ret != ACL_SUCCESS) {
         return ret;
+    }
+    if (IsAllZeroSizeBatch(sizes, numBatches)) {
+        if (failIndex != nullptr) {
+            *failIndex = SIZE_MAX;
+        }
+        ACL_LOG_INFO("successfully execute %s", apiName);
+        return ACL_SUCCESS;
     }
 
     if (async) {
@@ -2647,6 +2708,6 @@ aclError aclrtMemMapSelectedLinkImpl(void *virPtrDst, size_t size, void *virPtrS
     ACL_LOG_INFO("successfully execute aclrtMemMapSelectedLink");
     return ACL_SUCCESS;
 }
-#ifdef __cplusplus
-}
-#endif
+#ifdef __cplusplus	 
+}	 
+#endif // __cplusplus

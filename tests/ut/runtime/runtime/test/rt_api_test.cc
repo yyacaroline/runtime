@@ -382,8 +382,8 @@ TEST_F(ApiAbnormalTest, rtsGetMemcpyDescSizeTest)
     EXPECT_NE(error, RT_ERROR_NONE);
 }
 
-TEST_F(ApiAbnormalTest, rtMemcpyAsyncExAbnormal)
+TEST_F(ApiAbnormalTest, rtMemcpyAsyncExSizeZeroNoOp)
 {
     rtError_t error = rtMemcpyAsyncEx(NULL, 0U, NULL, 0U, RT_MEMCPY_DEVICE_TO_DEVICE, NULL, NULL);
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    EXPECT_EQ(error, ACL_RT_SUCCESS);
 }

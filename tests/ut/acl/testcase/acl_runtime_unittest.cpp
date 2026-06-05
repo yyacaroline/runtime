@@ -1638,6 +1638,9 @@ TEST_F(UTEST_ACL_Runtime, memory_memset)
     aclError ret = aclrtMemset(nullptr, 1, 1, 1);
     EXPECT_NE(ret, ACL_SUCCESS);
 
+    ret = aclrtMemset(nullptr, 0, 1, 0);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
     void *src = (void *)malloc(5);
     ret = aclrtMemset(src, 1, 1, 1);
     EXPECT_EQ(ret, ACL_SUCCESS);
@@ -1655,6 +1658,12 @@ TEST_F(UTEST_ACL_Runtime, memory_memcpy)
     char dst[5] = {};
     aclError ret = aclrtMemcpy(dst, 1, src, 1, ACL_MEMCPY_HOST_TO_HOST);
     EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy(nullptr, 0, nullptr, 0, ACL_MEMCPY_HOST_TO_HOST);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy(nullptr, 0, nullptr, 0, (aclrtMemcpyKind)0x7FFFFFFF);
+    EXPECT_NE(ret, ACL_SUCCESS);
 
     ret = aclrtMemcpy(nullptr, 1, src, 1, ACL_MEMCPY_HOST_TO_HOST);
     EXPECT_NE(ret, ACL_SUCCESS);
@@ -1694,6 +1703,12 @@ TEST_F(UTEST_ACL_Runtime, memory_memcpyAsync)
     aclrtStream stream = (aclrtStream)0x10;
     aclError ret = aclrtMemcpyAsync(dst, 1, src, 1, ACL_MEMCPY_HOST_TO_HOST, stream);
     EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpyAsync(nullptr, 0, nullptr, 0, ACL_MEMCPY_HOST_TO_HOST, nullptr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpyAsync(nullptr, 0, nullptr, 0, (aclrtMemcpyKind)0x7FFFFFFF, nullptr);
+    EXPECT_NE(ret, ACL_SUCCESS);
 
     ret = aclrtMemcpyAsync(nullptr, 1, src, 1, ACL_MEMCPY_HOST_TO_HOST, stream);
     EXPECT_NE(ret, ACL_SUCCESS);
@@ -1741,6 +1756,12 @@ static rtError_t rtsPointerGetAttributesToDevice(const void *ptr, rtPtrAttribute
     attributes->location.type = RT_MEMORY_LOC_DEVICE; // 1
     return RT_ERROR_NONE;
 }
+static rtError_t rtsPointerGetAttributesToUnregistered(const void *ptr, rtPtrAttributes_t *attributes)
+{
+    (void)ptr;
+    attributes->location.type = RT_MEMORY_LOC_UNREGISTERED;
+    return RT_ERROR_NONE;
+}
 
 // ==================== 同步接口测试 ====================
 TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_failed_with_nullptr)
@@ -1749,13 +1770,13 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_failed_with_nullptr)
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
 
-TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_failed_with_zero_N)
+TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_success_with_zero_N)
 {
     void *ptr = nullptr;
     size_t N = 0;
     size_t memSize = 16;
     aclError ret = aclrtMemsetD32(ptr, memSize, 0xDEADBEEF, N);
-    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 }
 
 TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_failed_with_insufficient_memSize)
@@ -1797,14 +1818,14 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32Async_failed_with_nullptr)
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 }
 
-TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32Async_failed_with_zero_N)
+TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32Async_success_with_zero_N)
 {
     void *ptr = nullptr;
     aclrtStream stream = (aclrtStream)0x10;
     size_t N = 0;
     size_t memSize = 16;
     aclError ret = aclrtMemsetD32Async(ptr, memSize, 0xDEADBEEF, N, stream);
-    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 }
 
 TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32Async_failed_with_insufficient_memSize)
@@ -1948,6 +1969,8 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32_failed_with_malloc_memory)
     size_t memSize = N * sizeof(uint32_t);
     void *ptr = malloc(memSize);
     ASSERT_NE(ptr, nullptr);
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsPointerGetAttributes(_, _))
+        .WillOnce(Invoke(rtsPointerGetAttributesToUnregistered));
     aclError ret = aclrtMemsetD32(ptr, memSize, 0xDEADBEEF, N);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
     free(ptr);
@@ -1959,6 +1982,8 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemsetD32Async_failed_with_malloc_memory)
     size_t memSize = N * sizeof(uint32_t);
     void *ptr = malloc(memSize);
     ASSERT_NE(ptr, nullptr);
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsPointerGetAttributes(_, _))
+        .WillOnce(Invoke(rtsPointerGetAttributesToUnregistered));
     aclrtStream stream = (aclrtStream)0x10;
     aclError ret = aclrtMemsetD32Async(ptr, memSize, 0xDEADBEEF, N, stream);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
@@ -2026,6 +2051,15 @@ TEST_F(UTEST_ACL_Runtime, memory_memcpyAsyncWithCondition)
 
     aclError ret = aclrtMemcpyAsyncWithCondition(dst, 1, src, 1, ACL_MEMCPY_HOST_TO_HOST, stream);
     EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpyAsyncWithCondition(nullptr, 0, nullptr, 0, ACL_MEMCPY_HOST_TO_HOST, nullptr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpyAsyncWithCondition(nullptr, 0, nullptr, 0, ACL_MEMCPY_HOST_TO_DEVICE, stream);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpyAsyncWithCondition(nullptr, 0, nullptr, 0, (aclrtMemcpyKind)0x7FFFFFFF, nullptr);
+    EXPECT_NE(ret, ACL_SUCCESS);
 
     ret = aclrtMemcpyAsyncWithCondition(dst, 1, src, 1, ACL_MEMCPY_HOST_TO_DEVICE, stream);
     EXPECT_EQ(ret, ACL_SUCCESS);
@@ -2103,6 +2137,9 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemsetAsyncFailedTest)
     aclrtStream stream = (aclrtStream)0x10;
     aclError ret = aclrtMemsetAsync(nullptr, 1, 1, 1, stream);
     EXPECT_NE(ret, ACL_SUCCESS);
+
+    ret = aclrtMemsetAsync(nullptr, 0, 1, 0, nullptr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
 
     // aclrtMemsetAsync failed
     EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemsetAsync(_, _, _, _, _))
@@ -2350,6 +2387,12 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpy2dTest)
     width = 2;
     height = 0;
     ret = aclrtMemcpy2d(dst, dpitch, src, spitch, width, height, kind);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy2d(nullptr, 0, nullptr, 0, 0, 1, kind);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy2d(nullptr, 0, nullptr, 0, 0, 1, ACL_MEMCPY_HOST_TO_HOST);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 
     width = 1;
@@ -2403,6 +2446,12 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpy2dAsyncTest)
     width = 2;
     height = 0;
     ret = aclrtMemcpy2dAsync(dst, dpitch, src, spitch, width, height, kind, &stream);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy2dAsync(nullptr, 0, nullptr, 0, 0, 1, kind, nullptr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = aclrtMemcpy2dAsync(nullptr, 0, nullptr, 0, 0, 1, ACL_MEMCPY_HOST_TO_HOST, nullptr);
     EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
 
     width = 1;
@@ -3905,14 +3954,17 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpyAsyncWithOffset)
     auto ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, ACL_MEMCPY_INNER_DEVICE_TO_DEVICE, nullptr);
     EXPECT_EQ(ret, ACL_SUCCESS);
 
+    ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, ACL_MEMCPY_HOST_TO_HOST, nullptr);
+    EXPECT_EQ(ret, ACL_ERROR_INVALID_PARAM);
+
     EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpyAsyncWithOffset(_,_,_,_,_,_,_,_))
                     .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
-    ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, ACL_MEMCPY_INNER_DEVICE_TO_DEVICE, nullptr);
+    ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 1, 0, ACL_MEMCPY_INNER_DEVICE_TO_DEVICE, nullptr);
     EXPECT_EQ(ret, ACL_ERROR_RT_PARAM_INVALID);
 
     EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtMemcpyAsyncWithOffset(_,_,_,_,_,_,_,_))
                     .WillOnce(Return(ACL_ERROR_RT_FEATURE_NOT_SUPPORT));
-    ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, ACL_MEMCPY_INNER_DEVICE_TO_DEVICE, nullptr);
+    ret = aclrtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 1, 0, ACL_MEMCPY_INNER_DEVICE_TO_DEVICE, nullptr);
     EXPECT_EQ(ret, ACL_ERROR_RT_FEATURE_NOT_SUPPORT);
 }
 
@@ -6383,6 +6435,45 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_success)
     EXPECT_EQ(ret, ACL_SUCCESS);
 }
 
+TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_success_with_all_zero_sizes)
+{
+    constexpr size_t numBatches = 2UL;
+    void *dsts[numBatches] = {nullptr, nullptr};
+    size_t destMax[numBatches] = {0, 0};
+    void *srcs[numBatches] = {nullptr, nullptr};
+    size_t sizes[numBatches] = {0, 0};
+    aclrtMemcpyBatchAttr attrs = {};
+    size_t attrsIndexes = 0;
+    size_t failIndex = 0;
+
+    const auto ret = aclrtMemcpyBatch(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, 1, &failIndex);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    EXPECT_EQ(failIndex, SIZE_MAX);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_success_with_mixed_zero_sizes)
+{
+    constexpr size_t numBatches = 2UL;
+    void **dsts = reinterpret_cast<void **>(0x04);
+    size_t destMax[numBatches] = {0, 1};
+    void **srcs = reinterpret_cast<void **>(0x04);
+    size_t sizes[numBatches] = {0, 1};
+    aclrtMemcpyBatchAttr attrs = {};
+    size_t attrsIndexes = 0;
+    constexpr size_t numAttrs = 1UL;
+    size_t failIndex = 0;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatch(_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_SUCCESS));
+    auto ret = aclrtMemcpyBatch(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs, &failIndex);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatch(_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
+    ret = aclrtMemcpyBatch(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs, &failIndex);
+    EXPECT_EQ(ret, ACL_ERROR_RT_PARAM_INVALID);
+}
+
 TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatch_feature_not_support)
 {
     constexpr size_t numBatches = 1UL;
@@ -6484,6 +6575,49 @@ TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatchAsync_success)
     const auto ret = aclrtMemcpyBatchAsync(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs,
                                            &failIndex, nullptr);
     EXPECT_EQ(ret, ACL_SUCCESS);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatchAsync_success_with_all_zero_sizes)
+{
+    constexpr size_t numBatches = 2UL;
+    void *dsts[numBatches] = {nullptr, nullptr};
+    size_t destMax[numBatches] = {0, 0};
+    void *srcs[numBatches] = {nullptr, nullptr};
+    size_t sizes[numBatches] = {0, 0};
+    aclrtMemcpyBatchAttr attrs = {};
+    size_t attrsIndexes = 0;
+    size_t failIndex = 0;
+
+    const auto ret = aclrtMemcpyBatchAsync(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, 1,
+                                           &failIndex, nullptr);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    EXPECT_EQ(failIndex, SIZE_MAX);
+}
+
+TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatchAsync_success_with_mixed_zero_sizes)
+{
+    constexpr size_t numBatches = 2UL;
+    void **dsts = reinterpret_cast<void **>(0x04);
+    size_t destMax[numBatches] = {0, 1};
+    void **srcs = reinterpret_cast<void **>(0x04);
+    size_t sizes[numBatches] = {0, 1};
+    aclrtMemcpyBatchAttr attrs = {};
+    size_t attrsIndexes = 0;
+    constexpr size_t numAttrs = 1UL;
+    size_t failIndex = 0;
+    aclrtStream stream = nullptr;
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatchAsync(_,_,_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_SUCCESS));
+    auto ret = aclrtMemcpyBatchAsync(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs,
+        &failIndex, stream);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    EXPECT_CALL(MockFunctionTest::aclStubInstance(), rtsMemcpyBatchAsync(_,_,_,_,_,_,_,_,_,_))
+        .WillOnce(Return(ACL_ERROR_RT_PARAM_INVALID));
+    ret = aclrtMemcpyBatchAsync(dsts, destMax, srcs, sizes, numBatches, &attrs, &attrsIndexes, numAttrs, &failIndex,
+        stream);
+    EXPECT_EQ(ret, ACL_ERROR_RT_PARAM_INVALID);
 }
 
 TEST_F(UTEST_ACL_Runtime, aclrtMemcpyBatchV2_failed_with_invalid_args)

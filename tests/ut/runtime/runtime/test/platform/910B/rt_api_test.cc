@@ -606,6 +606,9 @@ TEST_F(CloudV2ApiAbnormalTest, rtMemcpyAsyncWithOffset_Error)
     rtError_t error;
 
     error = rtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, RT_MEMCPY_KIND_INNER_DEVICE_TO_DEVICE, nullptr);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtMemcpyAsyncWithOffset(nullptr, 0, 0, nullptr, 0, 0, RT_MEMCPY_KIND_HOST_TO_HOST, nullptr);
     EXPECT_NE(error, RT_ERROR_NONE);
 }
 
@@ -738,10 +741,10 @@ TEST_F(CloudV2ApiAbnormalTest, SetMemcpyDescTest)
     EXPECT_NE(error, RT_ERROR_NONE);
 }
 
-TEST_F(CloudV2ApiAbnormalTest, rtMemcpyAsyncExAbnormal)
+TEST_F(CloudV2ApiAbnormalTest, rtMemcpyAsyncExZeroNoOp)
 {
     rtError_t error = rtMemcpyAsyncEx(NULL, 0U, NULL, 0U, RT_MEMCPY_DEVICE_TO_DEVICE, NULL, NULL);
-    EXPECT_EQ(error, ACL_ERROR_RT_PARAM_INVALID);
+    EXPECT_EQ(error, ACL_RT_SUCCESS);
 }
 
 TEST_F(CloudV2ApiAbnormalTest, rtDevBinaryRegister_Null)
