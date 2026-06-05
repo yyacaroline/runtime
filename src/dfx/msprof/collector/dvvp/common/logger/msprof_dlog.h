@@ -65,7 +65,44 @@ extern "C" {
 #endif
 
 #ifdef __cplusplus
+}  // extern "C"
+
+#include <cstdint>
+
+// Map a slog module id (see src/dfx/log/inc/toolchain/log_types.h) to a readable name.
+// Only the modules that flow through the profiling control-callback path are named; the
+// numeric id is kept by callers so logs stay greppable. Unknown ids return "UNKNOWN".
+inline const char *ProfGetModuleName(uint32_t moduleId)
+{
+    switch (moduleId) {
+        case 3:  return "HCCL";       // HCCL
+        case 4:  return "FMK";        // Adapter
+        case 6:  return "DVPP";       // DVPP
+        case 7:  return "RUNTIME";    // Runtime
+        case 23: return "KERNEL";     // Kernel
+        case 25: return "CCECPU";     // aicpu schedule
+        case 31: return "PROFILING";  // Profiling
+        case 36: return "AICPU";      // AICPU
+        case 45: return "GE";         // Fmk
+        case 48: return "ASCENDCL";   // AscendCL
+        default: return "UNKNOWN";
+    }
 }
-#endif
+
+// Map a MsprofCommandHandleType (see src/dfx/msprof/inc/toolchain/aprof_pub.h) to a readable
+// name. Out-of-range values return "UNKNOWN".
+inline const char *ProfGetCommandTypeName(uint32_t type)
+{
+    switch (type) {
+        case 0: return "INIT";
+        case 1: return "START";
+        case 2: return "STOP";
+        case 3: return "FINALIZE";
+        case 4: return "MODEL_SUBSCRIBE";
+        case 5: return "MODEL_UNSUBSCRIBE";
+        default: return "UNKNOWN";
+    }
+}
+#endif  // __cplusplus
 
 #endif  // MSPROF_LOG_H

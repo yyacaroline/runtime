@@ -11,6 +11,7 @@
 #include "gtest/gtest.h"
 #include "prof_cann_plugin.h"
 #include "prof_runtime_plugin.h"
+#include "msprof_dlog.h"
 #include "errno/error_code.h"
 
 using namespace ProfAPI;
@@ -389,4 +390,22 @@ TEST_F(PROF_CANN_PLUGIN_UTEST, ProfCheckCommandLine_NoEnv)
 {
     auto plugin = ProfCannPlugin::instance();
     (void)plugin->ProfCheckCommandLine();
+}
+
+TEST_F(PROF_CANN_PLUGIN_UTEST, ProfGetModuleName_KnownAndUnknown)
+{
+    EXPECT_STREQ("HCCL", ProfGetModuleName(3));
+    EXPECT_STREQ("RUNTIME", ProfGetModuleName(7));
+    EXPECT_STREQ("GE", ProfGetModuleName(45));
+    EXPECT_STREQ("ASCENDCL", ProfGetModuleName(48));
+    EXPECT_STREQ("UNKNOWN", ProfGetModuleName(9999));
+}
+
+TEST_F(PROF_CANN_PLUGIN_UTEST, ProfGetCommandTypeName_KnownAndUnknown)
+{
+    EXPECT_STREQ("INIT", ProfGetCommandTypeName(0));
+    EXPECT_STREQ("START", ProfGetCommandTypeName(1));
+    EXPECT_STREQ("STOP", ProfGetCommandTypeName(2));
+    EXPECT_STREQ("FINALIZE", ProfGetCommandTypeName(3));
+    EXPECT_STREQ("UNKNOWN", ProfGetCommandTypeName(9999));
 }

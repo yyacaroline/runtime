@@ -110,10 +110,11 @@ int32_t ProfModuleReprotMgr::ProfSetProCommand(ProfCommand &command)
         if (finalizeGuard_ && k != RUNTIME) {
             continue;
         }
-        MSPROF_LOGI("call %u callback, type:%u, switch:0x%llx, switchHi:0x%llx, model:%u, devNums:%u, "
-            "dev:%u, cache: %u, finalizeGuard: %u", k, command.type,
-            static_cast<unsigned long long>(command.profSwitch), static_cast<unsigned long long>(command.profSwitchHi),
-            command.modelId, command.devNums, command.devIdList[0], command.cacheFlag, finalizeGuard_);
+        MSPROF_LOGI("call %s(%u) callback, type:%s(%u), switch:0x%016" PRIx64 ", switchHi:0x%016" PRIx64
+            ", model:%u, devNums:%u, dev:%u, cache: %u, finalizeGuard: %u",
+            ProfGetModuleName(k), k, ProfGetCommandTypeName(command.type), command.type,
+            command.profSwitch, command.profSwitchHi, command.modelId, command.devNums,
+            command.devIdList[0], command.cacheFlag, finalizeGuard_);
         for (auto& handle : it->second) {
             handle(static_cast<uint32_t>(PROF_CTRL_SWITCH), Utils::ReinterpretCast<VOID, ProfCommand>(&command),
                     sizeof(ProfCommand));
@@ -159,7 +160,7 @@ int32_t ProfModuleReprotMgr::ModuleRegisterCallback(uint32_t moduleId, ProfComma
     if (callback == nullptr) {
         return PROFILING_FAILED;
     }
-    MSPROF_LOGI("Module[%u] register callback of ctrl handle.", moduleId);
+    MSPROF_LOGI("Module[%s(%u)] register callback of ctrl handle.", ProfGetModuleName(moduleId), moduleId);
     auto it = moduleCallbacks_.find(moduleId);
     if (it != moduleCallbacks_.cend() && it->second.count(callback) > 0) {
         MSPROF_LOGW("Callback has already registered.");

@@ -384,10 +384,10 @@ int32_t ProfCannPlugin::ProfRegisterCallback(uint32_t moduleId, ProfCommandHandl
         return -1;
     }
     if (profRegisterCallback_ != nullptr) {
-        MSPROF_LOGI("Register module[%u] callback with handle.", moduleId);
+        MSPROF_LOGI("Register module[%s(%u)] callback with handle.", ProfGetModuleName(moduleId), moduleId);
         profRegisterCallback_(moduleId, handle);
     } else {
-        MSPROF_LOGI("Register module[%u] callback.", moduleId);
+        MSPROF_LOGI("Register module[%s(%u)] callback.", ProfGetModuleName(moduleId), moduleId);
         const std::unique_lock<std::mutex> lock(ProfPlugin::callbackMutex_);
         auto it = ProfPlugin::moduleCallbacks_.find(moduleId);
         if (it != ProfPlugin::moduleCallbacks_.cend()) {
