@@ -33,7 +33,7 @@ aclError aclrtGetSymbolAddress(const void *symbol, void **devPtr)
 
 | 参数名 | 输入/输出 | 说明 |
 | --- | :---: | --- |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | devPtr | 输出 | Device变量的内存地址指针。 |
 
 ### 返回值说明
@@ -45,9 +45,9 @@ aclError aclrtGetSymbolAddress(const void *symbol, void **devPtr)
 - 本接口仅适用于Ascend C语言开发自定义算子并基于毕昇编译器进行Host和Device代码混合编译的场景。
 - Device变量地址仅在当前Device有效，切换Device后需重新获取地址。
 - 仅支持AI Core算子中的Device变量，具体约束如下：
-    -  变量定义位置：仅支持在main函数所在文件中定义的Device变量（如 `__gm__ float convWeights`）。
-    -  支持通过extern关键字跨文件引用全局内存变量。例如，在文件A中定义`__gm__ float convWeights`，文件B中可通过`extern __gm__ float convWeights`声明并引用该变量。需要满足编译要求：使用毕昇编译器的-dc模式，将多个源文件编译为单个算子二进制文件。
-    -  数据类型：支持基础数据类型、函数指针、结构体及数组，不支持class类型。注意：函数指针只支持指向纯Scalar的函数，不能有效区分Cube和Vector的函数逻辑。
+    -  支持在main函数所在文件中定义的Device变量（如 `__gm__ float convWeights`）。
+    -  支持通过extern关键字跨文件引用Device变量。例如，在文件A中定义`__gm__ float convWeights`，文件B中可通过`extern __gm__ float convWeights`声明并引用该变量。需要满足编译要求：使用毕昇编译器的-dc模式，将多个源文件编译为单个算子二进制文件。
+    -  支持基础数据类型、函数指针、结构体及数组，不支持class类型。注意：函数指针只支持指向纯Scalar的函数，不能有效区分Cube和Vector的函数逻辑。
 
 <br>
 <br>
@@ -77,7 +77,7 @@ aclError aclrtGetSymbolSize(const void *symbol, size_t *size)
 
 | 参数名 | 输入/输出 | 说明 |
 | --- | :---: | --- |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | size | 输出 | Device变量的大小，单位Byte。 |
 
 ### 返回值说明
@@ -120,7 +120,7 @@ aclError aclrtMemcpyFromSymbol(void *dst, size_t dstMax, const void *symbol,
 | --- | :---: | --- |
 | dst | 输入 | 目的内存地址指针。 |
 | dstMax | 输入 | 目标内存最大长度，单位Byte。需满足 dstMax ≥ count。 |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | count | 输入 | 内存复制的长度，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | offset | 输入 | Device变量地址偏移，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | kind | 输入 | 拷贝类型，类型定义请参见[aclrtMemcpyKind](25_数据类型及其操作接口.md#aclrtMemcpyKind)。本接口仅支持ACL_MEMCPY_DEVICE_TO_HOST和ACL_MEMCPY_DEFAULT。 |
@@ -168,7 +168,7 @@ aclError aclrtMemcpyFromSymbolAsync(void *dst, size_t dstMax, const void *symbol
 | --- | :---: | --- |
 | dst | 输入 | 目的内存地址指针。 |
 | dstMax | 输入 | 目标内存最大长度，单位Byte。需满足 dstMax ≥ count。 |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | count | 输入 | 内存复制的长度，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | offset | 输入 | Device变量地址偏移，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | kind | 输入 | 拷贝类型，类型定义请参见[aclrtMemcpyKind](25_数据类型及其操作接口.md#aclrtMemcpyKind)。本接口仅支持ACL_MEMCPY_DEVICE_TO_HOST和ACL_MEMCPY_DEFAULT。 |
@@ -213,7 +213,7 @@ aclError aclrtMemcpyToSymbol(const void *symbol, const void *src,
 
 | 参数名 | 输入/输出 | 说明 |
 | --- | :---: | --- |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | src | 输入 | 源内存地址指针。 |
 | count | 输入 | 内存复制的长度，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | offset | 输入 | Device变量地址偏移，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
@@ -260,7 +260,7 @@ aclError aclrtMemcpyToSymbolAsync(const void *symbol, const void *src,
 
 | 参数名 | 输入/输出 | 说明 |
 | --- | :---: | --- |
-| symbol | 输入 | Device变量名。此处传入`__gm__`声明的变量名。 |
+| symbol | 输入 | Device变量的地址。此处传入`__gm__`声明的变量名取地址。 |
 | src | 输入 | 源内存地址指针。 |
 | count | 输入 | 内存复制的长度，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
 | offset | 输入 | Device变量地址偏移，单位Byte。需满足 offset + count ≤ Device变量大小，Device变量大小可通过 [aclrtGetSymbolSize](#aclrtGetSymbolSize)接口查询获取。 |
