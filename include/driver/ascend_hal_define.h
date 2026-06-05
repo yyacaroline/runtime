@@ -285,6 +285,11 @@ struct esched_query_gid_output {
     unsigned int grp_id;
 };
 
+typedef enum queue_work_mode {
+    QUEUE_MODE_PUSH = 1,
+    QUEUE_MODE_PULL,
+} QUEUE_WORK_MODE;
+
 /*=========================== Queue Manage ===========================*/
 
 typedef enum QueEventCmd {

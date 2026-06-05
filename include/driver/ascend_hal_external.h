@@ -498,11 +498,6 @@ typedef enum queue_status {
     QUEUE_FULL,
 }QUEUE_STATUS;
 
-typedef enum queue_work_mode {
-    QUEUE_MODE_PUSH = 1,
-    QUEUE_MODE_PULL,
-}QUEUE_WORK_MODE;
-
 typedef enum queue_type {
     QUEUE_TYPE_GROUP = 1,
     QUEUE_TYPE_SINGLE,
