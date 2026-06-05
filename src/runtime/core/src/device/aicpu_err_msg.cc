@@ -37,6 +37,11 @@ AicpuErrMsg::AicpuErrMsg(Device * const dev)
 
 AicpuErrMsg::~AicpuErrMsg() noexcept
 {
+    TearDown();
+}
+
+void AicpuErrMsg::TearDown(void) noexcept
+{
     FreeResource();
     errMsgBuf_ = nullptr;
     device_ = nullptr;

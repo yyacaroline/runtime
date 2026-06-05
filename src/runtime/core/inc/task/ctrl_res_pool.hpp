@@ -66,6 +66,7 @@ public:
     CtrlResEntry(void);
     ~CtrlResEntry(void) noexcept;
 
+    void TearDown(void) noexcept;
     void AllocTaskId(uint32_t &taskId);
     void RecycleTask(const uint32_t taskId);
     rtError_t Init(Device * const dev);

@@ -26,6 +26,7 @@ class AicpuErrMsg : public NoCopy {
 public:
     explicit AicpuErrMsg(Device * const dev);
     ~AicpuErrMsg() noexcept override;
+    void TearDown(void) noexcept;
     void SetErrMsgBufAddr(void);
 
 private:

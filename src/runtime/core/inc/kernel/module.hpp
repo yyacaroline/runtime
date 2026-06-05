@@ -26,6 +26,7 @@ public:
     explicit Module(Device * const dev);
     ~Module() noexcept override;
 
+    void TearDown() noexcept;
     rtError_t Load(Program * const prog);
     rtError_t GetFunction(const Kernel * const kernelIn, uint64_t * const function) const;
     rtError_t GetFunction(const Kernel * const kernelIn, uint64_t * const function1, uint64_t * const function2) const;

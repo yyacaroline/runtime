@@ -28,6 +28,11 @@ UmaArgLoader::UmaArgLoader(Device * const dev)
 
 UmaArgLoader::~UmaArgLoader()
 {
+    TearDown();
+}
+
+void UmaArgLoader::TearDown(void) noexcept
+{
     DELETE_O(argAllocator_);
     DELETE_O(superArgAllocator_);
     DELETE_O(maxArgAllocator_);

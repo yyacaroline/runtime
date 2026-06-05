@@ -19,6 +19,7 @@ public:
     explicit UmaArgLoader(Device * const dev);
     ~UmaArgLoader() override;
 
+    void TearDown(void) noexcept;
     rtError_t Init() override;
     rtError_t AllocCopyPtrWithGenericPolicy(const uint32_t size, ArgLoaderResult* const result) override;
     rtError_t Load(const rtArgsEx_t * const argsInfo,

@@ -10,6 +10,7 @@
 #include <string>
 #include <cassert>
 #include <iostream>
+#include <cstdint>
 #include "mmpa/mmpa_api.h"
 
 #include "acl/acl.h"
@@ -142,6 +143,45 @@ aclError FinalizeCallback_Success(void *userData) {
 aclError FinalizeCallback_Fail(void *userData) {
     (void)userData;
     return ACL_ERROR_FAILURE;
+}
+
+namespace {
+std::vector<int> g_callbackOrder;
+
+class CallbackMapGuard {
+public:
+    explicit CallbackMapGuard(InitCallbackManager &cbMgr)
+        : cbMgr_(cbMgr), initCallbackMap_(cbMgr.initCallbackMap_), finalizeCallbackMap_(cbMgr.finalizeCallbackMap_)
+    {
+        cbMgr_.initCallbackMap_.clear();
+        cbMgr_.finalizeCallbackMap_.clear();
+        g_callbackOrder.clear();
+    }
+
+    ~CallbackMapGuard()
+    {
+        cbMgr_.initCallbackMap_ = initCallbackMap_;
+        cbMgr_.finalizeCallbackMap_ = finalizeCallbackMap_;
+        g_callbackOrder.clear();
+    }
+
+private:
+    InitCallbackManager &cbMgr_;
+    std::multimap<aclRegisterCallbackType, std::pair<aclInitCallbackFunc, void *>> initCallbackMap_;
+    std::multimap<aclRegisterCallbackType, std::pair<aclFinalizeCallbackFunc, void *>> finalizeCallbackMap_;
+};
+}
+
+aclError InitCallback_RecordOrder(const char *configStr, size_t len, void *userData) {
+    (void)configStr;
+    (void)len;
+    g_callbackOrder.push_back(static_cast<int>(reinterpret_cast<intptr_t>(userData)));
+    return ACL_SUCCESS;
+}
+
+aclError FinalizeCallback_RecordOrder(void *userData) {
+    g_callbackOrder.push_back(static_cast<int>(reinterpret_cast<intptr_t>(userData)));
+    return ACL_SUCCESS;
 }
 
 TEST_F(UTEST_ACL_Runtime, aclrtSetDeviceFailedTest)
@@ -6894,6 +6934,44 @@ TEST_F(UTEST_ACL_Runtime, aclCallbackManager_FinalizeCallbackTest)
     ret = cbMgrInstance.UnRegFinalizeCallback(ACL_REG_TYPE_OTHER, FinalizeCallback_Success);
     EXPECT_EQ(ret, ACL_ERROR_INTERNAL_ERROR);
     cbMgrInstance.finalizeCallbackMap_ = bakFinalizeCbMap;
+}
+
+TEST_F(UTEST_ACL_Runtime, InitCallbackManager_NotifyOrderForOtherType)
+{
+    auto &cbMgrInstance = InitCallbackManager::GetInstance();
+    // The singleton has no public reset API, so this test isolates private maps and restores them with RAII.
+    CallbackMapGuard callbackMapGuard(cbMgrInstance);
+
+    auto ret = cbMgrInstance.RegInitCallback(ACL_REG_TYPE_OTHER, InitCallback_RecordOrder, reinterpret_cast<void *>(1));
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    ret = cbMgrInstance.RegInitCallback(ACL_REG_TYPE_OTHER, InitCallback_RecordOrder, reinterpret_cast<void *>(2));
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = cbMgrInstance.NotifyInitCallback(ACL_REG_TYPE_OTHER, nullptr, 0U);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    ASSERT_EQ(g_callbackOrder.size(), 2U);
+    EXPECT_EQ(g_callbackOrder[0], 1);
+    EXPECT_EQ(g_callbackOrder[1], 2);
+}
+
+TEST_F(UTEST_ACL_Runtime, InitCallbackManager_FinalizeNotifyOrderForOtherType)
+{
+    auto &cbMgrInstance = InitCallbackManager::GetInstance();
+    // The singleton has no public reset API, so this test isolates private maps and restores them with RAII.
+    CallbackMapGuard callbackMapGuard(cbMgrInstance);
+
+    auto ret = cbMgrInstance.RegFinalizeCallback(ACL_REG_TYPE_OTHER, FinalizeCallback_RecordOrder,
+        reinterpret_cast<void *>(1));
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    ret = cbMgrInstance.RegFinalizeCallback(ACL_REG_TYPE_OTHER, FinalizeCallback_RecordOrder,
+        reinterpret_cast<void *>(2));
+    EXPECT_EQ(ret, ACL_SUCCESS);
+
+    ret = cbMgrInstance.NotifyFinalizeCallback(ACL_REG_TYPE_OTHER);
+    EXPECT_EQ(ret, ACL_SUCCESS);
+    ASSERT_EQ(g_callbackOrder.size(), 2U);
+    EXPECT_EQ(g_callbackOrder[0], 1);
+    EXPECT_EQ(g_callbackOrder[1], 2);
 }
 
 TEST_F(UTEST_ACL_Runtime, aclInitCallbackApiTest) {

@@ -3513,6 +3513,24 @@ TEST_F(TaskTest, TaskFactory_Alloc_TryAgainAllocFailed)
     delete device;
 }
 
+TEST_F(TaskTest, TaskFactory_TearDownIsIdempotent)
+{
+    RawDevice *device = new RawDevice(0);
+    TaskFactory taskFactory(device);
+    ASSERT_EQ(taskFactory.Init(), RT_ERROR_NONE);
+
+    // Stack destruction invokes TearDown again after the two explicit calls.
+    taskFactory.TearDown();
+    EXPECT_EQ(taskFactory.allocator_, nullptr);
+    EXPECT_TRUE(taskFactory.exitFlag_.load());
+
+    taskFactory.TearDown();
+    EXPECT_EQ(taskFactory.allocator_, nullptr);
+    EXPECT_TRUE(taskFactory.exitFlag_.load());
+
+    delete device;
+}
+
 TEST_F(TaskTest, DebugRegisterForStreamTaskInit)
 {
     TaskInfo task = {};

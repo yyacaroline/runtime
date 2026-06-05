@@ -241,6 +241,36 @@ TEST_F(LabelTest, label_task_submit)
     ((Runtime *)Runtime::Instance())->DeviceRelease(device);
 }
 
+TEST_F(LabelTest, label_handle_invalid_after_destroy)
+{
+    rtError_t error;
+    rtModel_t model = nullptr;
+    rtLabel_t label = nullptr;
+    rtContext_t ctx = nullptr;
+
+    error = rtCtxCreate(&ctx, RT_CTX_NORMAL_MODE, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtModelCreate(&model, 0);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtLabelCreateV2(&label, model);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    error = rtLabelDestroy(label);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+
+    Label *destroyedLabel = nullptr;
+    error = GetValidatedObject<Label>(label, destroyedLabel);
+    EXPECT_EQ(error, RT_ERROR_INVALID_HANDLE);
+    EXPECT_EQ(destroyedLabel, nullptr);
+
+    error = rtModelDestroy(model);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+    error = rtCtxDestroy(ctx);
+    EXPECT_EQ(error, RT_ERROR_NONE);
+}
+
 TEST_F(LabelTest, label_gotoex_task_submit)
 {
     rtError_t error;

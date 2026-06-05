@@ -577,6 +577,7 @@ public:
 
     void ResetAllKernelNameId();
 private:
+    void ReleaseKernelsOnDestroy();
     SpinLock kernelMapLock_;
     std::map<std::string, Kernel *> kernelInfoExtMap_;
     std::map<std::string, const void *> invKernelMap_;

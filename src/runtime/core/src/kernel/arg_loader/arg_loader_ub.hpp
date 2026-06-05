@@ -47,6 +47,14 @@ class UbArgLoader : public NoCopy {
 public:
     explicit UbArgLoader(Device * const dev);
     ~UbArgLoader() override;
+    void TearDown(void) noexcept
+    {
+        DELETE_O(argAllocator_);
+        DELETE_O(superArgAllocator_);
+        DELETE_O(handleAllocator_);
+        device_ = nullptr;
+    }
+
     rtError_t Init();
     rtError_t Release(void * const argHandle);
     rtError_t AllocCopyPtr(const uint32_t size, StarsArgLoaderResult* const result);

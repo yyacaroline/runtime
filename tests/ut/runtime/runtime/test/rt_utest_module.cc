@@ -80,3 +80,35 @@ public:
     uint32_t loadSize_;
     rtError_t extractResult_;
 };
+
+TEST_F(ModuleTest, TearDownIsIdempotent)
+{
+    // Empty-resource module verifies host state reset and repeated TearDown no-op without entering device free paths.
+    Module module(nullptr);
+    module.baseAddrAlign_ = reinterpret_cast<void *>(0x1000);
+    module.baseFMAddr_ = reinterpret_cast<void *>(0x2000);
+    module.baseAddrSize_ = 64U;
+    module.programId_ = 1U;
+
+    module.TearDown();
+
+    EXPECT_EQ(module.device_, nullptr);
+    EXPECT_EQ(module.baseAddr_, nullptr);
+    EXPECT_EQ(module.baseFMAddr_, nullptr);
+    EXPECT_EQ(module.baseAddrAlign_, nullptr);
+    EXPECT_EQ(module.kernelNamesBaseAddr_, nullptr);
+    EXPECT_EQ(module.soNamesBaseAddr_, nullptr);
+    EXPECT_EQ(module.baseAddrSize_, 0U);
+    EXPECT_EQ(module.programId_, UINT32_MAX);
+
+    module.TearDown();
+
+    EXPECT_EQ(module.device_, nullptr);
+    EXPECT_EQ(module.baseAddr_, nullptr);
+    EXPECT_EQ(module.baseFMAddr_, nullptr);
+    EXPECT_EQ(module.baseAddrAlign_, nullptr);
+    EXPECT_EQ(module.kernelNamesBaseAddr_, nullptr);
+    EXPECT_EQ(module.soNamesBaseAddr_, nullptr);
+    EXPECT_EQ(module.baseAddrSize_, 0U);
+    EXPECT_EQ(module.programId_, UINT32_MAX);
+}

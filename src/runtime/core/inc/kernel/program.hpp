@@ -379,6 +379,10 @@ private:
     int32_t cpuRegMode_ = -1;
     std::map<std::string, void *> soNameDevAddrMap_[RT_MAX_DEV_NUM];
     std::map<std::string, void *> funcNameDevAddrMap_[RT_MAX_DEV_NUM];
+    void ReleaseKernelsOnDestroy();
+    void ReleaseBinaryOnDestroy();
+    void ResetProgramAllocatorOnDestroy();
+    void CloseBinaryHandleOnDestroy();
     rtError_t CopyKernelLiteralNameToDevice(const std::string &literalName, void **devAddrHandle, const Device * const dev) const;
     void SaveBinaryData(const void *data, uint64_t length, const bool isLoadFromFile);
     rtError_t FreeCpuSoH2dMem(Device * const device, std::vector<void *> &allocatedMem) const;

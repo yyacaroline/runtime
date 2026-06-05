@@ -240,6 +240,7 @@ public:
     ~TaskFactory() override;
 
     rtError_t Init();
+    void TearDown() noexcept;
     static uint32_t GetTaskMaxSize();
 
     TaskInfo* Alloc(Stream *stream, tsTaskType_t taskType, rtError_t &errCode);

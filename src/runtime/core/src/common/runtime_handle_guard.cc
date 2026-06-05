@@ -15,6 +15,11 @@ namespace cce {
 namespace runtime {
 namespace {
 
+const rtInnerObject *GetInnerObject(const void *handle)
+{
+    return static_cast<const rtInnerObject *>(handle);
+}
+
 const char *GetResourceNameByMagic(const uint64_t magic)
 {
     switch (magic) {
@@ -37,11 +42,11 @@ const char *GetResourceNameByMagic(const uint64_t magic)
 
 rtError_t ValidateInnerObject(const void *handle, const uint64_t expectedMagic)
 {
-    const auto * const innerObject = static_cast<const rtInnerObject *>(handle);
+    const char * const objectName = GetResourceNameByMagic(expectedMagic);
+    const auto * const innerObject = GetInnerObject(handle);
     const uint64_t actualMagic = innerObject->magic.load();
 
     if (actualMagic != expectedMagic) {
-        const char * const objectName = GetResourceNameByMagic(expectedMagic);
         RT_LOG(RT_LOG_ERROR, "Validate %s failed, magic mismatch, expected=%#" PRIx64 ", actual=%#" PRIx64 ". %s",
                objectName, expectedMagic, actualMagic, (actualMagic == 0 ? "(Already destroyed)" : ""));
         return RT_ERROR_INVALID_HANDLE;
@@ -50,6 +55,18 @@ rtError_t ValidateInnerObject(const void *handle, const uint64_t expectedMagic)
 }
 
 } // namespace
+
+void InitializeInnerObject(rtInnerObject &inner, const uint64_t magic, void *object)
+{
+    inner.object = object;
+    inner.magic.store(magic);
+}
+
+void ResetInnerObject(rtInnerObject &inner)
+{
+    inner.magic.store(0U);
+    inner.object = nullptr;
+}
 
 rtError_t GetValidatedObjectImpl(void *handle, uint64_t expectedMagic, void *&outRealObj)
 {
@@ -63,7 +80,7 @@ rtError_t GetValidatedObjectImpl(void *handle, uint64_t expectedMagic, void *&ou
         return ret;
     }
 
-    const auto *inner = static_cast<const rtInnerObject *>(handle);
+    const auto *inner = GetInnerObject(handle);
     outRealObj = inner->object;
     return RT_ERROR_NONE;
 }

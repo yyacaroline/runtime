@@ -89,6 +89,11 @@ KernelTable::KernelTable():kernelArr_(nullptr), rtKernelArrPos_(0UL), kernelArrA
 
 KernelTable::~KernelTable()
 {
+    ReleaseKernelsOnDestroy();
+}
+
+void KernelTable::ReleaseKernelsOnDestroy()
+{
     kernelMapLock_.Lock();
     for (uint32_t i = 0U; i < rtKernelArrPos_; i++) {
          Kernel * const delKernel = kernelArr_[i].kernel;

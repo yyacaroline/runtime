@@ -120,6 +120,41 @@ TEST_F(CloudV2ArgLoaderTest, uma_arg_loader_init_of_chip_as31xm1x)
     rtInstance->DeviceRelease(device);
 }
 
+TEST_F(CloudV2ArgLoaderTest, uma_arg_loader_teardown_is_idempotent)
+{
+    Runtime *rtInstance = (Runtime *)Runtime::Instance();
+    Device *device = rtInstance->DeviceRetain(0, 0);
+    UmaArgLoader argLdr(device);
+    EXPECT_EQ(argLdr.Init(), RT_ERROR_NONE);
+
+    argLdr.soNameMap_.emplace("TEST_SO", reinterpret_cast<void *>(0x1000));
+    argLdr.kernelNameMap_.emplace("TEST_KERNEL", reinterpret_cast<void *>(0x2000));
+
+    argLdr.TearDown();
+    EXPECT_EQ(argLdr.argAllocator_, nullptr);
+    EXPECT_EQ(argLdr.superArgAllocator_, nullptr);
+    EXPECT_EQ(argLdr.maxArgAllocator_, nullptr);
+    EXPECT_EQ(argLdr.argPcieBarAllocator_, nullptr);
+    EXPECT_EQ(argLdr.randomAllocator_, nullptr);
+    EXPECT_EQ(argLdr.handleAllocator_, nullptr);
+    EXPECT_EQ(argLdr.kernelInfoAllocator_, nullptr);
+    EXPECT_TRUE(argLdr.soNameMap_.empty());
+    EXPECT_TRUE(argLdr.kernelNameMap_.empty());
+
+    argLdr.TearDown();
+    EXPECT_EQ(argLdr.argAllocator_, nullptr);
+    EXPECT_EQ(argLdr.superArgAllocator_, nullptr);
+    EXPECT_EQ(argLdr.maxArgAllocator_, nullptr);
+    EXPECT_EQ(argLdr.argPcieBarAllocator_, nullptr);
+    EXPECT_EQ(argLdr.randomAllocator_, nullptr);
+    EXPECT_EQ(argLdr.handleAllocator_, nullptr);
+    EXPECT_EQ(argLdr.kernelInfoAllocator_, nullptr);
+    EXPECT_TRUE(argLdr.soNameMap_.empty());
+    EXPECT_TRUE(argLdr.kernelNameMap_.empty());
+
+    rtInstance->DeviceRelease(device);
+}
+
 TEST_F(CloudV2ArgLoaderTest, uma_arg_loader_with_sm)
 {
     int32_t devId = -1;

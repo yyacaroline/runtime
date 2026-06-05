@@ -113,6 +113,25 @@ TEST_F(CloudV2AicpuErrMsgTest, ResetAddr)
     ((Runtime *)Runtime::Instance())->DeviceRelease(device);
 }
 
+TEST_F(CloudV2AicpuErrMsgTest, TearDownIsIdempotent)
+{
+    Device *device = ((Runtime *)Runtime::Instance())->DeviceRetain(0, 0);
+    EXPECT_NE(device, nullptr);
+    AicpuErrMsg *aicpuErrObj = new (std::nothrow) AicpuErrMsg(device);
+    EXPECT_NE(aicpuErrObj, nullptr);
+
+    aicpuErrObj->TearDown();
+    EXPECT_EQ(aicpuErrObj->errMsgBuf_, nullptr);
+    EXPECT_EQ(aicpuErrObj->device_, nullptr);
+
+    aicpuErrObj->TearDown();
+    EXPECT_EQ(aicpuErrObj->errMsgBuf_, nullptr);
+    EXPECT_EQ(aicpuErrObj->device_, nullptr);
+
+    DELETE_O(aicpuErrObj);
+    ((Runtime *)Runtime::Instance())->DeviceRelease(device);
+}
+
 TEST_F(CloudV2AicpuErrMsgTest, ResetAddrErr_1)
 {
 

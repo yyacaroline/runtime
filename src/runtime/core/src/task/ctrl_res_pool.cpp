@@ -47,6 +47,12 @@ CtrlResEntry::CtrlResEntry()
 
 CtrlResEntry::~CtrlResEntry() noexcept
 {
+    TearDown();
+    return;
+}
+
+void CtrlResEntry::TearDown() noexcept
+{
     RT_LOG(RT_LOG_INFO, "free ctrl stream pool.");
     DELETE_A(taskPool_);
     DELETE_A(taskList_);

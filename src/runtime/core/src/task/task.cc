@@ -26,6 +26,9 @@
 #include "task_res.hpp"
 #include "ctrl_res_pool.hpp"
 
+#include <chrono>
+#include <thread>
+
 namespace cce {
 namespace runtime {
 
@@ -40,6 +43,11 @@ TaskFactory::TaskFactory(Device * const dev)
 
 TaskFactory::~TaskFactory()
 {
+    TearDown();
+}
+
+void TaskFactory::TearDown() noexcept
+{
     {
         exitFlag_ = true;
         const std::unique_lock<std::mutex> lk(allocRetryMutex_);
@@ -47,7 +55,7 @@ TaskFactory::~TaskFactory()
     }
 
     while (retryCount_.load() != 0ULL) {
-        std::chrono::milliseconds(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     if (allocator_ != nullptr) {

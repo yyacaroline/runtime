@@ -344,6 +344,22 @@ TEST_F(ProgramTest, Program_build_tiling_tbl_For_David)
         delete program;
 }
 
+TEST_F(ProgramTest, Program_Destructor_Skip_KernelNameMap_Duplicate)
+{
+    Program *program = new ElfProgram();
+    program->kernelPos_ = 1U;
+    program->KernelTable_ = new (std::nothrow) rtKernelArray_t[1U];
+    ASSERT_NE(program->KernelTable_, nullptr);
+
+    Kernel *kernel = new Kernel("duplicate_kernel", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICORE, 10);
+    program->KernelTable_[0].kernel = kernel;
+    program->KernelTable_[0].TilingKey = 0ULL;
+    program->kernelNameMap_["duplicate_kernel"] = kernel;
+
+    delete program;
+    SUCCEED();
+}
+
 TEST_F(ProgramTest, Program_Process_ELF_Output_Error)
 {
         rtError_t error;

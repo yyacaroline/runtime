@@ -34,6 +34,11 @@ Module::Module(Device * const dev)
 TIMESTAMP_EXTERN(ModuleDevMemFree);
 Module::~Module() noexcept
 {
+    TearDown();
+}
+
+void Module::TearDown() noexcept
+{
     TIMESTAMP_BEGIN(ModuleDevMemFree);
     if (baseAddr_ != nullptr) {
         if (device_->GetKernelMemoryPool() != nullptr && device_->GetKernelMemoryPool()->Contains(baseAddr_)) {

@@ -182,3 +182,21 @@ TEST_F(CtrlTaskPoolEntryTest, RecycleTaskWithInvalidTaskId)
     EXPECT_EQ(entry.resHeadIndex_, 1U);
     EXPECT_EQ(entry.resTailIndex_, 0U);
 }
+
+TEST_F(CtrlTaskPoolEntryTest, TearDownIsIdempotent)
+{
+    CtrlResEntry entry;
+    InitCtrlResEntryForTest(entry);
+
+    entry.TearDown();
+    EXPECT_EQ(entry.taskPool_, nullptr);
+    EXPECT_EQ(entry.taskList_, nullptr);
+    EXPECT_EQ(entry.taskBaseAddr_, nullptr);
+    EXPECT_EQ(entry.dev_, nullptr);
+
+    entry.TearDown();
+    EXPECT_EQ(entry.taskPool_, nullptr);
+    EXPECT_EQ(entry.taskList_, nullptr);
+    EXPECT_EQ(entry.taskBaseAddr_, nullptr);
+    EXPECT_EQ(entry.dev_, nullptr);
+}

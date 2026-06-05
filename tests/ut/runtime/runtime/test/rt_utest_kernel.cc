@@ -160,6 +160,25 @@ TEST_F(KernelTest, kernel_remove)
     EXPECT_EQ(kernel, (const Kernel *)NULL);
 }
 
+TEST_F(KernelTest, kernel_table_destroy_releases_remaining_kernels)
+{
+    PlainProgram stubProg(RT_KERNEL_ATTR_TYPE_AICPU);
+    Program *program = &stubProg;
+    KernelTable *table = new KernelTable();
+    int32_t fun1, fun2;
+
+    Kernel *k1 = new Kernel("destroy_f1", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICPU, 10);
+    Kernel *k2 = new Kernel("destroy_f2", 0ULL, program, RT_KERNEL_ATTR_TYPE_AICPU, 10);
+    k1->SetStub_(&fun1);
+    k2->SetStub_(&fun2);
+
+    EXPECT_EQ(table->Add(k1), RT_ERROR_NONE);
+    EXPECT_EQ(table->Add(k2), RT_ERROR_NONE);
+
+    delete table;
+    SUCCEED();
+}
+
 TEST_F(KernelTest, kernel_alloc_kernel_arr)
 {
     rtError_t error;

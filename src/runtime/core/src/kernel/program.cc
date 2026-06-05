@@ -64,34 +64,48 @@ Program::Program(const rtKernelAttrType kernelAttrType)
 
 Program::~Program()
 {
+    ReleaseKernelsOnDestroy();
+    ReleaseBinaryOnDestroy();
+    ResetProgramAllocatorOnDestroy();
+    CloseBinaryHandleOnDestroy();
+}
+
+void Program::ReleaseKernelsOnDestroy()
+{
     kernelMapLock_.Lock();
-    std::vector<const Kernel *> deletedKernels;
+    std::vector<Kernel *> deletedKernels;
     for (uint32_t i = 0U; i < kernelPos_; i++) {
-        const Kernel * const delKernel = KernelTable_[i].kernel;
+        Kernel * const delKernel = KernelTable_[i].kernel;
         deletedKernels.push_back(delKernel);
-        ResetEmbeddedInnerHandle<Kernel>(const_cast<Kernel *>(delKernel));
+        ResetEmbeddedInnerHandle<Kernel>(delKernel);
         delete delKernel;
     }
     delete [] KernelTable_;
     KernelTable_ = nullptr;
 
     for (auto iter = kernelNameMap_.begin(); iter != kernelNameMap_.end(); ++iter) {
-        const Kernel * const kernel = iter->second;
+        Kernel * const kernel = iter->second;
         const auto it = std::find(deletedKernels.begin(), deletedKernels.end(), kernel);
         if (it == deletedKernels.end()) {
-            ResetEmbeddedInnerHandle<Kernel>(const_cast<Kernel *>(kernel));
+            ResetEmbeddedInnerHandle<Kernel>(kernel);
             delete kernel;
         }
     }
 
     kernelMapLock_.Unlock();
+}
 
+void Program::ReleaseBinaryOnDestroy()
+{
     if ((!isUserData_) && (binary_ != nullptr)) {
         char_t *buff = static_cast<char_t *>(binary_);
         binary_ = nullptr;
         DELETE_A(buff);
     }
+}
 
+void Program::ResetProgramAllocatorOnDestroy()
+{
     if (progId_ < Runtime::maxProgramNum_) {
         RefObject<Program *> *const programItem = Runtime::Instance()->GetProgramAllocator()->GetDataToItem(progId_);
         if (programItem != nullptr) {
@@ -102,7 +116,10 @@ Program::~Program()
             }
         }
     }
+}
 
+void Program::CloseBinaryHandleOnDestroy()
+{
     if (binHandle_ != nullptr) {
         (void)mmDlclose(binHandle_);
         binHandle_ = nullptr;

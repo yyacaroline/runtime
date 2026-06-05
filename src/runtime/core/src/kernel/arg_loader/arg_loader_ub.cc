@@ -29,9 +29,7 @@ UbArgLoader::UbArgLoader(Device * const dev)
 
 UbArgLoader::~UbArgLoader()
 {
-    DELETE_O(argAllocator_);
-    DELETE_O(superArgAllocator_);
-    DELETE_O(handleAllocator_);
+    TearDown();
 }
 
 rtError_t UbArgLoader::Init()

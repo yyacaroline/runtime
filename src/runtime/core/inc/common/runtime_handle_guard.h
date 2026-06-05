@@ -64,21 +64,21 @@ struct rtInnerObject {
 };
 
 rtError_t GetValidatedObjectImpl(void *handle, uint64_t expectedMagic, void *&outRealObj);
+void InitializeInnerObject(rtInnerObject &inner, uint64_t magic, void *object);
+void ResetInnerObject(rtInnerObject &inner);
 
 template <typename T>
 void InitEmbeddedInnerHandle(T *realObj)
 {
     auto *inner = realObj->GetInnerHandle();
-    inner->object = static_cast<void *>(realObj);
-    inner->magic.store(RtMagicTraits<T>::value);
+    InitializeInnerObject(*inner, RtMagicTraits<T>::value, static_cast<void *>(realObj));
 }
 
 template <typename T>
 void ResetEmbeddedInnerHandle(T *realObj)
 {
     auto *inner = realObj->GetInnerHandle();
-    inner->magic.store(0U);
-    inner->object = nullptr;
+    ResetInnerObject(*inner);
 }
 
 // Validate object
