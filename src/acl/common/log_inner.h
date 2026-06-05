@@ -104,15 +104,7 @@ public:
 };
 } // namespace acl
 
-// LIKELY/UNLIKELY: Branch prediction hints for the compiler
-// Note: 'expr' must be of type bool. false is guaranteed to convert to 0L, true to 1L.
-#if defined(__GNUC__) || defined(__clang__)
-#define LIKELY(expr)   (__builtin_expect(static_cast<long>(expr), 1L) != 0L)
-#define UNLIKELY(expr) (__builtin_expect(static_cast<long>(expr), 0L) != 0L)
-#else
-#define LIKELY(expr) (expr)
 #define UNLIKELY(expr) (expr)
-#endif
 
 #ifdef RUN_TEST
 #define ACL_LOG_INFO(fmt, ...)                                                                      \

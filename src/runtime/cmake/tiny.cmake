@@ -416,6 +416,7 @@ set(RUNTIME_INC_DIR_TINY
     ${RUNTIME_DIR}/src/runtime/core/inc
     ${RUNTIME_DIR}/src/runtime/core/inc/args
     ${RUNTIME_DIR}/src/runtime/core/inc/arg_loader
+    ${RUNTIME_DIR}/src/runtime/inc/common
     ${RUNTIME_DIR}/src/runtime/core/inc/common
     ${RUNTIME_DIR}/src/runtime/core/inc/context
     ${RUNTIME_DIR}/src/runtime/core/inc/device

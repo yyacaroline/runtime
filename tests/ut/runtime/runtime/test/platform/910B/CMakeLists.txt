@@ -440,6 +440,7 @@ set(RUNTIME_TEST_INC_DIR_COMMON
     ${TOP_DIR}/src/runtime/core/inc_c
     ${TOP_DIR}/src/runtime/core/inc/context
     ${TOP_DIR}/src/runtime/core/inc/spec
+    ${TOP_DIR}/src/runtime/inc/common
     ${TOP_DIR}/src/runtime/core/inc/common
     ${TOP_DIR}/src/runtime/inc/device
     ${TOP_DIR}/src/runtime/inc/sqe
