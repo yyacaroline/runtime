@@ -1201,4 +1201,83 @@ TEST_F(JOB_WRAPPER_PROF_ROCE_JOB_TEST, Init) {
     EXPECT_EQ(PROFILING_FAILED, profJob->Init(collectionJobCfg_));
 }
 
+class JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST : public testing::Test {
+public:
+    std::shared_ptr<Analysis::Dvvp::JobWrapper::CollectionJobCfg> collectionJobCfg;
+    int samplingInterval = 20;
 
+protected:
+    virtual void SetUp()
+    {
+        collectionJobCfg = std::make_shared<Analysis::Dvvp::JobWrapper::CollectionJobCfg>();
+        auto params = std::make_shared<analysis::dvvp::message::ProfileParams>();
+        auto jobCtx = std::make_shared<analysis::dvvp::message::JobContext>();
+        auto comParams = std::make_shared<Analysis::Dvvp::JobWrapper::CollectionJobCommonParams>();
+        comParams->params = params;
+        comParams->jobCtx = jobCtx;
+        collectionJobCfg->comParams = comParams;
+        collectionJobCfg->jobParams.events = std::make_shared<std::vector<std::string>>(0);
+    }
+
+    virtual void TearDown()
+    {
+        collectionJobCfg.reset();
+    }
+};
+
+TEST_F(JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST, InitWillReturnFailedWhenHostProfilingIsTrue)
+{
+    GlobalMockObject::verify();
+
+    auto netDevStatJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNetDevStatJob>();
+
+    collectionJobCfg->comParams->params->io_profiling = analysis::dvvp::common::config::MSVP_PROF_ON;
+    collectionJobCfg->comParams->params->io_sampling_interval = samplingInterval;
+    collectionJobCfg->comParams->params->hostProfiling = true;
+    EXPECT_EQ(PROFILING_FAILED, netDevStatJob->Init(collectionJobCfg));
+}
+
+TEST_F(JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST, InitWillReturnFailedWhenCollectionJobCfgIsNullptr)
+{
+    GlobalMockObject::verify();
+
+    auto netDevStatJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNetDevStatJob>();
+
+    EXPECT_EQ(PROFILING_FAILED, netDevStatJob->Init(nullptr));
+}
+
+TEST_F(JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST, InitWillReturnFailedWhenIoProfilingIsOff)
+{
+    GlobalMockObject::verify();
+
+    auto netDevStatJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNetDevStatJob>();
+
+    collectionJobCfg->comParams->params->io_profiling = analysis::dvvp::common::config::MSVP_PROF_OFF;
+    collectionJobCfg->comParams->params->io_sampling_interval = samplingInterval;
+    EXPECT_EQ(PROFILING_FAILED, netDevStatJob->Init(collectionJobCfg));
+}
+
+TEST_F(JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST, InitWillReturnSuccessWhenIoProfilingIsOn)
+{
+    GlobalMockObject::verify();
+
+    auto netDevStatJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNetDevStatJob>();
+
+    collectionJobCfg->comParams->params->io_profiling = analysis::dvvp::common::config::MSVP_PROF_ON;
+    collectionJobCfg->comParams->params->io_sampling_interval = samplingInterval;
+    EXPECT_EQ(PROFILING_SUCCESS, netDevStatJob->Init(collectionJobCfg));
+}
+
+TEST_F(JOB_WRAPPER_PROF_NETDEV_STAT_JOB_TEST, ProcessWillReturnSuccessWhenDevIdIsDefaultHostId)
+{
+    GlobalMockObject::verify();
+
+    auto netDevStatJob = std::make_shared<Analysis::Dvvp::JobWrapper::ProfNetDevStatJob>();
+
+    collectionJobCfg->comParams->params->io_profiling = analysis::dvvp::common::config::MSVP_PROF_ON;
+    collectionJobCfg->comParams->params->io_sampling_interval = samplingInterval;
+    uint32_t devId = DEFAULT_HOST_ID;
+    collectionJobCfg->comParams->devId = devId;
+    EXPECT_EQ(PROFILING_SUCCESS, netDevStatJob->Init(collectionJobCfg));
+    EXPECT_EQ(PROFILING_SUCCESS, netDevStatJob->Process());
+}

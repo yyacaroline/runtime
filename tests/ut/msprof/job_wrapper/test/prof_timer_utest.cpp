@@ -816,6 +816,7 @@ protected:
     }
 public:
     std::shared_ptr<analysis::dvvp::message::JobContext> jobCtx;
+    uint64_t timeStamp = 3;
 };
 
 TEST_F(PROF_NET_DEV_STATS_TEST, Uinit_NotInited)

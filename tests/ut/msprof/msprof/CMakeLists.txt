@@ -186,6 +186,7 @@ set(profilerSrcFile
     test/prof_acl_core_utest.cpp
     test/prof_ge_core_utest.cpp
     test/mstx_utest.cpp
+    test/feature_manager_utest.cpp
     ${profilerSrcList}
 )
 

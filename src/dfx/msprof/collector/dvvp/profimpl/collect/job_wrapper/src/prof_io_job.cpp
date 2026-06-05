@@ -140,7 +140,6 @@ int32_t ProfNetDevStatJob::Process()
         MSPROF_LOGW("Netdev stats profiling not enabled on host");
         return PROFILING_SUCCESS;
     }
-
     std::lock_guard<std::mutex> lock(jobMtx_); // 保证同时只有一个NetDevStatsJob实例向TimerManager注册
     static constexpr size_t netDevStatsBufSize = (1 << 14); // 1 << 14 = 16KB
     auto curHandler = TimerManager::instance()->GetProfTimerHandler(PROF_NETDEV_STATS);

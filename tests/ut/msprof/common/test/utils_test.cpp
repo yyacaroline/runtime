@@ -1326,3 +1326,72 @@ TEST_F(COMMON_UTILS_UTILS_TEST, IsDirAccessible) {
     path = "/tmp";
     EXPECT_EQ(false, Utils::IsDirAccessible(path));
 }
+
+TEST_F(COMMON_UTILS_UTILS_TEST, StrToUint64WillReturnFalseWhenInputNumStrIsNotAllNum)
+{
+    uint64_t value = 0;
+    bool ret = Utils::StrToUint64(value, "123abc");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(value, 0);
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, StrToUint64WillReturnFalseWhenInputNumStrIsEmpty)
+{
+    uint64_t value = 0;
+    bool ret = Utils::StrToUint64(value, "");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(value, 0);
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, StrToUint64WillReturnFalseWhenInputNumStrIsLargerThanUint64Max)
+{
+    uint64_t value = 0;
+    bool ret = Utils::StrToUint64(value, "18446744073709551616");
+    EXPECT_FALSE(ret);
+    EXPECT_EQ(value, 0);
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, StrToUint64WillReturnTrueAndSetValueWhenInputNumStrIsValid)
+{
+    uint64_t value = 0;
+    bool ret = Utils::StrToUint64(value, "1");
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(value, 1u);
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckBinValidWillReturnFalseWhenBinPathIsEmpty)
+{
+    EXPECT_FALSE(Utils::CheckBinValid(""));
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckBinValidWillReturnFalseWhenBinPathIsNotExist)
+{
+    EXPECT_FALSE(Utils::CheckBinValid("/path/to/not/exist/bin"));
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckBinValidWillReturnFalseWhenBinPathIsNotFile)
+{
+    EXPECT_FALSE(Utils::CheckBinValid("/tmp"));
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckBinValidWillReturnFalseWhenBinPathIsNotExecutable)
+{
+    // create a temp file
+    std::string tempFilePath = "/tmp/temp_file";
+    system(("touch " + tempFilePath).c_str());
+
+    EXPECT_FALSE(Utils::CheckBinValid(tempFilePath));
+
+    // remove the temp file
+    system(("rm " + tempFilePath).c_str());
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckPathWithInvalidCharWillReturnFalseWhenPathContainsInvalidCharacters)
+{
+    EXPECT_FALSE(Utils::CheckPathWithInvalidChar("/tmp/a|b>c%d\\e\"f"));
+}
+
+TEST_F(COMMON_UTILS_UTILS_TEST, CheckPathWithInvalidCharWillReturnTrueWhenPathDoesNotContainInvalidCharacters)
+{
+    EXPECT_TRUE(Utils::CheckPathWithInvalidChar("/tmp/valid_path"));
+}

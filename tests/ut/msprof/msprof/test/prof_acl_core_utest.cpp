@@ -1666,6 +1666,7 @@ TEST_F(MSPROF_ACL_CORE_UTEST, DISABLED_MsprofInitAclJson) {
         .stubs()
         .will(returnValue(PROFILING_FAILED))
         .then(returnValue(PROFILING_SUCCESS));
+    EXPECT_EQ(3, ProfAclMgr::instance()->MsprofInitAclJson(nullptr, aclJson.size()));
     std::string result = "/tmp/MsprofInitAclJson";
     analysis::dvvp::common::utils::Utils::RemoveDir(result);
     analysis::dvvp::common::utils::Utils::CreateDir(result);
@@ -1690,7 +1691,7 @@ TEST_F(MSPROF_ACL_CORE_UTEST, DISABLED_MsprofInitAclJson) {
     aclJson = "{\"switch\": \"on\", \"output\": \"output\",\"task_trace\": \"task\",\"ge_api\": \"fwk\"}";
     EXPECT_EQ(3, ProfAclMgr::instance()->MsprofInitAclJson((void *)aclJson.c_str(), aclJson.size()));
 
-    aclJson = "{\"switch\": \"on\", \"output\": \"output\",\"task_memory\": \"on\"}";
+    aclJson = "{\"switch\": \"on\", \"output\": \"output\",\"task_memory\": \"on\", \"hccl\": \"on\"}";
     EXPECT_EQ(0, ProfAclMgr::instance()->MsprofInitAclJson((void *)aclJson.c_str(), aclJson.size()));
     aclJson = "{\"switch\": \"on\", \"output\": \"output\",\"task_memory\": \"off\"}";
     EXPECT_EQ(0, ProfAclMgr::instance()->MsprofInitAclJson((void *)aclJson.c_str(), aclJson.size()));
@@ -3242,6 +3243,9 @@ TEST_F(MSPROF_ACL_CORE_UTEST, AicoreMetricsEnumToName) {
     Msprofiler::Api::ProfAclMgr::instance()->AicoreMetricsEnumToName(PROF_AICORE_L2_CACHE, metrics);
     EXPECT_EQ("L2Cache", metrics);
 
+    Msprofiler::Api::ProfAclMgr::instance()->AicoreMetricsEnumToName(PROF_AICORE_PIPE_EXECUTE_UTILIZATION, metrics);
+    EXPECT_EQ("PipelineExecuteUtilization", metrics);
+
 #ifndef BUILD_OPEN_PROJECT
     MOCKER_CPP(&Analysis::Dvvp::Common::Config::ConfigManager::GetPlatformType)
         .stubs()
@@ -3268,6 +3272,10 @@ TEST_F(MSPROF_ACL_CORE_UTEST, TaskBasedCfgTrfToReq) {
     Msprofiler::Api::ProfAclMgr::instance()->TaskBasedCfgTrfToReq(
         PROF_TASK_TIME_MASK, PROF_AICORE_ARITHMETIC_UTILIZATION, feature);
     EXPECT_EQ("on", feature->hwtsLog);
+
+    Msprofiler::Api::ProfAclMgr::instance()->TaskBasedCfgTrfToReq(
+        PROF_SCHEDULE_TRACE_MASK, PROF_AICORE_ARITHMETIC_UTILIZATION, feature);
+    EXPECT_EQ("on", feature->tsTaskTrack);
 }
 
 TEST_F(MSPROF_ACL_CORE_UTEST, DISABLED_acl_api_subscribe_fail) {
@@ -5287,28 +5295,6 @@ TEST_F(MSPROF_ACL_CORE_UTEST, ProfWarmup_Success)
 TEST_F(MSPROF_ACL_CORE_UTEST, ProfModelUnSubscribe_NotLoaded)
 {
     EXPECT_NE(ACL_SUCCESS, Msprofiler::AclApi::ProfModelUnSubscribe(ACL_API_TYPE, 0xFFFF));
-}
-
-TEST_F(MSPROF_ACL_CORE_UTEST, ProfAclGetCompatibleFeatures_InitFail)
-{
-    MOCKER_CPP(&Analysis::Dvvp::Common::Config::FeatureManager::Init)
-        .stubs().will(returnValue((int32_t)PROFILING_FAILED));
-    size_t sz = 0;
-    void *data = nullptr;
-    EXPECT_EQ(ACL_ERROR_UNINITIALIZE, Msprofiler::AclApi::ProfAclGetCompatibleFeatures(&sz, &data));
-    EXPECT_EQ(ACL_ERROR_UNINITIALIZE, Msprofiler::AclApi::ProfAclGetCompatibleFeaturesV2(&sz, &data));
-}
-
-TEST_F(MSPROF_ACL_CORE_UTEST, ProfAclGetCompatibleFeatures_Success)
-{
-    MOCKER_CPP(&Analysis::Dvvp::Common::Config::FeatureManager::Init)
-        .stubs().will(returnValue((int32_t)PROFILING_SUCCESS));
-    MOCKER_CPP(&Analysis::Dvvp::Common::Config::FeatureManager::GetIncompatibleFeatures)
-        .stubs().will(returnValue((Analysis::Dvvp::Common::Config::FeatureRecord *)nullptr));
-    size_t sz = 0;
-    void *data = nullptr;
-    EXPECT_EQ(ACL_SUCCESS, Msprofiler::AclApi::ProfAclGetCompatibleFeatures(&sz, &data));
-    EXPECT_EQ(ACL_SUCCESS, Msprofiler::AclApi::ProfAclGetCompatibleFeaturesV2(&sz, &data));
 }
 
 TEST_F(MSPROF_ACL_CORE_UTEST, ProfAclRegisterDeviceCallback_Branches)
