@@ -2678,6 +2678,11 @@ rtError_t ApiImpl::MemCopySyncEx(void * const dst, const uint64_t destMax, const
 
 static void ConvertMappedAddrToDevice(Device* const device, void* &src, rtMemcpyKind_t &kind)
 {
+#if defined(__x86_64__)
+    RT_LOG(RT_LOG_DEBUG, "On x86, hardware does not support using sdma for h2d copy.");
+    return;
+#endif
+
     if (!g_isAddrFlatDevice) {
         return;
     }
