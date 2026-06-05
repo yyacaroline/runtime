@@ -13,7 +13,7 @@
 
 int32_t LogGetSigNo_stub(void)
 {
-    static count = 0;
+    static int32_t count = 0;
     count++;
     sleep(1);
     if (count > 10) {
@@ -86,7 +86,7 @@ drvError_t drvHdcGetCapacity(struct drvHdcCapacity *capacity)
 
 drvError_t halHdcGetSessionAttr(HDC_SESSION session, int attr, int *value)
 {
-    value = 1; // 1 non-docker; 2 docker
+    *value = 1; // 1 non-docker; 2 docker
     return DRV_ERROR_NONE;
 }
 
@@ -104,13 +104,13 @@ drvError_t drvGetDevNum(uint32_t *num_dev)
 
 drvError_t drvGetDevIDByLocalDevID(uint32_t localDevId, uint32_t *devId)
 {
-    devId = 0;
+    *devId = 0;
     return 0;
 }
 
 drvError_t drvDeviceStatus(uint32_t devId, drvStatus_t *status)
 {
-    status = DRV_STATUS_WORK;
+    *status = DRV_STATUS_WORK;
     return DRV_ERROR_NONE;
 }
 

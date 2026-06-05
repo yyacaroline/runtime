@@ -34,7 +34,7 @@ int log_get_dfx_param(uint32_t device_id, uint32_t channel_type, uint32_t cmd_ty
     return 0;
 }
 
-int32_t log_get_device_id(uint32_t *devices, uint32_t *devNum, uint32_t len)
+int32_t log_get_device_id(int32_t *devices, int32_t *devNum, int32_t len)
 {
     if (devices == NULL || devNum == NULL || len == 0) {
         return -1;

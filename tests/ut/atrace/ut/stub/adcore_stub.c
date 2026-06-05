@@ -7,7 +7,10 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <unistd.h>
+
 #include "adcore_api.h"
+#include "securec.h"
 #include "trace_msg.h"
 
 int32_t AdxSendMsgAndGetResultByType(AdxHdcServiceType type, IdeTlvConReq req, AdxStringBuffer const result,

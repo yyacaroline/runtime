@@ -189,6 +189,7 @@ target_link_libraries(ep_slogd_utest PRIVATE
 
 target_compile_options(ep_slogd_utest PRIVATE
     -Werror
+    -include ${UT_SOURCE_PATH}/stub/ascend_hal_ut_compat.h
 )
 
 set_target_properties(ep_slogd_utest
@@ -232,6 +233,7 @@ target_link_libraries(ep_slogd_milan_utest PRIVATE
 
 target_compile_options(ep_slogd_milan_utest PRIVATE
     -Werror
+    -include ${UT_SOURCE_PATH}/stub/ascend_hal_ut_compat.h
 )
 
 set_target_properties(ep_slogd_milan_utest

@@ -8,7 +8,12 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "adcore_api.h"
+#include "securec.h"
 
 // stub for bbox_proc
 void BboxStartMainThread(void)
@@ -107,7 +112,7 @@ int32_t AdxSendMsgByHandle(const CommHandle *handle, CmdClassT type, IdeString d
 
 int32_t AdxGetAttrByCommHandle(const CommHandle *handle, int32_t attr, int32_t *value)
 {
-    return (int32_t)halHdcGetSessionAttr(handle->session, attr, value);
+    return (int32_t)halHdcGetSessionAttr((HDC_SESSION)handle->session, attr, value);
 }
 
 int32_t AdxSendMsg(const CommHandle *handle, AdxString data, uint32_t len)

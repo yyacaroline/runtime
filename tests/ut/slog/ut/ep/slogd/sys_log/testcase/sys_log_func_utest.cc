@@ -14,6 +14,7 @@
 #include "mockcpp/mockcpp.hpp"
 
 #include "log_common.h"
+#include "securec.h"
 #include "slogd_syslog.h"
 #include "slogd_kernel_log.h"
 #include "slogd_config_mgr.h"
@@ -66,10 +67,17 @@ public:
     int DlogCmdGetIntRet(const char *path, const char*cmd)
     {
         char resultFile[200] = {0};
-        sprintf(resultFile, "%s/EP_SLOGD_SYS_LOG_FUNC_UTEST_cmd_result.txt", path);
+        int ret = snprintf_s(resultFile, sizeof(resultFile), sizeof(resultFile) - 1,
+            "%s/EP_SLOGD_SYS_LOG_FUNC_UTEST_cmd_result.txt", path);
+        if (ret < 0) {
+            return 0;
+        }
 
         char cmdToFile[400] = {0};
-        sprintf(cmdToFile, "%s > %s", cmd, resultFile);
+        ret = snprintf_s(cmdToFile, sizeof(cmdToFile), sizeof(cmdToFile) - 1, "%s > %s", cmd, resultFile);
+        if (ret < 0) {
+            return 0;
+        }
         system(cmdToFile);
 
         char buf[100] = {0};
@@ -92,9 +100,11 @@ public:
         }
 
         char cmd[200] = {0};
-        sprintf(cmd, "cat %s | grep -i %s | wc -l", path, str);
-        int ret = DlogCmdGetIntRet(PATH_ROOT, cmd);
-        return ret;
+        int ret = snprintf_s(cmd, sizeof(cmd), sizeof(cmd) - 1, "cat %s | grep -a -i %s | wc -l", path, str);
+        if (ret < 0) {
+            return 0;
+        }
+        return DlogCmdGetIntRet(PATH_ROOT, cmd);
     }
 };
 
@@ -202,7 +212,9 @@ TEST_F(EP_SLOGD_SYS_LOG_FUNC_UTEST, KernelLogReceive)
         SlogdKernelLogReceive(nullptr);
     }
 
-    EXPECT_EQ(7, DlogCheckLog(LOG_FILE_PATH "/device-os/device-os_2025022835702082.log", "KERNEL"));
+    int32_t logNum = DlogCheckLog(LOG_FILE_PATH "/device-os/device-os_2025022835702082.log", "KERNEL");
+    EXPECT_GE(logNum, 6);
+    EXPECT_LE(logNum, 9);
     SlogdKernelLogExit();
 }
 

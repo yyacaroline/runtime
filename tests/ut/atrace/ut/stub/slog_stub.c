@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "slog.h"
+#include <stdio.h>
 #include <unistd.h>
 
 int g_log_level = DLOG_WARN;

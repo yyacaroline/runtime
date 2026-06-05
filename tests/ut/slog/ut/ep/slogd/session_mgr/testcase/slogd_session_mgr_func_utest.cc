@@ -90,7 +90,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, ContinuousSessionError)
 
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SingleSession)
 {
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = SESSION_SINGLE_EXPORT;
@@ -100,7 +100,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SingleSession)
 
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SingleSessionError)
 {
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = SESSION_SINGLE_EXPORT;
@@ -144,7 +144,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SingleSessionError)
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, InValidType)
 {
     SessionType invalidType = (SessionType)99;
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = invalidType;
@@ -172,7 +172,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, InvalidSession)
 
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, InvalidData)
 {
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = SESSION_SINGLE_EXPORT;
@@ -213,7 +213,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, ContinuousGetStatusFailed)
 #define SESSION_ERROR_WAIT_TIMEOUT      16
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SendMsgSingleTimeoutTwice)
 {
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = SESSION_SINGLE_EXPORT;
@@ -227,7 +227,7 @@ TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SendMsgSingleTimeoutTwice)
 
 TEST_F(EP_SLOGD_SESSION_MGR_FUNC_UTEST, SendMsgSingleTimeoutAllAlong)
 {
-    CommHandle session = {OptType::COMM_HDC, -1, NR_COMPONENTS, -1, nullptr};
+    CommHandle session = {OptType::COMM_HDC, static_cast<OptHandle>(-1), NR_COMPONENTS, -1, nullptr};
     SessionItem item;
     item.session = (void *)&session;
     item.type = SESSION_SINGLE_EXPORT;

@@ -30,7 +30,7 @@ void *shmatStub(int32_t shmid, const void *shmaddr, int32_t shmflg)
 {
     g_shmFlag = shmflg;
     if (g_shmFlag == SHM_RDONLY) {
-        read(g_shmFd, shmaddr, strlen(shmaddr));
+        read(g_shmFd, (void *)shmaddr, strlen(shmaddr));
     }
     g_value = malloc(10240);
     return g_value;

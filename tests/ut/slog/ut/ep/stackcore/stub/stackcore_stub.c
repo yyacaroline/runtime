@@ -14,6 +14,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include "securec.h"
+
 int CheckStackcoreFileNum(const char *path)
 {
     DIR *dirStream = opendir(path);

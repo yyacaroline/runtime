@@ -144,6 +144,7 @@ target_link_libraries(ep_log_daemon_utest PRIVATE
 
 target_compile_options(ep_log_daemon_utest PRIVATE
     -Werror
+    -include ${UT_SOURCE_PATH}/stub/ascend_hal_ut_compat.h
 )
 
 set_target_properties(ep_log_daemon_utest

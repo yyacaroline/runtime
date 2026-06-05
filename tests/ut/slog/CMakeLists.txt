@@ -8,4 +8,5 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 include_directories(${CANN_3RD_LIB_PATH}/mockcpp_src/include)
+include_directories(${CANN_3RD_LIB_PATH}/boost-1.87.0)
 add_subdirectory(ut)

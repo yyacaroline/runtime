@@ -196,7 +196,7 @@ TEST_F(ScdMemoryUtest, TestMemoryReadInt64)
     auto readFunc = {TestMemoryLocalRead, TestMemoryRemoteRead};
     for (auto iter : readFunc) {
         iter([](void **src, size_t *size){
-            int64_t tmp = 0xABCDBCDACDABDABC;
+            int64_t tmp = static_cast<int64_t>(0xABCDBCDACDABDABCULL);
             *size = sizeof(tmp);
             *src = malloc(*size);
             void *addr = *src;
@@ -211,7 +211,7 @@ TEST_F(ScdMemoryUtest, TestMemoryReadUnAligned)
     auto readFunc = {TestMemoryLocalRead, TestMemoryRemoteRead};
     for (auto iter : readFunc) {
         iter([](void **src, size_t *size){
-            int64_t tmp = 0xABCDBCDACDABDABC;
+            int64_t tmp = static_cast<int64_t>(0xABCDBCDACDABDABCULL);
             *size = sizeof(int64_t);
             void *addr = malloc(*size + 1);
             *src = addr + 1;
@@ -228,7 +228,10 @@ TEST_F(ScdMemoryUtest, TestMemoryReadArray)
     auto readFunc = {TestMemoryLocalRead, TestMemoryRemoteRead};
     for (auto iter : readFunc) {
         iter([](void **src, size_t *size){
-            int64_t tmp[2] = {0xABCDBCDACDABDABC, 0xDABCABCDBCDACDAB};
+            int64_t tmp[2] = {
+                static_cast<int64_t>(0xABCDBCDACDABDABCULL),
+                static_cast<int64_t>(0xDABCABCDBCDACDABULL)
+            };
             *size = sizeof(tmp);
             *src = malloc(*size);
             void *addr = *src;
@@ -271,7 +274,10 @@ TEST_F(ScdMemoryUtest, TestMemoryReadRemoteMemcpyFailed)
         auto readFunc = {TestMemoryRemoteRead};
         for (auto iter : readFunc) {
             iter([](void **src, size_t *size){
-                int64_t tmp[2] = {0xABCDBCDACDABDABC, 0xDABCABCDBCDACDAB};
+                int64_t tmp[2] = {
+                    static_cast<int64_t>(0xABCDBCDACDABDABCULL),
+                    static_cast<int64_t>(0xDABCABCDBCDACDABULL)
+                };
                 *size = sizeof(int64_t) * 2;
                 void *addr = malloc(*size + 1);
                 *src = addr + 1;
@@ -298,7 +304,7 @@ TEST_F(ScdMemoryUtest, TestMemoryReadLocalMemcpyFailed)
         auto readFunc = {TestMemoryLocalRead};
         for (auto iter : readFunc) {
             iter([](void **src, size_t *size){
-                int64_t tmp = 0xABCDBCDACDABDABC;
+                int64_t tmp = static_cast<int64_t>(0xABCDBCDACDABDABCULL);
                 *size = sizeof(int64_t);
                 void *addr = malloc(*size + 1);
                 *src = addr + 1;

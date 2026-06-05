@@ -15,7 +15,7 @@
 #include "self_log_stub.h"
 
 extern "C" {
-int32_t log_get_device_id(uint32_t *devices, uint32_t *devNum, uint32_t len);
+int32_t log_get_device_id(int32_t *devices, int32_t *devNum, int32_t len);
 }
 
 static ThreadManage g_threadManage;

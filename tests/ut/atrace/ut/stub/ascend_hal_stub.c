@@ -7,7 +7,12 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+#include <string.h>
+#include <unistd.h>
+
 #include "ascend_hal_stub.h"
+#include "securec.h"
+
 #define MAX_QUEUE_SIZE (8 * 1024 * 1024)
 #define MAX_QUEUE_COUNT 16
 #define DRV_RECV_MAX_LEN            524288
@@ -68,7 +73,7 @@ drvError_t halGetDeviceInfo(uint32_t devId, int32_t moduleType, int32_t infoType
 
 drvError_t drvGetDevIDByLocalDevID(uint32_t localDevId, uint32_t *devId)
 {
-    devId = localDevId + 1;
+    *devId = localDevId + 1;
     return DRV_ERROR_NONE;
 }
 
@@ -121,7 +126,7 @@ int32_t log_read_by_type_stub_start(int device_id, char *buf, unsigned int *size
                 test log_read_by_type start, test log_read_by_type start, \
                 test log_read_by_type start, test log_read_by_type start, \
                 test log_read_by_type start, test log_read_by_type start.";
-    strncpy_s(head + sizeof(head), *size - sizeof(head), msg, strlen(msg));
+    strncpy_s(buf + sizeof(*head), *size - sizeof(*head), msg, strlen(msg));
     head->log_size = strlen(msg) + 1;
     *size = head->log_size + sizeof(TraceInfoHead);
     usleep(timeout);
@@ -140,7 +145,7 @@ int32_t log_read_by_type_stub_middle(int device_id, char *buf, unsigned int *siz
                 test log_read_by_type mid, test log_read_by_type mid, \
                 test log_read_by_type mid, test log_read_by_type mid, \
                 test log_read_by_type mid, test log_read_by_type mid.";
-    strncpy_s(head + sizeof(head), *size - sizeof(head), msg, strlen(msg));
+    strncpy_s(buf + sizeof(*head), *size - sizeof(*head), msg, strlen(msg));
     head->log_size = strlen(msg) + 1;
     *size = head->log_size + sizeof(TraceInfoHead);
     usleep(timeout);
@@ -159,7 +164,7 @@ int32_t log_read_by_type_stub_end(int device_id, char *buf, unsigned int *size, 
                 test log_read_by_type end, test log_read_by_type end, \
                 test log_read_by_type end, test log_read_by_type end, \
                 test log_read_by_type end, test log_read_by_type end.";
-    strncpy_s(head + sizeof(head), *size - sizeof(head), msg, strlen(msg));
+    strncpy_s(buf + sizeof(*head), *size - sizeof(*head), msg, strlen(msg));
     head->log_size = strlen(msg) + 1;
     *size = head->log_size + sizeof(TraceInfoHead);
     usleep(timeout);
@@ -182,7 +187,7 @@ int32_t log_read_by_type_stub_size_over(int device_id, char *buf, unsigned int *
                 test log_read_by_type over, test log_read_by_type over, \
                 test log_read_by_type over, test log_read_by_type over, \
                 test log_read_by_type over, test log_read_by_type over.";
-    strncpy_s(head + sizeof(head), *size - sizeof(head), msg, strlen(msg));
+    strncpy_s(buf + sizeof(*head), *size - sizeof(*head), msg, strlen(msg));
     head->log_size = strlen(msg) + 1;
     *size = head->log_size + sizeof(TraceInfoHead);
     usleep(timeout);
