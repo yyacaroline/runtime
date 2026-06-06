@@ -24,7 +24,7 @@ aclError aclrtCreateLabel(aclrtLabel *label)
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明
@@ -65,7 +65,7 @@ aclError aclrtSetLabel(aclrtLabel label, aclrtStream stream)
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明
@@ -105,7 +105,7 @@ aclError aclrtDestroyLabel(aclrtLabel label)
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明
@@ -144,7 +144,7 @@ aclError aclrtCreateLabelList(aclrtLabel *labels, size_t num, aclrtLabelList *la
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明
@@ -185,7 +185,7 @@ aclError aclrtDestroyLabelList(aclrtLabelList labelList)
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明
@@ -224,7 +224,7 @@ aclError aclrtSwitchLabelByIndex(void *ptr, uint32_t maxValue, aclrtLabelList la
 | 产品 | 是否支持 |
 | --- | :---: |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ### 功能说明

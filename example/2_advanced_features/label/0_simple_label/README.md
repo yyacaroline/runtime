@@ -11,7 +11,7 @@
 | 产品 | 是否支持 |
 | --- | --- |
 | Ascend 950PR/Ascend 950DT | √ |
-| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | ☓ |
+| Atlas A3 训练系列产品/Atlas A3 推理系列产品 | √ |
 | Atlas A2 训练系列产品/Atlas A2 推理系列产品 | √ |
 
 ## 编译运行
@@ -53,10 +53,10 @@ bash run.sh
     - 调用 `aclmdlRIExecuteAsync` 接口异步执行模型运行实例。
     - 调用 `aclmdlRIDestroy` 接口销毁模型运行实例。
 - Label 管理
-    - 调用 `aclrtCreateLabel` 和 `aclrtDestroyLabel` 接口创建并释放 Label（Ascend 950PR/Ascend 950DT、Atlas A2支持，Atlas A3不支持）。
-    - 调用 `aclrtCreateLabelList` 和 `aclrtDestroyLabelList` 接口组装并释放 LabelList（Ascend 950PR/Ascend 950DT、Atlas A2支持，Atlas A3不支持）。
-    - 调用 `aclrtSetLabel` 接口在模型运行实例绑定的 Stream 上设置 Label（Ascend 950PR/Ascend 950DT、Atlas A2支持，Atlas A3不支持）。
-    - 调用 `aclrtSwitchLabelByIndex` 接口根据 Device 内存中的分支索引执行 Label 切换（Ascend 950PR/Ascend 950DT、Atlas A2支持，Atlas A3不支持）。
+    - 调用 `aclrtCreateLabel` 和 `aclrtDestroyLabel` 接口创建并释放 Label。
+    - 调用 `aclrtCreateLabelList` 和 `aclrtDestroyLabelList` 接口组装并释放 LabelList。
+    - 调用 `aclrtSetLabel` 接口在模型运行实例绑定的 Stream 上设置 Label。
+    - 调用 `aclrtSwitchLabelByIndex` 接口根据 Device 内存中的分支索引执行 Label 切换。
 
 ## 示例输出
 
