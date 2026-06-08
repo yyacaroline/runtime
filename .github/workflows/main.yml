@@ -1,7 +1,9 @@
-name: Compile on Comment
+name: Compile on PR Comment
 on:
-  pull_request_comment:
+  issue_comment:  # ✅ 正确事件名
     types: [created]
+
+# 必须有的 jobs（解决你第一个报错）
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,7 +11,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 在这里写你要执行的命令
+      # 只在 PR 评论、且包含 /compile 时执行
       - name: Run compile
-        if: contains(github.event.comment.body, '/compile')
-        run: echo "执行编译命令"
+        if: >
+          github.event.issue.pull_request &&
+          startsWith(github.event.comment.body, '/compile')
+        run: echo "开始执行编译任务！"
