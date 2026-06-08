@@ -12,8 +12,6 @@ on:
       pr_number:
         type: string
         default: '3'
-  pull_request:
-    types: ["merge", "open", "reopen"]
-    branches: [ "main" ]
+
 
 
