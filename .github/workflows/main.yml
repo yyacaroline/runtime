@@ -1,19 +1,18 @@
-name: Compile on PR Comment
-on:
-  issue_comment:  # ✅ 正确事件名
-    types: [created]
-
-# 必须有的 jobs（解决你第一个报错）
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on: [push]
 jobs:
-  build:
+  Explore-GitHub-Actions:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 只在 PR 评论、且包含 /compile 时执行
-      - name: Run compile
-        if: >
-          github.event.issue.pull_request &&
-          startsWith(github.event.comment.body, '/compile')
-        run: echo "开始执行编译任务！"
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v6
+      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+      - run: echo "🍏 This job's status is ${{ job.status }}."
