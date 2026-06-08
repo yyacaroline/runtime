@@ -1,17 +1,20 @@
-name: runtime_action
+# 这是必填的工作流名称
+name: My Workflow
 
+# 触发条件（比如push代码时运行）
 on:
-  workflow_dispatch:
-    inputs:
-      repo_name:
-        type: string
-        default: 'runtime'
-      target_branch:
-        type: string
-        default: 'master'
-      pr_number:
-        type: string
-        default: '3'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-
-
+# ✅ 核心：必须有的 jobs 节点
+jobs:
+  # 自定义一个任务名称（比如build）
+  build:
+    # 运行环境
+    runs-on: ubuntu-latest
+    # 任务步骤
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
