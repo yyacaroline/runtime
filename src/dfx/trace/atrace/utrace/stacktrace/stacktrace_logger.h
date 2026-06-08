@@ -79,6 +79,8 @@ static inline void TraceDlogInner(int level, const char *extendStr, const char *
 #define STACKTRACE_LOG_TITLE_SUB    "[sub logcat]"
 
 void StacktraceLogSetPath(const char *path, const char *name);
+void StacktraceLogSetPathSuffix(const char *path, const char *name, const char *suffix);
+void StackcoreLogSaveWithFlag(uint32_t flag);
 void StackcoreLogSave(void);
 void StacktraceLogInner(const char *format, ...);
 

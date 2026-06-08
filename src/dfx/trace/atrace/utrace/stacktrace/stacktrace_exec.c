@@ -15,7 +15,6 @@
 #include "scd_process.h"
 
 #define STACKTRACE_DUMP_EXE "asc_dumper"
-#define STACKTRACE_DUMP_BIN_MODE  0xAABB0003U
 #define TRACE_UTIL_TEMP_FAILURE_RETRY(exp) ({      \
             __typeof__(exp) rc;                    \
             do {                                   \
@@ -82,12 +81,12 @@ STATIC int32_t ScExecEntry(void *args)
     int32_t pipeFd[2];
     errno = 0;
     if(pipe2(pipeFd, O_CLOEXEC) != 0) {
-        LOGE("create args pipe failed, errno=%d.", errno);
+        STACKTRACE_LOG_ERR("create args pipe failed, errno=%d.", errno);
         return SCD_ERR_CODE_PIPE2;
     }
     int32_t writeLen = (int32_t)sizeof(ScdProcessArgs);
     if(fcntl(pipeFd[1], F_SETPIPE_SZ, writeLen) < writeLen) {
-        LOGE("set args pipe size failed, errno=%d", errno);
+        STACKTRACE_LOG_ERR("set args pipe size failed, errno=%d", errno);
         return SCD_ERR_CODE_FCNTL;
     }
 
@@ -98,21 +97,45 @@ STATIC int32_t ScExecEntry(void *args)
     int32_t iovsCnt = 1;
     ssize_t ret = TRACE_UTIL_TEMP_FAILURE_RETRY(writev(pipeFd[1], iovs, iovsCnt));
     if (ret != writeLen) {
-        LOGE("write args to pipe failed, ret=%ld, errno=%d.", ret, errno);
+        STACKTRACE_LOG_ERR("write args to pipe failed, ret=%ld, errno=%d.", ret, errno);
         return SCD_ERR_CODE_WRITEV;
     }
     if (TRACE_UTIL_TEMP_FAILURE_RETRY(dup2(pipeFd[0], STDIN_FILENO)) == -1) {
-        LOGE("dup2 stdin failed, errno=%d.", errno);
+        STACKTRACE_LOG_ERR("dup2 stdin failed, errno=%d.", errno);
         return SCD_ERR_CODE_DUP2;
     }
     (void)syscall(SYS_close, pipeFd[0]);
     (void)syscall(SYS_close, pipeFd[1]);
 
     if (execlp(info->exePath, STACKTRACE_DUMP_EXE, NULL) < 0) {
-        LOGE("execlp stacktrace dumper process failed, path=%s, errno=%d.", info->exePath, errno);
+        STACKTRACE_LOG_ERR("execlp stacktrace dumper process failed, path=%s, errno=%d.", info->exePath, errno);
         _exit(SCD_ERR_CODE_EXECLP);
     }
     return SCD_ERR_CODE_SUCCESS;
+}
+
+STATIC void ScExecLogExitError(int32_t pid, int32_t exitStatus)
+{
+    switch (exitStatus) {
+        case SCD_ERR_CODE_PIPE2:
+            STACKTRACE_LOG_ERR("create args pipe failed.");
+            break;
+        case SCD_ERR_CODE_FCNTL:
+            STACKTRACE_LOG_ERR("set args pipe size failed.");
+            break;
+        case SCD_ERR_CODE_WRITEV:
+            STACKTRACE_LOG_ERR("write args to pipe failed.");
+            break;
+        case SCD_ERR_CODE_DUP2:
+            STACKTRACE_LOG_ERR("dup2 stdin failed.");
+            break;
+        case SCD_ERR_CODE_EXECLP:
+            STACKTRACE_LOG_ERR("execlp stacktrace dumper process failed.");
+            break;
+        default:
+            STACKTRACE_LOG_ERR("child %d exited normally with non-zero exit status(%d)", pid, exitStatus);
+            break;
+    }
 }
 
 TraStatus ScExecStart(void *stack, ThreadArgument *args, int32_t *pid)
@@ -123,7 +146,7 @@ TraStatus ScExecStart(void *stack, ThreadArgument *args, int32_t *pid)
     }
     int32_t err = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
     if (err != 0) {
-        LOGE("set dumpable failed, errno=%d", errno);
+        STACKTRACE_LOG_ERR("set dumpable failed, errno=%d", errno);
         return TRACE_FAILURE;
     }
     const int32_t child = clone(ScExecEntry, stack, CLONE_VFORK | CLONE_FS | CLONE_UNTRACED, args, NULL, NULL, NULL);
@@ -143,7 +166,7 @@ TraStatus ScExecStart(void *stack, ThreadArgument *args, int32_t *pid)
         TraceStackRecorderInfo recordInfo = {args->crashTime, args->signo, args->pid, args->tid};
         TraStatus ret = TraceSafeMkdirPath(&recordInfo);
         if (ret != TRACE_SUCCESS) {
-            LOGE("mkdir path failed, ret=%d.", ret);
+            STACKTRACE_LOG_ERR("mkdir path failed, ret=%d.", ret);
         }
     }
     return TRACE_SUCCESS;
@@ -166,14 +189,13 @@ TraStatus ScExecEnd(int32_t pid)
             LOGR("child %d exited normally with zero", pid);
             return TRACE_SUCCESS;
         } else {
-            LOGE("child %d exited normally with non-zero exit status(%d)", pid, exitStatus);
+            ScExecLogExitError(pid, exitStatus);
         }
     } else if (WIFSIGNALED(status)) {
         int32_t signalNum = WTERMSIG(status);
-        STACKTRACE_LOG_RUN("sub process exited by signal, signal(%d).", signalNum);
-        LOGE("child %d exited by signal %d", pid, signalNum);
+        STACKTRACE_LOG_ERR("sub process exited by signal, signal(%d), child=%d.", signalNum, pid);
     } else {
-        LOGE("child %d did not exit normally", pid);
+        STACKTRACE_LOG_ERR("child %d did not exit normally", pid);
     }
 
     return TRACE_FAILURE;

@@ -28,7 +28,7 @@ typedef struct {
 
 STATIC StacktraceLogMgr *g_stackLogMgr = NULL;
 
-void StacktraceLogSetPath(const char *path, const char *name)
+void StacktraceLogSetPathSuffix(const char *path, const char *name, const char *suffix)
 {
     if (g_stackLogMgr == NULL) {
         return;
@@ -37,11 +37,17 @@ void StacktraceLogSetPath(const char *path, const char *name)
         LOGE("file path [%s] or file name [%s] is not allowed", path, name);
         return;
     }
-    int32_t ret = snprintf_s(g_stackLogMgr->path, SCD_MAX_FULLPATH_LEN + 1U, SCD_MAX_FULLPATH_LEN, "%s/%s.txt", path, name);
+    int32_t ret = snprintf_s(g_stackLogMgr->path, SCD_MAX_FULLPATH_LEN + 1U, SCD_MAX_FULLPATH_LEN, "%s/%s%s",
+        path, name, suffix);
     if (ret == -1) {
         LOGE("snprintf_s file path failed");
         return;
     }
+}
+
+void StacktraceLogSetPath(const char *path, const char *name)
+{
+    StacktraceLogSetPathSuffix(path, name, ".txt");
 }
 
 void StacktraceLogInner(const char *format, ...)
@@ -60,13 +66,13 @@ void StacktraceLogInner(const char *format, ...)
     va_end(args);
 }
 
-void StackcoreLogSave(void)
+void StackcoreLogSaveWithFlag(uint32_t flag)
 {
     if (g_stackLogMgr == NULL) {
         return;
     }
 
-    int32_t fd = TraceOpen(g_stackLogMgr->path, (uint32_t)O_CREAT | (uint32_t)O_RDWR | (uint32_t)O_APPEND, 0640);
+    int32_t fd = TraceOpen(g_stackLogMgr->path, flag, 0640);
     if (fd < 0) {
         LOGE("open log file \"%s\" failed, fd=%d.", g_stackLogMgr->path, fd);
         return;
@@ -79,6 +85,11 @@ void StackcoreLogSave(void)
     }
     ScdUtilWriteNewLine(fd);
     TraceClose(&fd);
+}
+
+void StackcoreLogSave(void)
+{
+    StackcoreLogSaveWithFlag((uint32_t)O_CREAT | (uint32_t)O_RDWR | (uint32_t)O_APPEND);
 }
 
 TraStatus StacktraceLogInit(const char *title)

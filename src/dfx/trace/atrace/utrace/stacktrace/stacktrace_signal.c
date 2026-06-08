@@ -120,10 +120,15 @@ STATIC void TraceSignalHandler(int32_t signo, siginfo_t *siginfo, void *ucontext
             g_sigMgr.sigAct[i].callbackFunc(&info);
         }
         if (signo == SIG_ATRACE) {
+#ifdef ENABLE_SCD
+            if (ScdSignalIsBinDump(info.signo, info.siginfo)) {
+                StackcoreLogSave();
+            }
+#endif
             return;
         }
 #ifdef ENABLE_SCD
-        StackcoreLogSave(); // no need to save if receive SIG_ATRACE
+        StackcoreLogSave(); // SIG_ATRACE bin dump is saved above; save crash signals here.
 #endif
         // recover the signal handler
         if (sigaction(g_sigMgr.sigAct[i].signo, &g_sigMgr.sigAct[i].oldSigAct, NULL) < 0) {

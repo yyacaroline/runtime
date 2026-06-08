@@ -94,7 +94,8 @@ STATIC TraStatus DumperSignalSetArgs(const TraceSignalInfo* info)
         LOGE("get file name failed, ret=%d.", ret);
         return TRACE_FAILURE;
     }
-    StacktraceLogSetPath(g_dumperMgr.args.filePath, g_dumperMgr.args.fileName);
+    StacktraceLogSetPathSuffix(g_dumperMgr.args.filePath, g_dumperMgr.args.fileName,
+        ScdSignalIsBinDump(info->signo, info->siginfo) ? ".log" : ".txt");
     g_dumperMgr.args.crashTime = info->timeStamp;
     g_dumperMgr.args.pid = pid;
     g_dumperMgr.args.tid = tid;

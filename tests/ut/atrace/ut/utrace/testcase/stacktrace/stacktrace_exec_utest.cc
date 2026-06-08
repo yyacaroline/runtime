@@ -11,13 +11,16 @@
 #include "gtest/gtest.h"
 #include "mockcpp/mockcpp.hpp"
 
+#include <fstream>
 #include <pwd.h>
 #include <signal.h>
+#include <string>
 #include "stacktrace_exec.h"
 #include "stacktrace_safe_recorder.h"
 #include "stacktrace_err_code.h"
 #include "dumper_core.h"
 #include "scd_process.h"
+#include "stacktrace_logger.h"
 
 extern "C" {
     void TraceInit(void);
@@ -30,6 +33,26 @@ void Mocker_Subprocess(void)
     // 通过mocker使st执行走到新的父进程框架
     MOCKER(ScdCoreStart).stubs().will(invoke(ScExecStart));
     MOCKER(ScdCoreEnd).stubs().will(invoke(ScExecEnd));
+}
+
+static void CheckFileContains(const char *filePath, const char *content)
+{
+    std::ifstream file(filePath);
+    ASSERT_TRUE(file.is_open());
+    std::string log((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    EXPECT_NE(std::string::npos, log.find(content)) << "missing log content: " << content << ", file: " << filePath;
+}
+
+static void SetLogPath(const char *name)
+{
+    StacktraceLogSetPathSuffix(LLT_TEST_DIR, name, ".log");
+}
+
+static void SaveAndCheckLogContains(const char *name, const char *content)
+{
+    StackcoreLogSave();
+    const std::string path = std::string(LLT_TEST_DIR) + "/" + name + ".log";
+    CheckFileContains(path.c_str(), content);
 }
 
 class TraceExecUtest: public testing::Test {
@@ -141,6 +164,41 @@ TEST_F(TraceExecUtest, TestScExecEntry)
     GlobalMockObject::verify();
 }
 
+TEST_F(TraceExecUtest, TestScExecEntrySyscallFailedLog)
+{
+    ThreadArgument args = {0};
+    int32_t ret = 0;
+    auto mocker_fcntl = reinterpret_cast<int (*)(int, int)>(fcntl);
+
+    SetLogPath("test_exec_entry_pipe2_failed");
+    MOCKER(pipe2).stubs().will(returnValue(-1));
+    ret = ScExecEntry((void *)&args);
+    EXPECT_EQ(SCD_ERR_CODE_PIPE2, ret);
+    SaveAndCheckLogContains("test_exec_entry_pipe2_failed", "create args pipe failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_entry_fcntl_failed");
+    MOCKER(mocker_fcntl).stubs().will(returnValue(-1));
+    ret = ScExecEntry((void *)&args);
+    EXPECT_EQ(SCD_ERR_CODE_FCNTL, ret);
+    SaveAndCheckLogContains("test_exec_entry_fcntl_failed", "set args pipe size failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_entry_writev_failed");
+    MOCKER(writev).stubs().will(returnValue(-1));
+    ret = ScExecEntry((void *)&args);
+    EXPECT_EQ(SCD_ERR_CODE_WRITEV, ret);
+    SaveAndCheckLogContains("test_exec_entry_writev_failed", "write args to pipe failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_entry_dup2_failed");
+    MOCKER(dup2).stubs().will(returnValue(-1));
+    ret = ScExecEntry((void *)&args);
+    EXPECT_EQ(SCD_ERR_CODE_DUP2, ret);
+    SaveAndCheckLogContains("test_exec_entry_dup2_failed", "dup2 stdin failed");
+    GlobalMockObject::verify();
+}
+
 TEST_F(TraceExecUtest, TestScExecStart)
 {
     ThreadArgument args = {0};
@@ -182,6 +240,53 @@ TEST_F(TraceExecUtest, TestScExecStart)
     stack = NULL;
 }
 
+TEST_F(TraceExecUtest, TestScExecStartSyscallFailedLog)
+{
+    ThreadArgument args = {0};
+    args.signo = SIG_ATRACE;
+    int32_t child = -1;
+    void *stack = malloc(1024);
+    ASSERT_NE(nullptr, stack);
+    TraStatus ret = TRACE_FAILURE;
+    auto mocker_prctl = reinterpret_cast<int (*)(int)>(prctl);
+    auto mocker_clone = reinterpret_cast<int (*)(int)>(clone);
+
+    SetLogPath("test_exec_start_prctl_failed");
+    MOCKER(mocker_prctl).stubs().will(returnValue(-1));
+    ret = ScExecStart(stack, &args, &child);
+    EXPECT_EQ(TRACE_FAILURE, ret);
+    SaveAndCheckLogContains("test_exec_start_prctl_failed", "set dumpable failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_start_clone_failed");
+    MOCKER(mocker_prctl).stubs().will(returnValue(0));
+    MOCKER(mocker_clone).stubs().will(returnValue(-1));
+    ret = ScExecStart(stack, &args, &child);
+    EXPECT_EQ(TRACE_FAILURE, ret);
+    SaveAndCheckLogContains("test_exec_start_clone_failed", "clone failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_start_ptracer_failed");
+    MOCKER(mocker_prctl).stubs().will(returnValue(0))
+        .then(returnValue(-1));
+    MOCKER(mocker_clone).stubs().will(returnValue(123));
+    ret = ScExecStart(stack, &args, &child);
+    EXPECT_EQ(TRACE_SUCCESS, ret);
+    SaveAndCheckLogContains("test_exec_start_ptracer_failed", "set ptracer failed");
+    GlobalMockObject::verify();
+
+    SetLogPath("test_exec_start_mkdir_failed");
+    MOCKER(mocker_prctl).stubs().will(returnValue(0));
+    MOCKER(mocker_clone).stubs().will(returnValue(123));
+    MOCKER(TraceSafeMkdirPath).stubs().will(returnValue(TRACE_FAILURE));
+    ret = ScExecStart(stack, &args, &child);
+    EXPECT_EQ(TRACE_SUCCESS, ret);
+    SaveAndCheckLogContains("test_exec_start_mkdir_failed", "mkdir path failed");
+    GlobalMockObject::verify();
+
+    free(stack);
+}
+
 static int32_t g_waitpid_status = 0;
 static void waitpid_set(int32_t status)
 {
@@ -202,6 +307,14 @@ static pid_t waitpid_stub(pid_t pid, int *wstatus, int options)
     return 0;
 }
 
+static void CheckScExecEndFailure(pid_t child, int32_t status, const char *logName, const char *expectedLog)
+{
+    SetLogPath(logName);
+    waitpid_set(status);
+    EXPECT_EQ(TRACE_FAILURE, ScExecEnd(child));
+    SaveAndCheckLogContains(logName, expectedLog);
+}
+
 TEST_F(TraceExecUtest, TestScExecEnd)
 {
     TraStatus ret = TRACE_FAILURE;
@@ -215,22 +328,35 @@ TEST_F(TraceExecUtest, TestScExecEnd)
     // waitpid return -1
     child = -1;
     MOCKER(waitpid).stubs().will(invoke(waitpid_stub));
-    ret = ScExecEnd(child);
-    EXPECT_EQ(TRACE_FAILURE, ret);
+    CheckScExecEndFailure(child, 0, "test_exec_end_waitpid_failed", "waitpid failed");
 
     child = 123;
     // child terminated normally with non-zero exit status(1)
-    waitpid_set(0x0100);
-    ret = ScExecEnd(child);
-    EXPECT_EQ(TRACE_FAILURE, ret);
+    CheckScExecEndFailure(child, 0x0100, "test_exec_end_nonzero_failed",
+        "child 123 exited normally with non-zero exit status(1)");
+
+    // child execlp failed, expect explicit error log instead of only exit code.
+    CheckScExecEndFailure(child, SCD_ERR_CODE_EXECLP << 8, "test_exec_end_execlp_failed",
+        "execlp stacktrace dumper process failed");
+
+    struct ExitLogCase {
+        int32_t errCode;
+        const char *logName;
+        const char *expectedLog;
+    };
+    const ExitLogCase exitLogCases[] = {
+        {SCD_ERR_CODE_PIPE2, "test_exec_end_pipe2_failed", "create args pipe failed"},
+        {SCD_ERR_CODE_FCNTL, "test_exec_end_fcntl_failed", "set args pipe size failed"},
+        {SCD_ERR_CODE_WRITEV, "test_exec_end_writev_failed", "write args to pipe failed"},
+        {SCD_ERR_CODE_DUP2, "test_exec_end_dup2_failed", "dup2 stdin failed"},
+    };
+    for (const auto &item : exitLogCases) {
+        CheckScExecEndFailure(child, item.errCode << 8, item.logName, item.expectedLog);
+    }
 
     // child terminated by a signal(3)
-    waitpid_set(0x0083);
-    ret = ScExecEnd(child);
-    EXPECT_EQ(TRACE_FAILURE, ret);
+    CheckScExecEndFailure(child, 0x0083, "test_exec_end_signal_failed", "sub process exited by signal, signal(3)");
 
     // child terminated with other error status(255)
-    waitpid_set(0x00FF);
-    ret = ScExecEnd(child);
-    EXPECT_EQ(TRACE_FAILURE, ret);
+    CheckScExecEndFailure(child, 0x00FF, "test_exec_end_unknown_failed", "child 123 did not exit normally");
 }

@@ -12,12 +12,15 @@
 #define STACKTRACE_COMMON_H
 
 #include <signal.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-#define SIG_ATRACE          35
-#define THREAD_NAME_LEN     16U
-#define MAX_BIN_PATH_LEN    1024U
-#define MAX_THREAD_NUM      1024U
+#define SIG_ATRACE              35
+#define STACKTRACE_DUMP_BIN_MODE 0xAABB0003U
+#define THREAD_NAME_LEN         16U
+#define MAX_BIN_PATH_LEN        1024U
+#define MAX_THREAD_NUM          1024U
 
 #define SCD_MAX_NAME_HEAD_LEN       64U
 #define SCD_MAX_FILENAME_LEN        128U
@@ -38,6 +41,12 @@ typedef enum ScdDumpType {
     SCD_DUMP_THREAD_TXT,
     SCD_DUMP_THREAD_BIN,
 } ScdDumpType;
+
+static inline bool ScdSignalIsBinDump(int32_t signo, const siginfo_t *siginfo)
+{
+    return (signo == SIG_ATRACE) && (siginfo != NULL) &&
+        ((uint32_t)siginfo->si_value.sival_int == STACKTRACE_DUMP_BIN_MODE);
+}
 
 // [child process] ---execv---> [new process]
 typedef struct ScdProcessArgs {

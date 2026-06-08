@@ -13,6 +13,7 @@
 #include "scd_log.h"
 #include "scd_util.h"
 #include "stacktrace_err_code.h"
+#include <fcntl.h>
 
 #define SCD_ARGC_NUM 2
 #define SCD_SLEEP_INTERVAL      (100 * 1000) // ms
@@ -46,9 +47,11 @@ STATIC TraStatus ScdInitLogCat(const ScdProcessArgs *args)
 
 STATIC void ScdReleaseLogCat(const ScdProcessArgs *args)
 {
-    if (args->handleType == SCD_DUMP_THREADS_TXT) {
-        StackcoreLogSave();
-    }
+    uint32_t flag = (uint32_t)O_CREAT | (uint32_t)O_RDWR;
+    flag |= (args->handleType == SCD_DUMP_THREADS_TXT) ? (uint32_t)O_APPEND : (uint32_t)O_TRUNC;
+    StacktraceLogSetPathSuffix(args->filePath, args->fileName,
+        (args->handleType == SCD_DUMP_THREADS_TXT) ? ".txt" : ".log");
+    StackcoreLogSaveWithFlag(flag);
     StackcoreLogExit();
 }
 
@@ -85,6 +88,7 @@ int32_t MAIN(int32_t argc, const char **argv)
         return SCD_ERR_CODE_DUMP_INFO;
     }
 
+    STACKTRACE_LOG_RUN("process dump success, ret=%d.", ret);
     ScdReleaseLogCat(&args);
     return SCD_ERR_CODE_SUCCESS;
 }
