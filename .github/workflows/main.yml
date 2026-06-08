@@ -1,0 +1,289 @@
+name: runtime_action
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_name:
+        type: string
+        default: 'runtime'
+      target_branch:
+        type: string
+        default: 'master'
+      pr_number:
+        type: string
+        default: '3'
+  pull_request:
+    types: ["merge", "open", "reopen"]
+    branches: [ "main" ]
+
+stages:
+  stage1:
+    name: image
+    select: selected_by_default
+    jobs:
+      JOB_image:
+        name: image
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              repository: https://test.gitcode.net/tanghaoran7/cann-ci.git
+              ref: refs/heads/main
+              token: ${{secrets.GIT_THR_TOKEN}}
+          -
+            name: revise_image
+            identifier: revise_image
+            run: |
+              pip3 install Pyyaml
+              cd ${{ steps.process_checkout.outputs.path }}
+              ls -lh
+              repo_name=${{ inputs.repo_name }}
+              target_branch=${{ inputs.target_branch }}
+              images_yaml_path="image-conf/${target_branch}/images.yaml"
+              echo "find ${repo_name} images config in ${images_yaml_path}"
+              mapfile -t images < <(python3 scripts/get_repo_images.py "$images_yaml_path" "$repo_name")
+
+              if [ ${#images[@]} -eq 0 ]; then
+                  echo "未找到任何任务镜像。请检查仓库名称或配置文件。"
+                  exit 1
+              fi
+
+              for item in "${images[@]}"; do
+                  task_name="${item%%:*}"  # 提取 task_name 名称
+                  result="${item#*:}"   # 提取 image 标签
+                  echo "${task_name}=$result" >> $ATOMGIT_OUTPUT
+              done
+          -
+            name: show_outputs
+            run: |
+              echo "image: ${{ steps.revise_image.outputs.Compile_Ascend_X86 }}"
+        if: "${{ default() }}"
+        runs-on: 
+        - default
+    pre:
+    - type: auto
+    fail-fast: true
+  stage2:
+    name: show
+    select: selected_by_default
+    jobs:
+      JOB_21:
+        name: read_image
+        select: selected_by_default
+        needs: []
+        steps:
+          -
+            name: 执行shell
+            run: echo ====image:${{ jobs.JOB_image.outputs.Compile_Ascend_X86 }}========
+        if: "${{ default() }}"
+        runs-on: 
+        - default
+      JOB_22:
+        name: get_pr_files
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              ref: refs/merge-requests/${{ inputs.pr_number }}/head
+              token: ${{secrets.GIT_TOKEN}}
+          -
+            name: get_pr
+            identifier: get_pr
+            run: |
+              target_branch=${{ inputs.target_branch }}
+              cd ${{ steps.process_checkout.outputs.path }}
+              ls -lh
+              git fetch --unshallow
+              git branch
+              git branch -r
+              git submodule update --init --depth 1 --recursive
+              # 找到 PR 与主干的公共祖先（真正的对比基准）
+              BASE=$(git merge-base HEAD origin/${target_branch})
+              echo "PR 基准 commit: $BASE"
+              git diff $BASE HEAD --stat
+              git -c core.quotePath=false diff $BASE HEAD --name-status > pr_filelist_mod.txt
+              git -c core.quotePath=false diff $BASE HEAD --name-only > pr_filelist.txt
+              git -c core.quotePath=false diff $BASE...HEAD --name-only --diff-filter=AM > pr_filelist_precommit.txt
+              git -c core.quotePath=false diff -U0 -w --no-renames $BASE...HEAD > update_file_detail.txt
+              cat pr_filelist_mod.txt
+              cat pr_filelist.txt
+              cat pr_filelist_precommit.txt
+              touch gitdiff.txt
+              while IFS= read -r line;do  if [[ -f $line && $line == *.md ]];then echo "------${line}" >>gitdiff.txt; git diff $BASE $line >> gitdiff.txt;  fi; done < pr_filelist.txt
+          - 
+            name: upload
+            uses: obs-upload
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{secrets.AK}}
+              secret-key: ${{secrets.SK}}
+              artifact-path: |
+                ${{ steps.process_checkout.outputs.path }}/pr_filelist.txt
+                ${{ steps.process_checkout.outputs.path }}/pr_filelist_mod.txt
+                ${{ steps.process_checkout.outputs.path }}/pr_filelist_precommit.txt
+              object-prefix: "test/"
+    pre:
+    - type: auto
+    fail-fast: true
+  stage3:
+    name: compile
+    select: selected_by_default
+    jobs:
+      JOB_1:
+        name: x86_compile
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              ref: refs/merge-requests/${{ inputs.pr_number }}/head
+              token: ${{secrets.GIT_TOKEN}}
+          -
+            name: download
+            uses: obs-download
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{secrets.AK}}
+              secret-key: ${{secrets.SK}}
+              key: "test/pr_filelist.txt"
+              path: ${{ steps.process_checkout.outputs.path }}
+          -
+            name: compile
+            run: |
+              cd ${{ steps.process_checkout.outputs.path }}
+              source /home/jenkins/Ascend/cann/bin/setenv.bash
+              set +e
+              bash build.sh --cann_3rd_lib_path="/home/jenkins/opensource" -f "pr_filelist.txt"
+              ret=$?
+
+              # 200 表示跳过编译，属于正常情况
+              if [ $ret -eq 200 ]; then
+                echo "not need compile"
+                mkdir build_out
+                touch build_out/cann-npu-runtime_9.0.0_linux-x86_64.run
+                exit 0
+              fi
+              exit $ret       
+          - name: upload
+            uses: obs-upload
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{secrets.AK}}
+              secret-key: ${{secrets.SK}}
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/build_out/*.run"
+              object-prefix: "test/"
+        if: "${{ default() }}"
+        runs-on: [self-hosted, cann=cann_pub_22]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:lv3_v1.1116
+      JOB_2:
+        name: arm_compile
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              token: ${{secrets.GIT_TOKEN}}
+          -
+            name: compile
+            run: cd ${{ steps.process_checkout.outputs.path }};source /home/jenkins/Ascend/cann/bin/setenv.bash; bash build.sh --cann_3rd_lib_path="/home/jenkins/opensource"       
+          - name: upload
+            uses: obs-upload
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{secrets.AK}}
+              secret-key: ${{secrets.SK}}
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/build_out/*.run"
+              object-prefix: "test/"
+        if: "${{ default() }}"
+        runs-on: [self-hosted, cann=cann_pub_230]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_arm:lv3_v1.1105
+      JOB_3:
+        name: precommit
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              ref: refs/merge-requests/${{ inputs.pr_number }}/head
+              token: ${{secrets.GIT_TOKEN}}
+              path: "./runner"
+          - 
+            name: Checkout
+            identifier: process_checkout2
+            uses: official_checkout
+            with:
+              repository: https://test.gitcode.net/tanghaoran7/cann-ci.git
+              ref: refs/heads/main
+              token: ${{secrets.GIT_THR_TOKEN}}
+              path: "./runner/CI"
+          -
+            name: download
+            uses: obs-download
+            with:
+              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+              bucket: "ascend-ci"
+              access-key: ${{secrets.AK}}
+              secret-key: ${{secrets.SK}}
+              key: "test/pr_filelist_precommit.txt"
+              path: ${{ steps.process_checkout.outputs.path }}
+          -
+            name: precommit
+            run: |
+              cd runner
+              ls -lh
+              python3 CI/scripts/precommit.py  --pr_id ${{ inputs.pr_number }}  --repository_name ${{ inputs.repo_name }}    
+        if: "${{ default() }}"
+        runs-on: [self-hosted, cann=cann196]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:alpha113
+    pre:
+    - type: auto
+    fail-fast: true
+  stage4:
+    name: ut
+    select: selected_by_default
+    jobs:
+      JOB_ut:
+        name: ut_test
+        select: selected_by_default
+        needs: []
+        steps:
+          - 
+            name: Checkout
+            identifier: process_checkout
+            uses: official_checkout
+            with:
+              token: ${{secrets.GIT_TOKEN}}
+          -
+            name: ut
+            run: cd ${{ steps.process_checkout.outputs.path }};source /home/jenkins/Ascend/cann/bin/setenv.bash; bash tests/build_ut.sh --ut=acl --target=ascendcl_utest -c --cann_3rd_lib_path="/home/jenkins/opensource"       
+        if: "${{ default() }}"
+        runs-on: [self-hosted, cann=cann_pub_22]
+        container:
+          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:lv3_v1.1116
+    pre:
+    - type: auto
+    fail-fast: true
