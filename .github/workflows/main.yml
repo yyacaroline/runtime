@@ -1,4 +1,15 @@
+name: Compile on Comment
 on:
-    pr_comment:
-        types: [ created ]
-        keyword: '^(?:\/)?compile*'
+  pull_request_comment:
+    types: [created]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 在这里写你要执行的命令
+      - name: Run compile
+        if: contains(github.event.comment.body, '/compile')
+        run: echo "执行编译命令"
